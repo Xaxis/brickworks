@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe, lib:where hands leave their marks, lib:the stage matched to the photographs, lib:moulded edges, ui:the steps bar on a phone, lib:a large source on a table, ui:plastic new or played with -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe, lib:where hands leave their marks, lib:the stage matched to the photographs, lib:moulded edges, ui:the steps bar on a phone, lib:a large source on a table, ui:plastic new or played with, lib:path tracer in a browser -->
 
 ## Sub-features
 
@@ -3555,6 +3555,82 @@ picture the assistant is shown.
   (`TRACED_SAMPLES`); `RenderSettings.traced = false` and `seed` are for
   probes. A card that refuses the pipeline is said once in the log and
   Best is frames averaged from then on (`PathTracer._refused`).
+- `path tracer in a browser` (`src/render/page_tracer.gd`, `page_tracer.js`,
+  `tools/web/tracer_port.py`; photoreal28, docs/RENDERING.md 5ac): Best in a
+  browser is path traced by the desktop's own shaders, ported to GLSL ES 3.00
+  at the export (`tracer_port.py --js $dir/tracer.js`: the raygen's main a
+  fragment shader drawing a band of rows into two RGBA32F targets, the
+  closest hit a function, the storage buffers data textures, traceRayEXT a
+  walk of page_tracer.js's own trees: one per shape, binned SAH, and one over
+  the instances). `PathTracer.available()` on the web is
+  `PageTracer.usable()`: WebGL2 with EXT_color_buffer_float and
+  KHR_parallel_shader_compile on a graphics card (without the last, the page
+  could only wait out the half-minute compile frozen; a software renderer,
+  SwiftShader or llvmpipe, keeps Best frames averaged too, and is the reason
+  given when both hold, as on SwiftShader; both unless the address says
+  `?tracer=on`; `?tracer=off` keeps it so anywhere).
+  tracer.js is fetched only when a path-traced Best starts (`PageTracer.ready`,
+  `import()` from `Origin.build()`), its shaders compiled beside the page; a
+  pass is given only once the last one's fence has signalled, sized by the
+  card's timer query to 12 ms (where the browser does not time the card,
+  Firefox and Safari, the page's own frame is timed over 3 frames given no
+  pass, and the band grows while frames come within 6 ms or 35% of it and
+  shrinks past 18 ms or 100% more: a fixed 22/34 ms starved it where the
+  studio's own frames are slow, 25 s a sample on SwiftShader), so the tab
+  keeps drawing. While a first Best waits on the tracer's script, its
+  compile and the metering, the dialog says so ("fetching the path tracer",
+  "readying the path tracer for this graphics card", "metering the light",
+  `StudioRender._waited_on`), not "setting up the model"; page_tracer_flow
+  fails if it still says that once samples come in. A shader has no calls: the
+  walk and the closest hit are copied in wherever they are called, and they
+  made the first compile take about a minute. So a shadow ray's walk through
+  clear parts asks for the bare hit (`RT_BARE`, the port's own), and
+  `through_masked` walks the solid parts and then the clear parts' faces in
+  one loop over one `walk()` (20 walks in the shader, not 37). Its pictures
+  are the same to the bit (llvmpipe, a glass set and a clear round). Where it fails (no script, a
+  shader the card will not compile, a lost context) `PageTracer.fail` and
+  `_picture` draws Best's frames instead; the result line says why
+  (`PathTracer.why_not()`). Render's Finish now (`render_finish`) keeps the
+  picture as clean as it is, once the block of samples under way reaches
+  the last row (`PageTracer.between`). The page is told `traced`, `samples`
+  and `finish` in window.brickworksRender, and Custom's `render_width` and
+  `render_height` are named. Check: `python3 tools/minitest.py
+  tests/test_page_tracer.py` (the port writes every shader with nothing of
+  Vulkan's left; rays walked through `pack()`'s textures find the triangle
+  testing every one finds); `node tools/web/page_tracer_flow.mjs
+  --url=http://127.0.0.1:PORT/index.html --out=DIR` on a local export served
+  by `relay_server.mjs PORT --static=build/web` with `.env` loaded, under
+  `heavy` (Product, Best at 192x108 with `?tracer=on`, its samples climbing,
+  Finish now, the PNG, a second Best cancelled once it traces; then
+  without it, frames averaged and the result
+  saying why; the page's thread never held over 2 s while it traces; no
+  script error, as `PageTracer._tracer()` asks for the interface only once
+  window.brickworksTracer is set; `--only=traced` or `--only=plain` runs one
+  page, and the traced one takes an hour on a loaded box); `node
+  tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js --width=256
+  --samples=8` under `heavy` (CAPTURE from `photoreal_probe --pt-capture=DIR`:
+  the page's tracer in Chromium on SwiftShader, frame gaps and samples
+  timed); bench/results/photoreal28-2026-11-26/scripts/gpu28.py runs the same
+  shaders and textures on the card through EGL under `gpu`, a band of rows
+  a pass (a whole picture's pass of a set ran past the kernel's 10 s).
+  Denoised and never worse (photoreal29, docs/RENDERING.md 5ad): each
+  picture is filtered before the resolve by `src/render/page_denoise.frag`
+  (SVGF's spatial a-trous, five passes in bands, guided by the first hit's
+  normal, depth, albedo and kind that the ported tracer sums into two more
+  targets, u_more and u_even; the even samples apart give each pixel two
+  halves, and their difference its noise). Best in a browser draws Best's
+  frames averaged first (`StudioRender._picture(..., raster)`, 10% of the
+  bar) and keeps them on screen while the trace refines behind ("Path
+  tracing behind this picture: N of M samples"); it shows the trace only
+  once `PageTracer.gauge` measures what the denoise leaves under
+  `StudioRender.TRACED_NOISE` ("Path traced, still refining"). Finish now
+  and the end keep whichever is better; `kept_frames` and `noise` go to
+  window.brickworksRender and the result says "Kept the frames averaged"
+  when it kept them. page_tracer_flow fails if the dialog never says the
+  trace is behind, or the result says frames averaged without having kept
+  them. bench/results/photoreal29-2026-11-27/scripts/laptop29.sh draws each
+  judge shot as a mid laptop's 5, 15 and 30 s leave it, raw and denoised,
+  one `gpu --brief` job a shot, passes held to 90 ms.
 - `render queue` (File, Render queue…; `src/ui/render_queue.gd`,
   `RenderQueue.of(app)`, loaded by name so main and the shell do not
   compile it at start): a panel in the bottom right of the model's room.

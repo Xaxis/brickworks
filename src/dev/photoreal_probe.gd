@@ -284,8 +284,14 @@ func _car(bar: ModelBar, out: String) -> void:
 
 func _draw(shot: Dictionary, name: String, samples: int, out: String) -> void:
 	var settings: RenderSettings = _settings(shot, samples)
+	# -- --pt-capture=DIR (photoreal28): what the tracer was given for each
+	# picture, in DIR/<name>/, for the page's tracer (tools/web/tracer_bench.mjs).
+	var capture: String = _arg("pt-capture", "")
+	PathTracer.capture_to = capture.path_join(name) if not capture.is_empty() else ""
+	PathTracer.capture_notes = {}
 	var started: int = Time.get_ticks_msec()
 	var picture: Image = await _render.render(_world, settings)
+	PathTracer.capture_to = ""
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 	if picture == null:
 		_check("%s drawn" % name, false)

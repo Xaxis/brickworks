@@ -41,7 +41,9 @@ This is the research, the recommendation, and what the first slice
 Since APP_UX3 pathtrace (2026-10-31), Best is path traced in the app itself
 where the card has Vulkan's ray tracing pipeline: soft shadows and light
 bounced off the floor and between parts, in seconds (section 5c). Cycles is
-still the way to a real bevel and caustics, and the web still has no tracer.
+still the way to a real bevel and caustics. Since photoreal28 (2026-11-26),
+Best in a browser is path traced too, on the visitor's own graphics card:
+the desktop's shaders ported to WebGL2 at the export (section 5ac).
 Since photoreal1 (2026-11-21), Best in the Product look is judged blind
 beside real photographs. Its studs carry the logo, its edges and slopes are
 moulded, and light bends through clear parts. The judge still finds the
@@ -2839,6 +2841,198 @@ the photograph, and both read LEGO turned half round. green_plate_macro gains th
 +0.055; +0.092 and +0.097 with Played with). No shot falls in both pools by more than the pools differ
 on an unchanged pair: set_6532's Played with is -0.001 in one pool and -0.004 in the other.
 
+## 5ac. Best path traced in the browser, on the visitor's card (photoreal28)
+
+**What runs.** The desktop's own tracer, not another one. `tools/web/tracer_port.py` turns
+path_tracer.glsl's raygen and closest hit into one GLSL ES 3.00 fragment shader at the export
+(tracer.js beside index.html). The raygen's main becomes a fragment drawing a band of rows into two
+RGBA32F targets, the running sum and the guide, read back the next pass. The closest hit becomes a
+function, the storage buffers become data textures 2048 texels wide, and `traceRayEXT` becomes a walk
+of two-level trees that `page_tracer.js` builds in the page: one per shape (binned SAH), and one over the
+placed parts. The same Scene, Pass and Resolve blocks, the same samples by their own index and the seed,
+and the same plain, marked and photo versions. `PathTracer` gives the page what it gives the card on
+the desktop (`PageTracer`, base64 one way and JavaScript buffers back). No tracer of anyone else's is
+in it, so no licence is to be recorded: it is our own shader text, ported by our own script, with our
+own trees. tracer.js (about 420 KB) is fetched only when a path-traced Best starts, so a first visit
+loads nothing more: the first screen's scripts are the same 220 and 7,390,694 bytes
+(`start_closure.closure`, before and after).
+
+Where the browser has no WebGL2 float targets, or draws without a graphics card (SwiftShader,
+llvmpipe: minutes a picture), Best stays frames averaged and the result says which. `?tracer=on` asks
+for the tracer anyway, `?tracer=off` turns it off.
+
+**The same picture as the desktop's.** At the same seed the browser's tracer draws the desktop's Best
+sample for sample. On the card through EGL (`gpu28.py`, the shaders and textures the page gets), the
+four close-ups differ from the desktop's draw 11 by 0.05 to 0.09 of 255 on average, under 0.01% of
+pixels by more than 8. The desktop's own draws 11 and 12 differ by 0.3 to 1.7, 0.5% to 5% of pixels.
+black_2x4's white mirrored top, the logos, the terrazzo and the focus are all there. On a set
+(set_6532, sheets/set_6532.jpg) the raster's grey ground and waxy plastic give way to the
+desktop's white studio, glossy plastic, clear headlights and soft shadow, and the browser's picture
+and the desktop's cannot be told apart by eye.
+
+**The first compile.** A shader has no calls, so each `trace()` is copied in where it is called, and
+the closest hit with it. A shadow ray's walk through clear parts reads only which part and how far, yet
+it carried the whole moulded surface (logos, wear) into seventeen places. The card's first compile
+took 11 s to link and 47 s more at the first draw, and Chrome's GPU process would sit through it. That
+walk now asks for the bare hit (`RT_BARE`, the port's own flag). The walk itself was copied in
+too: through_masked held two of them, the solid parts and then the clear parts' faces, and it is
+copied into every shadow ray, so 34 of the shader's 37 walks were there. One `walk()` in a loop
+now does both, leaving 20. On llvmpipe its pictures are the same to the bit. On the card they
+differ by 0.03 of 255 on average, in 1% of pixels: float rounding on the clear parts' paths.
+The photo version's first compile with no shader cache, on a loaded box (gpu28.py, the link and
+then GL_COMPLETION_STATUS_KHR, as the page waits): 16.6 s + 124.6 s before, 14.5 + 100.2 with
+`RT_BARE`, 4.7 + 49.2 with the one walk. And it traces 2.4 to 2.6 times faster: a set
+1,130 → 473 ms a sample a megapixel, a close-up 205 → 77, measured in turn A B A B in one lease.
+A browser without KHR_parallel_shader_compile could only learn whether the tracer compiled by
+asking for its link status, which waits out the compile on the page's own thread. There Best
+stays frames averaged, and the result says the page would freeze.
+
+**Pacing.** A pass is given only after the last one's fence has signalled. It is a band of rows sized
+to 12 ms of the card where the browser times the card's work (EXT_disjoint_timer_query_webgl2, in
+Chrome). Firefox and Safari do not time it, and there the frames' gap paces it. The browser holds the
+next frame until the card has drawn this one, so a pass is always done by the next frame however long
+it took. The page's own frame is timed first, over three frames given no pass. The band grows while
+frames come within 6 ms (or 35%) of it and shrinks past 18 ms (or 100%) more. At 60 a second that
+is the 22 and 34 ms it was first given. A fixed 22/34 ms starved the tracer wherever the studio's
+own frames were slow (25 a second, or SwiftShader): the band sat at its smallest. A picture shown
+part way down a block divides each part by its own count, and Finish now waits for the block to
+reach the last row. Through the script's fetch, the first compile and the metering, the dialog
+said "setting up the model 0%". It now says what it waits on.
+
+**The bench reset the card.** The bench's first harness gave the card whole pictures of a set in one
+pass, past the kernel's 10 s, and the ring was reset four times (15:42). The page never gives a whole
+picture. The bench now gives bands of about 150 ms.
+
+**Time to a clean picture.** On this box's RX 6700 XT, with the shipped shader, a sample of a
+megapixel takes 58 to 78 ms for a close-up and 408 to 649 ms for a set. red_slope takes 337 and
+three_2x2_top 278 (much of the picture is the bright, rough backdrop), and trans_round 443
+(clear plastic). The default Best is 1920x1080 and the tracer has 12 ms of each 16.7 ms frame. So
+a close-up's 256 samples take about a minute here and a set's 6 to 8 minutes. A mid laptop's card is
+about a quarter of this one. In a 30 s Best it reaches about 35 samples of a close-up and 4 to 6 of
+a set. SwiftShader is the floor, and it does not trace unless asked (`?tracer=on`). On the bench
+page at 256x215, its first sample came after 26 s and 8 samples after 81 s. Its frames came every
+16.7 ms (p95 20.5) except one of 8.1 s at the first draw, where SwiftShader compiles the shader in the
+GPU process. In the app it meters the light at 20 s a sample.
+
+**The judge.** photoreal16's fixed solo judge, as photoreal17 to 27 ran it: 6 trials of 8 rounds,
+each picture scored against the browser's raster, intervals by bootstrap over trials. Pool c28, nine
+shots, the browser's tracer at 256 samples:
+
+| | close-ups | sets |
+|---|---|---|
+| raster | 0.051 | 0.034 |
+| tracer, 32 samples | 0.385 | 0.045 |
+| tracer, 256 samples | 0.723 | 0.057 |
+| desktop Best | 0.775 | 0.057 |
+
+Against the raster, shot by shot, the tracer at 256 is ahead beyond its interval on every shot.
+Close-ups +0.672 (+0.528 .. +0.803). The four sets +0.007 (+0.005 .. +0.009), +0.039, +0.036 and
++0.011. Against desktop Best it is within 0.012 on eight of the nine. The ninth is three_2x2_top
+(0.444 against 0.683, and 0.370 against 0.653 in pool a28). Its two pictures are 0.28 of 255
+apart, nothing over 30, so the judge is telling apart pictures no one could. Pool d28 put the
+desktop's draws 11 and 12 side by side on that shot and on black_2x4. The two desktop draws were
+0.076 and 0.173 apart, and the tracer was as far from draw 11 (-0.183 and +0.165). Over the two
+shots the tracer scored 0.609, draw 11 0.618 and draw 12 0.493.
+At 32 samples nothing has settled: grey_1x3 scores 0.105 against 0.820 at 256. The guided clean
+leaves a fine grain in the shadow and on the dark brick (sheets/grey_spp_crop.jpg), and the judge
+reads it as a render. Pool e28 added 128 samples. At 128, every set, trans_round, green_plate,
+red_slope and three_2x2_top are within 0.010 of 256. black_2x4 is 0.154 short and grey_1x3 0.689
+short: grey_1x3 scores 0.113 at 32, 0.119 at 128 and 0.808 at 256. The judge wants about 256
+samples of a close-up before its number stops moving.
+
+**30 s on a mid laptop: not yet.** Pool f28 judged what such a Best leaves (`laptop28.sh`). Each
+shot was drawn at the default Best's 2.07 megapixels, at the samples a card a quarter of this one
+reaches in 30 s: 33 to 45 of a close-up, 7 of red_slope, 9 of three_2x2_top, 4 to 6 of a set. Then
+it was made the judge's size. Against the tracer at 256: green_plate +0.010, black_2x4 +0.045,
+three_2x2_top +0.265 (the judge again), trans_round -0.011, but grey_1x3 -0.502 and red_slope
+-0.658. The sets score 0.032 (0.027 .. 0.038), the raster's 0.033: in 30 s on such a card a set
+has nothing over the raster, and it looks grainy (sheets/laptop30.jpg). So this round is NO-GO on
+its own bar. Waited for, the browser's Best is the desktop's. Finished at 30 s on a modest card,
+a set is not. What is left is a clean that holds at 4 to 8 samples: an edge-avoiding filter over
+several passes, guided by the normals and albedo the tracer already writes, in place of the one
+7x7 pass. Then f28 again.
+
+## 5ad. Denoised in the browser, and never worse than the raster (photoreal29)
+
+**The filter.** The desktop's only denoiser is the resolve's one 7x7 guided pass (`cleaned()`),
+which wants about 256 samples. The browser now goes past it with SVGF's spatial part
+(`src/render/page_denoise.frag`, run by page_tracer.js before the resolve). There are five à-trous
+passes, 1, 2, 4, 8 and 16 pixels apart, on a 5x5 B3 kernel. The ported tracer sums two more targets
+for it. u_more holds the eye's first hit: its albedo and its depth along the camera. u_even holds the
+even samples' light and kind apart from the odd ones. So each pixel has two halves of its samples.
+Their difference is the pixel's measured noise, never an assumed one, and the passes carry that
+variance on, weights squared. Two neighbours are averaged as far as they are alike in light (in units
+of that noise, blurred 3x3), albedo, normal, depth (against the surface's own slope) and kind
+(plastic by lightness, clear plastic, the sweep, nothing).
+Three things the pictures taught:
+
+- SVGF divides the light by the albedo and filters that. Here the clear coat's white reflection,
+  divided by a saturated blue's red channel, came back fifty times over and turned the white print
+  on a minifig's overalls pink. The light is filtered as it is, and the albedo is an edge stop.
+- An edge out of focus is a band of pixels, each a mean of the part and what is behind it, from 1
+  to 5 samples. By luck some are all part and some all backdrop, and their guide is as noisy as
+  their light. Every stop held them apart, and the blurred edge stayed torn. Where the halves of
+  most pixels round a pixel met different kinds, only the light stops the filter, in units of how
+  the band's light varies. A print's line is two pixels wide, a third of those, and stays sharp.
+- Each pass is drawn in bands of half a megapixel. On this box's card a pass over 2 Mpx takes
+  9-27 ms in all, so about 100 ms on a mid laptop's card.
+
+**Never worse.** Best in a browser draws Best's frames averaged first (10% of the bar) and keeps
+showing them while the trace refines behind ("Path tracing behind this picture: N of 256 samples").
+Each second the page measures what the denoise leaves on the model (`PageTracer.gauge`: the halves'
+noise after the passes, relative to the light, over a 4x4 grid of every 16x16 pixels). The cells
+are copied into a buffer behind a fence and read a second later, once the card has drawn them, so
+the page's thread never waits on the card for the measure (read at once, the traced page on
+SwiftShader was held 2.4 s once); an older measure is grainier, so the switch only comes later.
+The end's decision measures and reads at once. It shows
+the traced picture only once that is under `StudioRender.TRACED_NOISE`, and then says "Path
+traced, still refining". Finish now, a lost context or the end keep whichever picture is better,
+and the result says when it kept the frames.
+
+**The judge** (pool g29: photoreal16's solo judge, 6 trials x 8 rounds, the ten shots). Each shot
+was drawn as a mid laptop's 5, 15 and 30 s leave it (f28's sample counts at a sixth, a half and
+all of them; `laptop29.sh`, one `gpu --brief` job a shot), then denoised. d is the light stop at 8
+standard deviations, e at 4.
+
+| label | close-ups | sets |
+| --- | --- | --- |
+| raster | 0.047 | 0.033 |
+| d, 5 s | 0.450 | 0.031 |
+| d, 15 s | 0.587 | 0.036 |
+| d, 30 s | 0.600 | 0.046 |
+| e, 30 s | 0.653 | 0.049 |
+| tracer, 256 samples | 0.655 | 0.057 |
+
+Against the raster, shot by shot, both 30 s arms are ahead beyond the interval on every shot. The
+sets with e: +0.010, +0.015, +0.036 and +0.003. With d: +0.011, +0.007, +0.022 and +0.010. f28's raw
+30 s sets had scored 0.032 against the raster's 0.033. At 30 s, e on the close-ups is the tracer at
+256 (0.653 against 0.655). grey_1x3, f28's worst at -0.502, scores 0.884 against 256's 0.824.
+At 5 s a set has one sample. Two sets are below the raster (-0.004 and -0.005, beyond the
+interval) and two tie it. So at 5 s those sets must keep the frames.
+
+**Where to switch.** With d, every draw that left 0.059 or less (`laptop29`'s measure, the app's
+own) scored at or over the raster: at 15 s the sets by +0.001 to +0.005, at 30 s by +0.007 to
++0.022. Every set's first sample left 0.166 or more. So `TRACED_NOISE` is 0.1, and at a mid
+laptop's pace a set switches at its second or third sample. A close-up switches at its first
+measure (0.010 to 0.032 at 5 s), and so does the clear round (0.033, +0.009). red_slope's first
+sample left 0.218 and scored +0.103: it keeps the frames a few seconds longer than it had to.
+Pool h29 judged e at 5 and 15 s too. There set_6532 at 15 s was 0.002 under the raster (beyond
+the interval) though it left only 0.043, where d's draw left 0.040 and scored +0.005. e is ahead
+at 30 s, but no level of e's noise separates its draws as cleanly. So the page filters with d
+(`DENOISE_TUNE`, light stop 8).
+
+Bar by bar: the 30 s draws, denoised, beat the raster beyond the interval on every close-up and
+every set. What Render shows at 5, 15 and 30 s is the raster where the trace left over 0.1 and the
+trace where it left under, and in g29 every one of those scored at or over the raster. The first
+screen is the same 220 scripts and 7,390,694 bytes. Sheets: `sheets/grey_1x3.jpg`,
+`sheets/set_6532.jpg`, `sheets/red_slope_2x4.jpg` (the raster, raw and denoised at 30 s,
+denoised at 5 and 15 s, and 256).
+
+What is left. The à-trous leaves a faint grid in a shadow on white at 5 samples. An edge out of
+focus is softer than raw but still not smooth. Both show only at twice the judge's size. The
+desktop's Best still has only the 7x7 pass. It traces at 256 on a card that traces rays, so it
+does not need this, but it could use the same filter for Finish now.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
@@ -2847,7 +3041,9 @@ on an unchanged pair: set_6532's Played with is -0.001 in one pool and -0.004 in
 - **Web (Compatibility):**
   - Product's shaders, rig, film curve and backdrops, without SDFGI, AO or
     clear coat.
-  - Path-traced stills from the server (R3).
+  - Best path traced in the page on the visitor's own card, by the desktop's
+    shaders ported to WebGL2 (photoreal28, section 5ac); frames averaged
+    where the browser has no card or no float targets.
   - Product under Compatibility was drawn once in render340 (on the GPU
     under Xvfb, `--rendering-method gl_compatibility`, Good, 960×540,
     12.7 s): it compiled and drew, with the backdrop's fall, the rig and

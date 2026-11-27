@@ -2863,6 +2863,9 @@ msgstr "Unida a %d piezas más, directamente o a través de otras"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Unida a %d piezas más o más, directamente o a través de otras"
 
+msgid "Joined to … other parts, directly or through others"
+msgstr "Unida a … piezas más, directamente o a través de otras"
+
 msgid "Faces: studs up"
 msgstr "Orientación: espigas arriba"
 
@@ -5845,8 +5848,20 @@ msgstr "%d fotogramas promediados: sombras suaves de una luz de área, bordes li
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sin nada detrás del modelo, no se renderiza con trazado de rutas."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "El trazado de rutas necesita la aplicación de escritorio, que llega pronto: un navegador no puede trazar rayos."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "El trazado de rutas se detuvo en este navegador, así que Máxima promedia fotogramas."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Este navegador dibuja sin tarjeta gráfica, demasiado despacio para el trazado de rutas, así que Máxima promedia fotogramas."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "El trazado de rutas está desactivado en esta página, así que Máxima promedia fotogramas."
+
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Este navegador congelaría la página mientras prepara el trazado de rutas, así que Máxima promedia fotogramas."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Los gráficos de este navegador no pueden hacer trazado de rutas, así que Máxima promedia fotogramas."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "El trazado de rutas necesita el modo gráfico completo, y esta ventana dibuja en el más sencillo."
@@ -5950,6 +5965,24 @@ msgstr "preparando el modelo"
 
 msgid "fetching the photographed light"
 msgstr "cargando la luz fotografiada"
+
+msgid "fetching the path tracer"
+msgstr "cargando el trazado de rutas"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "preparando el trazado de rutas para esta tarjeta gráfica"
+
+msgid "metering the light"
+msgstr "midiendo la luz"
+
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Path tracing detrás de esta imagen: %d de %d muestras"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "Con path tracing, aún afinándose: %d de %d muestras"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "Se conservó el promedio de imágenes: la imagen con path tracing aún tenía más grano."
 
 msgid "the contact shadow"
 msgstr "la sombra de contacto"

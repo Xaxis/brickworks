@@ -95,12 +95,21 @@ static func _take(read_in: Dictionary) -> void:
 		print("design memory: holding out %s (%d designs)" % [", ".join(held), hidden])
 
 
-## The subjects under test, from --held-out=a,b on the command line.
+## The subjects under test, from --held-out=a,b on the command line. Never
+## in a browser, where the arguments are the address's query (shell.html):
+## a link with ?held-out= made the person's tab a bench's, whose save takes
+## parts off (savereview2 G1). realset starts desktop builds.
 static func held_out() -> PackedStringArray:
 	if not _held_read:
 		_held_read = true
-		_held_out = held_out_of(OS.get_cmdline_user_args())
+		_held_out = held_out_of(bench_arguments(OS.get_cmdline_user_args(), OS.has_feature("web")))
 	return _held_out
+
+
+## The command line's arguments a bench may set: none in a browser
+## ([param web]).
+static func bench_arguments(arguments: PackedStringArray, web: bool) -> PackedStringArray:
+	return PackedStringArray() if web else arguments
 
 
 static func held_out_of(arguments: PackedStringArray) -> PackedStringArray:
@@ -125,7 +134,7 @@ static func hold_out(subjects: PackedStringArray) -> void:
 static func held_names() -> PackedStringArray:
 	if not _names_read:
 		_names_read = true
-		for argument: String in OS.get_cmdline_user_args():
+		for argument: String in bench_arguments(OS.get_cmdline_user_args(), OS.has_feature("web")):
 			if argument.begins_with("--held-out-name="):
 				hold_name(argument.trim_prefix("--held-out-name="))
 	return _held_names

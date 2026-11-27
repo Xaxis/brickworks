@@ -7444,6 +7444,27 @@
       "entry": "tools/web/oc_often_check.mjs",
       "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
       "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "save_whole probe",
+      "entry": "src/dev/save_whole_probe.gd",
+      "reach": "tools/probe.sh save_whole_probe   (headless: in a bench run, as realset's last save is, a beam frame on wheels saves whole with nothing said; a 24-tooth gear in the air beside it, not held, and save_model is not refused: the file holds the frame's every part and not the gear, the answer names the gear by its number and why, the gear is taken off as one edit and undo puts it back; locked, the gear stays and is written as it stands; a person's Claude's save writes it whole and leaves it on the baseplate, no step taken, the gear named)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "saved_without_attack probe",
+      "entry": "src/dev/saved_without_attack_probe.gd",
+      "reach": "tools/probe.sh saved_without_attack_probe   (headless, savereview's attacks: through the command socket as a person's own Claude and as the bench: a clean frame saved twice each way, the same bytes; one gear not held and the person's Claude saves: the gear stays on the baseplate and in their next Save, nothing unsaved, no \"Saved without\" over a file that has it; the person places a brick and the session undoes: the brick stays; the person's locked beam overlapping Claude's rail stays; on the bench two gears come off as one edit, both named, one undo puts every part back exactly)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "path tracer in a browser",
+      "entry": "src/render/page_tracer.gd",
+      "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
+      "area": "view"
     }
   ]
 }

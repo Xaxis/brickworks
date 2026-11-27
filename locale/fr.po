@@ -2863,6 +2863,9 @@ msgstr "Reliée à %d autres pièces, directement ou par d'autres"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Reliée à %d autres pièces ou plus, directement ou par d'autres"
 
+msgid "Joined to … other parts, directly or through others"
+msgstr "Reliée à … autres pièces, directement ou par d'autres"
+
 msgid "Faces: studs up"
 msgstr "Orientation : tenons en haut"
 
@@ -5845,8 +5848,20 @@ msgstr "Moyenne de %d images : ombres douces d'une source étendue, bords lisse
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sans rien derrière le modèle, il n'est pas rendu en path tracing."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "Le path tracing demande l'application de bureau, bientôt disponible : un navigateur ne peut pas tracer de rayons."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "Le path tracing s'est arrêté dans ce navigateur : Meilleure fait donc la moyenne d'images."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Ce navigateur dessine sans carte graphique, trop lentement pour le path tracing : Meilleure fait donc la moyenne d'images."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "Le path tracing est désactivé pour cette page : Meilleure fait donc la moyenne d'images."
+
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Ce navigateur figerait la page pendant la préparation du path tracing : Meilleure fait donc la moyenne d'images."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Les graphismes de ce navigateur ne permettent pas le path tracing : Meilleure fait donc la moyenne d'images."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Le path tracing demande le mode graphique complet, et cette fenêtre dessine dans le mode simplifié."
@@ -5950,6 +5965,24 @@ msgstr "préparation du modèle"
 
 msgid "fetching the photographed light"
 msgstr "chargement de la lumière photographiée"
+
+msgid "fetching the path tracer"
+msgstr "chargement du path tracing"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "préparation du path tracing pour cette carte graphique"
+
+msgid "metering the light"
+msgstr "mesure de la lumière"
+
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Path tracing derrière cette image : %d échantillons sur %d"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "En path tracing, encore en affinage : %d échantillons sur %d"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "La moyenne d'images a été gardée : l'image en path tracing avait encore plus de grain."
 
 msgid "the contact shadow"
 msgstr "l'ombre de contact"

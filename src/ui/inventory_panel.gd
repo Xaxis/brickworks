@@ -365,11 +365,30 @@ func show_finding(world: BrickWorld, from_library: PartLibrary,
 	return true
 
 
+## The find shown and given the keys at once, before the list is taken:
+## taking it is many frames on a big model (the hotel's 683 lots), and what
+## a person typed meanwhile went to the app's own keys: the 3 and 0 of
+## "3004" turned the view, the find had "04" and Enter found nothing, and
+## the C of "no such part" painted the four blue parts selected red
+## (clickfast2). What is typed while the rows come is kept and found in
+## them, and an Enter pressed meanwhile chooses once they are in.
 func _fill_finding(world: BrickWorld, from_library: PartLibrary,
 		scenery: Dictionary, title: String) -> void:
-	if await _fill(world, from_library, scenery, title):
-		_scroll_to = -1
+	_find.text = ""
+	_submitted = false
+	if not _swapping:
+		(_find.get_parent() as Control).visible = true
+		if not visible:
+			# Not the last list's rows under the new words.
+			_scroll.visible = false
+			_heading.text = FILL_WORDS
+	HudFront.show_panel(self)
+	if _find.is_visible_in_tree():
 		_find.grab_focus()
+	if await _fill(world, from_library, scenery, title, true):
+		_scroll_to = -1
+		if _find.is_visible_in_tree():
+			_find.grab_focus()
 
 
 ## Whether [method show_for] has anything to list: a part of the model's
@@ -389,6 +408,9 @@ const FILL_WORDS := "Listing the model's parts…"
 var _filling: bool = false
 var _fills: int = 0
 var _fill_job: Working.Job = null
+## Enter pressed in the find while the rows were still coming: chosen once
+## they are in ([method _choose_shown]).
+var _submitted: bool = false
 
 
 ## The stock taken and its rows made and shown, a slice of a frame at a time
@@ -397,9 +419,11 @@ var _fill_job: Working.Job = null
 ## stock is taken (the model changed meanwhile is taken again); then it is
 ## shown with its counts, and its rows go in a slice at a time, each laid out
 ## in its own frame: shown at the end, Orthanc's 226 were laid out in one of
-## 160 ms (smalls9).
+## 160 ms (smalls9). [param typed]: the find's words are what was typed
+## while it was taken ([method _fill_finding]), kept, and only the rows they
+## answer go in. Whatever is in the find once the rows are is found in them.
 func _fill(world: BrickWorld, from_library: PartLibrary,
-		scenery: Dictionary, title: String) -> bool:
+		scenery: Dictionary, title: String, typed: bool = false) -> bool:
 	_end_fill()
 	_fills += 1
 	var mine: int = _fills
@@ -425,7 +449,9 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 	_scenery = scenery
 	_stock = stock
 	_note.visible = false
-	_find.text = ""
+	if not typed:
+		_find.text = ""
+		_submitted = false
 	_made.clear()
 	_used = {}
 	if not held.is_empty():
@@ -465,7 +491,10 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 		await pace.next()
 		if mine != _fills:
 			return false
+	# Kept out of sight by _fill_finding until the last list's rows are out.
+	var rows_hidden: bool = typed and not _scroll.visible and not _swapping
 	_show_rows()
+	_scroll.visible = _scroll.visible and not rows_hidden
 	_heading.text = _counts()
 	_scroll.scroll_vertical = 0
 	HudFront.show_panel(self)
@@ -484,8 +513,14 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 			await pace.next()
 			if mine != _fills:
 				return false
+	_scroll.visible = _scroll.visible or rows_hidden
+	# Every row put in under words typed already, most then taken out, was a
+	# list that came and went under them.
+	var said: String = _find.text.strip_edges()
+	var answers: Callable = _answering(said) if typed and not said.is_empty() else Callable()
 	for pair: Array in _made:
-		_rows.add_child(pair[1])
+		if not answers.is_valid() or answers.call(pair[0]):
+			_rows.add_child(pair[1])
 		if pace.due():
 			if not going.call():
 				return false
@@ -501,6 +536,14 @@ func _fill(world: BrickWorld, from_library: PartLibrary,
 	var at: int = _was_at if of == _was_of else 0
 	_was_of = of
 	_scroll_to = at
+	# What was typed in the find while the rows came, found in them, and an
+	# Enter pressed meanwhile chosen.
+	if not _find.text.strip_edges().is_empty():
+		_scroll_to = -1
+		_filter()
+	if _submitted:
+		_submitted = false
+		_choose_shown()
 	return true
 
 
@@ -521,6 +564,7 @@ func _end_fill() -> void:
 
 func hide_list() -> void:
 	_end_fill()
+	_submitted = false
 	_was_at = _scroll.scroll_vertical
 	_swapped_words = ""
 	_own_words = ""
@@ -572,20 +616,14 @@ func _filter() -> void:
 	if _stock == null or _filling:
 		return
 	var said: String = _find.text.strip_edges()
-	var colours: Dictionary = {}
-	for pair: Array in _made:
-		colours[(pair[0] as Inventory.Lot).color_code] = true
-	var wanted: SelectBy.Wanted = SelectBy.wanted(library, said, colours)
+	var answers: Callable = _answering(said)
 	for child: Node in _rows.get_children():
 		_rows.remove_child(child)
 	var lots: int = 0
 	var pieces: int = 0
-	var lower: String = said.to_lower()
 	for pair: Array in _made:
 		var lot: Inventory.Lot = pair[0]
-		# A place's words find what is kept there too ("drawer 3").
-		if wanted.takes(lot.part_id, lot.color_code) or (not said.is_empty() and not _places.is_empty()
-				and place_of(lot).to_lower().contains(lower)):
+		if answers.call(lot):
 			_rows.add_child(pair[1])
 			lots += 1
 			pieces += lot.count
@@ -600,9 +638,27 @@ func _filter() -> void:
 			pieces, "" if pieces == 1 else "s", lots, "" if lots == 1 else "s", said]
 
 
-## Enter in the find: every row it kept.
+## Whether a lot answers [param said] ([method _filter]): a Callable of the
+## lot.
+func _answering(said: String) -> Callable:
+	var colours: Dictionary = {}
+	for pair: Array in _made:
+		colours[(pair[0] as Inventory.Lot).color_code] = true
+	var wanted: SelectBy.Wanted = SelectBy.wanted(library, said, colours)
+	var lower: String = said.to_lower()
+	return func(lot: Inventory.Lot) -> bool:
+		# A place's words find what is kept there too ("drawer 3").
+		return wanted.takes(lot.part_id, lot.color_code) or (not said.is_empty()
+			and not _places.is_empty() and place_of(lot).to_lower().contains(lower))
+
+
+## Enter in the find: every row it kept; once they are all in when the rows
+## are still coming ([method _fill]).
 func _choose_shown() -> void:
 	var said: String = _find.text.strip_edges()
+	if _filling:
+		_submitted = not said.is_empty()
+		return
 	if said.is_empty() or _rows.get_child_count() == 0:
 		return
 	var ids := PackedInt64Array()
