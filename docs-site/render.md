@@ -58,7 +58,7 @@ lib:path tracer in a browser
 ![The car rendered at Best in the Product look on white, path traced: glossy red and black plastic, clear windows, a soft shadow under it.](/docs/img/render-product.webp "Quality › Best, Look › Product: the car as a set's box shows it.")
 
 > [!NOTE]
-> Where Best is path traced, no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time. Where Best averages frames, it raises the LEGO logo on every stud too, as the path tracer does.
+> Where Best is path traced, no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time. Where Best averages frames, it raises the logo on every stud too, as the path tracer does.
 
 <!-- covers
 lib:product look
