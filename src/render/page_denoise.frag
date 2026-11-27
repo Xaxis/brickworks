@@ -226,10 +226,11 @@ vec4 atrous(ivec2 p) {
 }
 
 vec4 measure(ivec2 cell) {
-	// x: the raw halves' noise, relative to the light, over the model's
-	// plastic; y: the same left after the filter; z: the plastic's pixels
-	// sampled; w: what is left, summed over every pixel sampled (the page
-	// counts those itself: 4 x 4 a cell, inside the picture).
+	// x: the raw halves' noise, relative to the light, over the model (its
+	// plastic and its clear plastic, the guide's kinds under 2.5: a clear
+	// round alone is all clear); y: the same left after the filter; z: the
+	// model's pixels sampled; w: what is left, summed over every pixel
+	// sampled (the page counts those itself: 4 x 4 a cell, inside the picture).
 	vec4 out_sum = vec4(0.0);
 	for (int y = 0; y < 4; y++) {
 		for (int x = 0; x < 4; x++) {
@@ -240,7 +241,7 @@ vec4 measure(ivec2 cell) {
 			vec4 left = texelFetch(u_in, p, 0);
 			float kept = sqrt(max(left.a, 0.0)) / (lum(left.rgb) + 0.02);
 			out_sum.w += kept;
-			if (kind_at(p) < 1.0) {
+			if (kind_at(p) < 2.5) {
 				float raw = sqrt(variance_at(p)) / (lum(mean_at(p).rgb) + 0.02);
 				out_sum.xyz += vec3(raw, kept, 1.0);
 			}

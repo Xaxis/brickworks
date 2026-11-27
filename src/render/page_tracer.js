@@ -1003,7 +1003,7 @@ export class Tracer {
 
 	// What the denoise left (stage 3 over [left], the last pass's light and variance), summed over
 	// the cells into this.noise: the raw halves' noise and what is left, each relative to the
-	// light, over the model's plastic, and what is left over the whole picture.
+	// light, over the model (plastic and clear), and what is left over the whole picture.
 	measure(left) {
 		const gl = this.gl;
 		const [w, h] = this.size;
