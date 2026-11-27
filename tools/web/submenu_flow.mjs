@@ -150,7 +150,7 @@ await lab.evaluate(() => {
   // The panel a menu put on screen: the box of the lines and columns where
   // much changed between two pictures inside [area] (a tooltip or a lit row
   // beside it changes a few pixels a line, a panel a whole line).
-  const panel = (a, b, area, limit = 24) => {
+  const panel = (a, b, area, limit = 24, gaps = 3) => {
     const x0 = Math.max(0, area.x); const x1 = Math.min(a.w, area.x + area.w);
     const y0 = Math.max(0, area.y); const y1 = Math.min(a.h, area.y + area.h);
     const lines = [];
@@ -169,7 +169,7 @@ await lab.evaluate(() => {
         if (top < 0) top = n;
         bottom = n;
         quiet = 0;
-      } else if (top >= 0 && ++quiet > 3) {
+      } else if (top >= 0 && ++quiet > gaps) {
         break;
       }
     }
@@ -213,15 +213,26 @@ await lab.evaluate(() => {
     return { rows, lit: ly0 >= 0 ? { y: ly0, h: ly1 - ly0 + 1 } : null };
   };
   window.lab = {
+    // How many pixels of [area] differ between two pictures.
+    async changed(first, second, area) {
+      const a = await decode(first, "image/png");
+      const b = await decode(second, "image/png");
+      let count = 0;
+      for (let y = area.y; y < Math.min(a.h, area.y + area.h); y++) {
+        for (let x = area.x; x < Math.min(a.w, area.x + area.w); x++) if (gap(a, b, at(a, x, y)) > 24) count += 1;
+      }
+      return count;
+    },
     // The open menu: what its picture has that the closed one has not,
     // below its button, and its rows.
     async menu(closed, open, button) {
       const a = await decode(closed, "image/png");
       const b = await decode(open, "image/png");
-      // A fine limit: the menu's dark panel over the dark toolbar and parts
-      // bin changes each pixel by little, and at 24 its lines there broke
-      // the run two rows down (File and View, live, 2026-11-27).
-      const box = panel(a, b, { x: button.x0 - 6, y: button.y1 + 1, w: 520, h: 800 }, 6);
+      // A fine limit and room for the space between rows: the menu's dark
+      // panel is the parts bin's own colour, so over the toolbar and the
+      // bin's head only its words change, and the run broke at the first
+      // gap between two rows (File and View, live, 2026-11-27).
+      const box = panel(a, b, { x: button.x0 - 6, y: button.y1 + 1, w: 520, h: 800 }, 6, 14);
       if (box.w === undefined) return { box };
       return { box, ...rowsOf(b, box) };
     },
@@ -301,7 +312,19 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
       for (let attempt = 0; attempt < 3; attempt++) {
         await shut();
         await page.waitForTimeout(attempt ? 1500 : 0);
-        const closed = await shot();
+        // The page at rest first: a view still settling (a model framed as
+        // it loads) changed beside the menu and made its box the whole area
+        // (Edit on menufix's preview, 2026-11-27).
+        let closed = await shot();
+        for (let n = 0; n < 12; n++) {
+          await page.waitForTimeout(500);
+          await caughtUp(page);
+          const again = await shot();
+          const moved = await lab.evaluate(([a, b]) => window.lab.changed(a, b, { x: 0, y: 0, w: 1280, h: 800 }),
+            [closed, again]);
+          closed = again;
+          if (moved < 50) break;
+        }
         await page.mouse.move(button.x, button.y);
         await page.mouse.click(button.x, button.y);
         await page.waitForTimeout(800);
