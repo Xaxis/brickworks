@@ -3420,13 +3420,15 @@ plan with Claude as the client.
   and its pack (`/b/<sha>/index.pck`) as `<link rel=prefetch>`, at the
   lowest priority and on through the click, so Start building's studio
   takes them from the browser's cache (both immutable; CDP says
-  `fromDiskCache` for both, the wasm compiled at 1.2 s, webstart14); not on Save-Data or a 2g/3g connection, a window under 600 px
-  where `navigator.connection` is missing (WebKit), an iPhone or iPad (its
-  engine is the switch's), nor a build not placed. `<html
-  data-studio-ahead>`: fetching, fetched, failed, `skipped <why>`
-  (save-data, slow, phone, apple, unplaced). Proven by `the start by phase`
-  with `--from=/` (the visit comes from the home page; the attribute at the
-  click is in its table). `#loop-say` shows the caption of the moment from
+  `fromDiskCache` for both, the wasm compiled at 1.2 s, webstart14); not
+  on Save-Data, a 2g/3g or cellular connection, a window under 600 px, an
+  iPhone or iPad (its engine is the switch's), nor a build not placed.
+  `<html data-studio-ahead>`: fetching, fetched, failed, `skipped <why>`
+  (save-data, slow, cellular, phone, apple, unplaced). Proven by `the
+  start by phase` with `--from=/` (the visit comes from the home page; the
+  attribute at the click is in its table); `homefeed`'s check 6 counts
+  these apart from the post's studio (the main frame's prefetches and its
+  fetch of `/app`). `#loop-say` shows the caption of the moment from
   `data-cues-desktop` / `data-cues-phone` ("seconds;t:word,..."; words in
   `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
   Made by `python3 tools/site/hero_capture.py` (the probe

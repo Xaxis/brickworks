@@ -25,7 +25,9 @@
 //      for it first), Escape puts the picture back; on a laptop a
 //      pointer resting on a picture turns it, and leaving puts it back.
 //   6. Try it here: nothing of the studio asked for before the tap; the tap
-//      puts the studio in the post (/app?view=<id>). With --try-start, the
+//      puts the studio in the post (/app?view=<id>). The page's own
+//      prefetch of the engine for Start building (landing.js studioAhead)
+//      is counted apart: bytes kept, no studio started. With --try-start, the
 //      studio there starts, on the engine without threads (the page is not
 //      cross-origin isolated): a deployment with this unit's deploy.sh and
 //      src/boot/shell.html, a preview, not a local copy over an older one.
@@ -114,7 +116,21 @@ async function open(where, { width = 1280, height = 800, session = null, theme =
   }
   const page = await context.newPage();
   const asked = [];
-  page.on("request", (request) => asked.push(request.url()));
+  // The home page's own fetch of the studio ahead of Start building
+  // (web/landing.js studioAhead, webstart14): /app's page read for its
+  // engine's addresses, and those files as the browser's prefetches. Only
+  // bytes kept for a click, nothing of a post's studio started.
+  asked.ahead = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    const path = new URL(url).pathname + new URL(url).search;
+    const main = request.frame() === page.mainFrame();
+    if (main && (request.resourceType() === "prefetch" || (path === "/app" && request.resourceType() === "fetch"))) {
+      asked.ahead.push(url);
+    } else {
+      asked.push(url);
+    }
+  });
   page.on("pageerror", (error) => errors.push(`${where}: ${error.message}`));
   await page.addInitScript(() => {
     window.__shifts = 0;
@@ -304,7 +320,7 @@ try {
       await page.locator("#stream [data-try]").scrollIntoViewIfNeeded();
       await page.click("#stream [data-try]");
       const framed = await until(page, () => document.querySelector("#stream [data-try-stage] iframe")?.getAttribute("src") || null, null, 10);
-      check(`6. ${label}: nothing of the studio asked before the tap (${studioBefore}); the tap puts it in the post (${framed})`,
+      check(`6. ${label}: nothing of the studio asked before the tap (${studioBefore}; fetched ahead of Start building: ${asked.ahead.length}); the tap puts it in the post (${framed})`,
         studioBefore === 0 && framed === `/app?view=${tryId}`);
       if (args["try-start"]) {
         const engine = await until(page, () => {

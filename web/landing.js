@@ -1003,9 +1003,10 @@ if (heroLoop) {
 // scripts compile, on a connection that can bring these.
 //
 // Not where it costs a visitor who never goes on: a connection that asks to
-// save data or reads as slow, and a window a phone's width where the browser
-// cannot say (WebKit has no navigator.connection), nor an iPhone or iPad,
-// whose engine is the owner's switch's to choose (shell.html). As the
+// save data, reads as slow or says it is a phone network, a window a
+// phone's width (most are on a data plan, and WebKit has no
+// navigator.connection to say), nor an iPhone or iPad, whose engine is the
+// owner's switch's to choose (shell.html). As the
 // browser's own prefetches, after the hero's loop has had its turn: at the
 // lowest priority, and on through a click on Start building, where a fetch
 // of this page's own was cut off with the page and the studio began again.
@@ -1015,7 +1016,8 @@ function aheadSkipped() {
   const line = navigator.connection;
   if (line?.saveData) return "save-data";
   if (line && /(^|-)2g$|^3g$/.test(String(line.effectiveType || ""))) return "slow";
-  if (!line && PHONE_CUT.matches) return "phone";
+  if (line?.type === "cellular") return "cellular";
+  if (PHONE_CUT.matches) return "phone";
   const agent = navigator.userAgent || "";
   if (/iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)) return "apple";
   return "";
