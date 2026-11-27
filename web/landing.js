@@ -1023,7 +1023,15 @@ if (heroLoop) {
 // fetched or failed; data-studio-ahead-by: member, near, focus or press.
 const AHEAD_AFTER_MS = 3000;
 const AHEAD_NEAR_PX = 64;
-const STUDIO_LINK = 'a[href="/app"], a[href^="/app?"]';
+// A link into the studio: /app, bare or with a query (?lang=de, ?view=<id>).
+const STUDIO_LINK = /^\/app(\?|$)/;
+function studioLinks() {
+  return [...document.querySelectorAll('a[href^="/app"]')].filter((link) => STUDIO_LINK.test(link.getAttribute("href") || ""));
+}
+function inStudioLink(target) {
+  const link = target instanceof Element ? target.closest("a[href]") : null;
+  return Boolean(link && STUDIO_LINK.test(link.getAttribute("href") || ""));
+}
 function aheadSkipped() {
   const line = navigator.connection;
   if (line?.saveData) return "save-data";
@@ -1064,7 +1072,7 @@ async function studioAhead(by) {
 /// Whether the point (x, y) is within AHEAD_NEAR_PX of a link into the
 /// studio on the screen.
 function nearStudioLink(x, y) {
-  for (const link of document.querySelectorAll(STUDIO_LINK)) {
+  for (const link of studioLinks()) {
     const box = link.getBoundingClientRect();
     if (!box.width || !box.height) continue;
     const dx = Math.max(box.left - x, 0, x - box.right);
@@ -1092,10 +1100,10 @@ function nearStudioLink(x, y) {
       if (nearStudioLink(event.clientX, event.clientY)) go("near");
     }, { passive: true, signal: stop.signal });
     addEventListener("focusin", (event) => {
-      if (event.target instanceof Element && event.target.matches(STUDIO_LINK)) go("focus");
+      if (inStudioLink(event.target)) go("focus");
     }, { signal: stop.signal });
     addEventListener("pointerdown", (event) => {
-      if (event.target instanceof Element && event.target.closest(STUDIO_LINK)) go("press");
+      if (inStudioLink(event.target)) go("press");
     }, { capture: true, signal: stop.signal });
     if (signedIn()) {
       const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));

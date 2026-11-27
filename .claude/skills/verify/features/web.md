@@ -3417,7 +3417,7 @@ plan with Claude as the client.
   kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
   `studioAhead`), on intent only: for a member signed in, 3 s after the
   load at idle; for anyone else once the mouse comes within 64 px of a
-  link into the studio (`a[href="/app"]`, `a[href^="/app?"]`: Start
+  link into the studio (an `href` of `/app`, bare or with a query: Start
   building, Open the app, a post's Open in the studio), one takes the
   focus, or is pressed. A home visit with no intent fetches none of it
   (it was 9.7 MB at every visit). The page reads `/app`'s own
