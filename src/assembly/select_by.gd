@@ -171,12 +171,16 @@ static func connected_paced(world: BrickWorld, lattice: BrickLattice,
 	search.whole = most >= search.everything
 	most = mini(most, search.everything)
 	while not search.queue.is_empty() and search.found.size() < most:
-		search.step()
+		# Asked before a brick, not after: one brick can be a slice on its
+		# own (a 6 x 12 plate of 3,720 boxes on 10030, 130-220 ms), and a
+		# job begun on a click may have no time to give it (Working.Job
+		# .first_slice).
 		if job.due():
 			job.count(search.found.size(), search.everything)
 			await job.next()
 			if job.cancelled:
 				return []
+		search.step()
 	return search.found.keys()
 
 

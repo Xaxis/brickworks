@@ -640,6 +640,9 @@ func _write_facts() -> void:
 	var step: String = _step_words(brick.id)
 	if not step.is_empty():
 		lines.append(step)
+	elif not _planning.is_empty():
+		# Its line kept while the steps are worked out, as the count's is.
+		lines.append("")
 	if shell.builder.is_locked(brick.id):
 		lines.append(Keymap.filled("Locked — {unlock|unlocks everything}"))
 	_facts.text = "\n".join(lines)
@@ -655,14 +658,19 @@ var _joining: Working.Job = null
 
 ## The line until the count is done.
 const JOINED_COUNTING := "Joined to: counting…"
-## The count's first slice, on the click itself: microseconds.
+## The count's first slice, on the click itself: microseconds. None on a
+## model of more than [constant STEPS_MOST] parts, where one part's look can
+## be a frame's worth on its own.
 const JOINED_FIRST_US := 2000
+## The most parts a model has for Properties to say a part's step, and for
+## the joined count to begin on the click.
+const STEPS_MOST := 600
 
 
 func _count_joined(brick_id: int) -> void:
 	var job := Working.Job.new()
 	job.can_cancel = true
-	job.first_slice(JOINED_FIRST_US)
+	job.first_slice(JOINED_FIRST_US if shell.world.brick_count() <= STEPS_MOST else 0)
 	_joining = job
 	# Counted up to a point: on a big model all of it is joined to all of it.
 	var found: Array = await Later.script(&"SelectBy").connected_paced(shell.world,
@@ -1022,8 +1030,7 @@ static func _plates(plates: float) -> String:
 ## model as it stands — and not for a model so big that working it out
 ## would hold the screen up. Nothing until then ([method _plan_steps]).
 func _step_words(brick_id: int) -> String:
-	var count: int = shell.world.brick_count()
-	if count > 600:
+	if shell.world.brick_count() > STEPS_MOST:
 		return ""
 	var key: String = _steps_key()
 	if key != _steps_for:
