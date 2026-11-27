@@ -157,6 +157,7 @@ func _stopped_while_going_down(world: BrickWorld, builder: Builder,
 		before += 1
 	assistant._before = assistant._snapshot()
 	assistant._busy = true
+	assistant._run_generation = assistant.world.generation()
 	var built: Array = [0]
 	var on_built := func(_n: int) -> void: built[0] += 1
 	assistant.built.connect(on_built)

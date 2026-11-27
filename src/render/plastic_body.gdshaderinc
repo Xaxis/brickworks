@@ -157,6 +157,82 @@ varying vec3 local_normal;
 varying flat vec3 axis_x;
 varying flat vec3 axis_y;
 varying flat vec3 axis_z;
+// Played with (photoreal27, RenderSettings.plastic "played") where nothing
+// path traces: the path tracer's wear (path_tracer.glsl's surface_of) on this
+// plastic, set by StudioRender at Best in the Product look. How old the set
+// is (its whites and greys yellowed, each part its own amount, every colour a
+// little dulled, its gloss worn in broad patches and scratched), the dust on
+// its tops, and how much more than that each part has been handled (its
+// polish its own, its edges scuffed, a fingertip's print on the most
+// handled). 0, as everywhere but Played with, draws none of it. The parts'
+// seating is the stage's own (StudioRender._stage_model).
+uniform float wear_age : hint_range(0.0, 2.0) = 0.0;
+uniform float wear_dust : hint_range(0.0, 1.0) = 0.0;
+uniform float wear_handling : hint_range(0.0, 2.0) = 0.0;
+// From the window to the stage's own space: each part's own numbers are
+// keyed to where it stands on the stage, so they are the same in every frame
+// of a turntable, and a printed part's print and body (two batches, one
+// place) are worn as one part.
+uniform mat4 wear_stage = mat4(1.0);
+varying flat vec4 part_own;
+
+// Three numbers from 0 to 1 for a point (hash3's, which comes after vertex()).
+vec3 wear_hash3(vec3 p) {
+	p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+	p += dot(p, p.yxz + 33.33);
+	return fract((p.xxy + p.yxx) * p.zyx);
+}
+
+// Smooth noise from -1 to 1, as path_tracer.glsl's gloss_noise.
+float wear_corner(vec3 p) {
+	p = fract(p * 0.3183099 + 0.1);
+	p *= 17.0;
+	return fract(p.x * p.y * p.z * (p.x + p.y + p.z)) * 2.0 - 1.0;
+}
+
+float wear_noise(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(wear_corner(i), wear_corner(i + vec3(1, 0, 0)), f.x),
+			mix(wear_corner(i + vec3(0, 1, 0)), wear_corner(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(wear_corner(i + vec3(0, 0, 1)), wear_corner(i + vec3(1, 0, 1)), f.x),
+			mix(wear_corner(i + vec3(0, 1, 1)), wear_corner(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
+// Whether a point of the part is on a hairline scratch across its gloss, the
+// part's own [param own] from 0 to 1: path_tracer.glsl's worn(), fine straight
+// scratches a few LDU long, each part's its own way, in patches, more and
+// over more of it the older ([param age]) it is.
+bool wear_scratched(vec3 q, float own, float age) {
+	float angle = own * 6.2832;
+	vec3 along = normalize(vec3(cos(angle), 0.4 * sin(angle * 1.7), sin(angle)));
+	vec3 across = normalize(cross(along, vec3(0.3, 1.0, 0.2)));
+	vec3 third = cross(along, across);
+	float fine = mix(2.2, 1.3, age);
+	float lines = wear_noise(vec3(dot(q, along) * 0.15, dot(q, across) * fine,
+		dot(q, third) * fine) + vec3(own * 13.0));
+	float patches = wear_noise(q / 9.0 + vec3(own * 29.0, 5.0, 2.0));
+	return lines > 0.72 - 0.08 * age && patches > 0.1 - 0.45 * age;
+}
+
+// A fingertip's print where a hand pressed the part on, 0 to 1: a patch
+// about 12 by 15 mm on one of its sides, its oil in ridges half a millimetre
+// apart (path_tracer.glsl's print_of), placed by the part's own [param at]
+// and [param side].
+float wear_print(vec3 local, vec3 lo, vec3 hi, vec3 at_own, float side, float own) {
+	vec3 at = mix(lo, hi, at_own);
+	if (side < 0.5) {
+		at.z = side < 0.25 ? lo.z : hi.z;
+	} else {
+		at.x = side < 0.75 ? lo.x : hi.x;
+	}
+	vec3 d = local - at;
+	float r = length(d / vec3(15.0, 18.0, 15.0));
+	float pressed = 1.0 - smoothstep(0.45, 1.0, r + 0.25 * wear_noise(local * 0.15 + vec3(own * 255.0)));
+	float ridge = 0.5 + 0.5 * sin(length(d * vec3(1.0, 0.8, 1.0)) * 5.0 + 2.5 * wear_noise(local * 0.25));
+	return pressed * (0.35 + 0.65 * ridge);
+}
 #endif
 
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
@@ -206,6 +282,9 @@ void vertex() {
 	axis_x = normalize((MODELVIEW_MATRIX * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
 	axis_y = normalize((MODELVIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	axis_z = normalize((MODELVIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	vec3 placed = (wear_stage * vec4(MODEL_MATRIX[3].xyz, 1.0)).xyz;
+	part_own = vec4(wear_hash3(placed * 0.731 + wear_hash3(placed.zxy * 0.173) * 37.0),
+		wear_hash3(placed.yzx * 0.419 + 11.3).x);
 #endif
 }
 
@@ -370,6 +449,90 @@ vec3 stud_rim(vec3 at, vec3 n, float width, float small) {
 	}
 	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
 }
+
+// The logo raised on every stud's top, as the path tracer draws it
+// (path_tracer.glsl's stud_logo, photoreal5 and photoreal8), at Best where
+// nothing traces rays (photoreal27: the solo judge named "studs with no LEGO
+// logo" in 332 of 480 verdicts on the browser's Best). Its letters are a
+// fifth of an LDU high and half an LDU wide, finer than a pixel on a set,
+// which Best's averaged frames resolve as the tracer's samples do.
+uniform float stud_logos : hint_range(0.0, 1.0) = 0.0;
+
+float logo_segment(vec2 p, vec2 a, vec2 b) {
+	vec2 pa = p - a;
+	vec2 ba = b - a;
+	return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
+}
+
+// The stroke of a tall round letter (the O, and the G) whose middle is at x.
+float logo_o(vec2 p, float x) {
+	return abs(logo_segment(p, vec2(x, 0.8 - 2.2), vec2(x, 2.2 - 0.8)) - 0.8);
+}
+
+// How far a point of a stud's top (LDU from its middle) is from the strokes
+// of the logo's four letters: the tracer's logo_distance, stroke for stroke.
+float logo_distance(vec2 p) {
+	p.x -= p.y * 0.2 + 0.35;
+	float d = logo_segment(p, vec2(-4.3, 2.2), vec2(-4.3, -2.2));
+	d = min(d, logo_segment(p, vec2(-4.3, -2.2), vec2(-3.0, -2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 2.2), vec2(-2.35, -2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 2.2), vec2(-1.1, 2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 0.0), vec2(-1.3, 0.0)));
+	d = min(d, logo_segment(p, vec2(-2.35, -2.2), vec2(-1.1, -2.2)));
+	float g = logo_o(p, 0.55);
+	if (p.x > 0.55 && p.y > 0.05 && p.y < 2.2 - 0.8) {
+		g = min(length(p - vec2(0.55 + 0.8, 2.2 - 0.8)), length(p - vec2(0.55 + 0.8, 0.05)));
+	}
+	d = min(d, g);
+	d = min(d, logo_segment(p, vec2(0.6, 0.05), vec2(0.55 + 0.8, 0.05)));
+	return min(d, logo_o(p, 3.0));
+}
+
+float logo_height(vec2 p, float soft) {
+	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
+}
+
+// The normal on a stud's top with its logo raised, in the part's own space;
+// [param n] itself off the logo. It reads across the part, along z with its
+// letters' tops towards +x, as the tracer's does (right-handed: photoreal27
+// turned the photograph's stud and the tracer's alike and both read LEGO).
+// Each stud its own a hair off the middle and off square, deeper or softer,
+// and on a quarter of them the injection gate's nub.
+vec3 stud_logo(vec3 at, vec3 n) {
+	if (n.y < 0.97 || part_box_max.x <= part_box_min.x || at.y < part_body_top + 0.5
+			|| abs(at.y - part_box_max.y) > 0.3) {
+		return n;
+	}
+	vec2 centre = part_box_min.xz + 10.0 + 20.0 * floor((at.xz - part_box_min.xz) / 20.0);
+	vec2 p = vec2(at.z - centre.y, at.x - centre.x);
+	if (length(p) > 5.4) {
+		return n;
+	}
+	vec3 own = wear_hash3(vec3(centre, part_own.w * 251.0));
+	vec3 more = wear_hash3(vec3(centre.yx, part_own.z * 173.0) + 7.7);
+	float turn = (own.x - 0.5) * 0.06;
+	p = mat2(vec2(cos(turn), sin(turn)), vec2(-sin(turn), cos(turn))) * p + (own.yz - 0.5) * 0.3;
+	float depth = 0.75 + 0.5 * more.x;
+	float soft = 0.12 * more.y;
+	const float e = 0.05;
+	float dx = (logo_height(p + vec2(e, 0.0), soft) - logo_height(p - vec2(e, 0.0), soft)) / (2.0 * e);
+	float dy = (logo_height(p + vec2(0.0, e), soft) - logo_height(p - vec2(0.0, e), soft)) / (2.0 * e);
+	dx *= depth;
+	dy *= depth;
+	if (more.z < 0.25) {
+		vec2 g = p - (wear_hash3(vec3(centre, 3.1)).xy - 0.5) * 0.6;
+		float r = length(g);
+		if (r > 0.001 && r < 1.2) {
+			float nub = -0.15 * 2.0 * r / (0.25 * 0.25) * exp(-(r * r) / (0.25 * 0.25));
+			float ring = 0.08 * 2.0 * (r - 0.6) / (0.18 * 0.18)
+				* exp(-((r - 0.6) * (r - 0.6)) / (0.18 * 0.18));
+			dx += (nub + ring) * g.x / r;
+			dy += (nub + ring) * g.y / r;
+		}
+	}
+	// p.x runs along z, p.y along x.
+	return normalize(vec3(-dy, 1.0, -dx));
+}
 #endif
 
 void fragment() {
@@ -440,6 +603,88 @@ void fragment() {
 	vec3 ink_color = linearise ? srgb_to_linear(ink.rgb) : ink.rgb;
 	body = mix(body, ink_color, ink.a * on_picture);
 #endif
+#ifdef PLASTIC_PRODUCT
+	// Played with (photoreal27): the path tracer's wear, its numbers, in
+	// linear light. How worn its gloss is here (0 as new, 1 matt) and how
+	// much dust covers it, for the gloss below.
+	float wear_dull = 0.0;
+	float wear_cover = 0.0;
+#ifndef PLASTIC_TRANSPARENT
+	if (finish == FINISH_PLASTIC && wear_age + wear_dust + wear_handling > 0.0) {
+		vec3 lin = linearise ? body : srgb_to_linear(body);
+		float own = part_own.x;
+		vec3 more = wear_hash3(part_own.xyz * 91.7 + vec3(3.3, 7.1, 1.9));
+		// Which way the face looks, up in the world: the dust settles on what
+		// faces up, and the hands touch the sides and the top, never under.
+		vec3 up_view = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		float up = dot(normalize(NORMAL), up_view);
+		// What the tracer's clear coat's roughness would be: a part's gloss
+		// worn in broad patches, the more the older it is.
+		float handled = wear_noise(local_position / 16.0 + vec3(own * 97.0, own * 31.0, 0.0));
+		float coat_rough = mix(0.03, 0.085 + 0.25 * wear_age, smoothstep(-0.6, 0.8, handled)) + 0.02 * own;
+		// How much more this part has been handled than the set's age says:
+		// most hardly at all, a few a lot; its polish its own, dulled the
+		// more it is handled, and a fingertip's print on the most handled.
+		float rubbed = wear_handling * part_own.y * part_own.y * (1.0 - smoothstep(0.2, 0.7, -up));
+		if (wear_handling > 0.0) {
+			float bell = (more.x + more.y + more.z - 1.5) * (2.0 / 3.0);
+			coat_rough = max(0.015, coat_rough * (1.0 + 0.6 * bell * wear_handling)) + 0.12 * rubbed;
+			float printed = smoothstep(0.4, 0.9, rubbed);
+			if (printed > 0.0) {
+				float oil = wear_print(local_position, part_box_min, part_box_max,
+					wear_hash3(part_own.wzy * 53.1 + 0.7), part_own.w, own) * printed;
+				coat_rough = mix(coat_rough, 0.24, 0.85 * oil);
+			}
+		}
+		if (wear_age > 0.0) {
+			// A white or grey part yellows as ABS does in light and years,
+			// each its own amount (a set's whites never match), and every
+			// colour dulls a little.
+			float own_age = part_own.z;
+			float chroma = max(max(lin.r, lin.g), lin.b) - min(min(lin.r, lin.g), lin.b);
+			float pale = smoothstep(0.12, 0.55, dot(lin, vec3(0.2126, 0.7152, 0.0722)))
+				* (1.0 - smoothstep(0.04, 0.2, chroma));
+			float yellowed = wear_age * (0.3 + 0.7 * own_age) * pale;
+			lin *= mix(vec3(1.0), vec3(1.0, 0.9, 0.62), yellowed);
+			float grey_of = dot(lin, vec3(0.2126, 0.7152, 0.0722));
+			lin = mix(lin, vec3(grey_of), 0.08 * wear_age * own_age);
+			coat_rough += 0.02 * wear_age;
+		}
+		float dust = wear_dust * smoothstep(0.55, 0.9, up);
+		if (dust > 0.0) {
+			// A faint film that greys a face and dulls its gloss, thicker in
+			// patches. The tracer's motes a few tenths of a millimetre across
+			// come out of its denoise as part of that film; drawn sharp here
+			// they read as grit sprinkled on every top (photoreal27's first
+			// look), so the film takes their share evenly (0.8 times the 8%
+			// of a face they cover).
+			float film = 0.5 + 0.5 * wear_noise(local_position / 6.0 + vec3(own * 17.0, 3.0, 1.0));
+			wear_cover = clamp(dust * (0.25 * film + 0.065), 0.0, 0.8);
+			lin = mix(lin, vec3(0.5, 0.48, 0.45), wear_cover);
+		}
+		// Hairline scratches, and the edges and corners knocked against
+		// others, rubbed matt in patches and a shade paler.
+		float scuff_age = wear_age + rubbed;
+		if (wear_scratched(local_position, own, scuff_age)) {
+			coat_rough = 0.6;
+		}
+		if (scuff_age > 0.0) {
+			vec3 d = min(local_position - part_box_min, part_box_max - local_position);
+			float nearest = min(d.x, min(d.y, d.z));
+			float furthest = max(d.x, max(d.y, d.z));
+			float second = d.x + d.y + d.z - nearest - furthest;
+			float scuffed = (1.0 - smoothstep(0.7, 1.4, second))
+				* smoothstep(0.15, 0.55, wear_noise(local_position * 0.7 + vec3(own * 41.0, 2.0, 9.0)));
+			coat_rough = mix(coat_rough, 0.4, scuffed * scuff_age);
+			lin = mix(lin, lin * 1.08 + vec3(0.015), clamp(scuffed * scuff_age, 0.0, 1.0));
+		}
+		// The tracer's coat, from a new part's 0.03 to 0.09, here as how far
+		// from new the gloss is.
+		wear_dull = smoothstep(0.09, 0.5, coat_rough);
+		body = linearise ? lin : linear_to_srgb(lin);
+	}
+#endif
+#endif
 	// The finishes' own light — the studio a mirror reflects, a glow, a
 	// glint — is worked out in linear light on both renderers and handed
 	// over in whichever space this renderer writes. Compatibility writes
@@ -476,6 +721,13 @@ void fragment() {
 			NORMAL = normal;
 			on_round = small;
 			rounded = smoothstep(0.02, 0.3, length(bent - n_local));
+		} else if (stud_logos > 0.0) {
+			// The logo's flanks bend the light, the face stays as glossy.
+			vec3 lettered = stud_logo(local_position, n_local);
+			if (lettered != n_local) {
+				normal = normalize(axis_x * lettered.x + axis_y * lettered.y + axis_z * lettered.z);
+				NORMAL = normal;
+			}
 		}
 	}
 #endif
@@ -629,6 +881,15 @@ void fragment() {
 		// Pale plastics glow a little through: a white brick's shadow side
 		// is never grey.
 		backlight = vec3(0.16 * luminance_in) * (body_linear / max(luminance_in, 0.001)) * 0.5;
+		if (wear_dull > 0.0 || wear_cover > 0.0) {
+			// Played with: the gloss worn where the tracer's coat is rough,
+			// blurred rather than taken away (a worn coat still reflects as
+			// much, spread wider), and the dust dulling it.
+			coat *= (1.0 - 0.15 * wear_dull) * (1.0 - wear_cover);
+			coat_roughness = mix(coat_roughness, 0.8, wear_dull);
+			roughness = mix(mix(roughness, 0.42, wear_dull), 0.9, wear_cover);
+			specular *= 1.0 - 0.6 * wear_cover;
+		}
 	} else if (finish == FINISH_CHROME) {
 		albedo = max(body, vec3(0.12));
 		metallic = 1.0;

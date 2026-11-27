@@ -5879,12 +5879,6 @@ msgstr "Tout juste sorti de la boîte."
 msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
 msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon. Dessiné ainsi en Meilleure, rendu Photo produit."
 
-msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
-msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon"
-
-msgid "Drawn so at Best, in the Product look"
-msgstr "Dessiné ainsi en Meilleure, rendu Photo produit"
-
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d images, %s s à %d par seconde, en WebP animé."
 
@@ -18057,9 +18051,6 @@ msgstr "%s n'a pas été écrit : un autre modèle a été ouvert"
 msgid "not exported: another model was opened"
 msgstr "non exporté : un autre modèle a été ouvert"
 
-msgid "Not published: another model was opened."
-msgstr "Non publié : un autre modèle a été ouvert."
-
 msgid "could not copy “%s”"
 msgstr "« %s » n'a pas pu être copié"
 
@@ -18337,23 +18328,57 @@ msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign i
 msgstr "Trop de connexions avec %s en ce moment. Réessayez dans quelques minutes, ou connectez-vous avec un code que nous vous envoyons par e-mail."
 
 # pubbind: an act begun on one model, another opened before it ended
-msgid "Not entered: another model was opened."
-msgstr "Non inscrit : un autre modèle a été ouvert."
-
 msgid "Another model was opened meanwhile."
 msgstr "Un autre modèle a été ouvert entre-temps."
 
 msgid "Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
 msgstr "« %s » publié à %s, mais un autre modèle a été ouvert entre-temps : le lien ne lui a pas été donné."
 
-msgid "Not asked: another model was opened."
-msgstr "Non demandé : un autre modèle a été ouvert."
+# pubbind2: what an act became, said of the model it was pressed on, by name
+msgid "“%s” was not published: another model was opened."
+msgstr "« %s » n'a pas été publié : un autre modèle a été ouvert."
 
-msgid "Not taken down: another model was opened."
-msgstr "Non retiré : un autre modèle a été ouvert."
+msgid "“%s” was not entered: another model was opened."
+msgstr "« %s » n'a pas été inscrit : un autre modèle a été ouvert."
 
-msgid "Taken down: the link now says the model is no longer shared."
-msgstr "Retiré : le lien indique maintenant que le modèle n'est plus partagé."
+msgid "The question about “%s” was not asked: another model was opened."
+msgstr "La question sur « %s » n'a pas été posée : un autre modèle a été ouvert."
+
+msgid "“%s” was not taken down: another model was opened."
+msgstr "« %s » n'a pas été retiré : un autre modèle a été ouvert."
+
+msgid "“%s” was published at %s but not entered: another model was opened."
+msgstr "« %s » a été publié à %s mais pas inscrit : un autre modèle a été ouvert."
+
+msgid "“%s” was published at %s, but the question about it was not asked: another model was opened."
+msgstr "« %s » a été publié à %s, mais la question à son sujet n'a pas été posée : un autre modèle a été ouvert."
+
+msgid "“%s” was not published: %s"
+msgstr "« %s » n'a pas été publié : %s"
+
+msgid "“%s” was entered in %s, %s. It is on the challenge's page: %s. Another model was opened meanwhile."
+msgstr "« %s » a été inscrit à %s, %s. Il est sur la page du défi : %s. Un autre modèle a été ouvert entre-temps."
+
+msgid "“%s” was entered in %s, %s. Another model was opened meanwhile."
+msgstr "« %s » a été inscrit à %s, %s. Un autre modèle a été ouvert entre-temps."
+
+msgid "“%s” is in %s already. Another model was opened meanwhile."
+msgstr "« %s » est déjà inscrit à %s. Un autre modèle a été ouvert entre-temps."
+
+msgid "“%s” was published but not entered: %s"
+msgstr "« %s » a été publié mais pas inscrit : %s"
+
+msgid "The question about “%s” is in Talk's Help at %s. Another model was opened meanwhile."
+msgstr "La question sur « %s » est dans l’Aide de Talk à %s. Un autre modèle a été ouvert entre-temps."
+
+msgid "The question about “%s” was not asked: %s"
+msgstr "La question sur « %s » n'a pas été posée : %s"
+
+msgid "“%s” was taken down: its link now says it is no longer shared. Another model was opened meanwhile."
+msgstr "« %s » a été retiré : son lien indique maintenant qu'il n'est plus partagé. Un autre modèle a été ouvert entre-temps."
+
+msgid "“%s” was not taken down: %s"
+msgstr "« %s » n'a pas été retiré : %s"
 
 msgid "“%s” was not copied into your models: another model was opened"
 msgstr "« %s » n'a pas été copié dans vos modèles : un autre modèle a été ouvert"
