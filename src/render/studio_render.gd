@@ -320,6 +320,11 @@ const PAPER_WHITE := 0.8
 ## the tent close-ups' photographs from the tracer's raw light
 ## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
 const PHOTO_EV := 0.33
+## How many stops more than PHOTO_EV a whole model's picture is exposed
+## (photoreal30, RenderSettings.high_key): the set photographs are exposed
+## so a white part's lit side is as bright as the paper (L 92-98, docs/
+## RENDERING.md 5y), where the card metered at PHOTO_EV left it at L 86.
+const PRODUCT_HIGH_KEY := 0.0
 const PHOTO_LINEAR_SATURATION := 1.3
 const CAMERA_KNEE := 0.6
 const CAMERA_TOP := 2.5
@@ -3618,7 +3623,8 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 	# the curve: a white paper's card is 1, PHOTO_EV over, and the camera's
 	# shoulder draws it a little short of white (the backdrop round the model
 	# is drawn at its own colour whatever, the shadow catcher).
-	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white * pow(2.0, PHOTO_EV)
+	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white \
+		* pow(2.0, PHOTO_EV + _own(settings.high_key, PRODUCT_HIGH_KEY))
 	var scale: float = 1.0
 	const DIM := 0.2
 	for round: int in 2:

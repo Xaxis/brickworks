@@ -43,7 +43,8 @@
 ##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, the parts'
 ##                      batch, handling, studs and play (photoreal8), its edges'
 ##                      rounding (edge, photoreal13), the parts moulded under
-##                      the grid (clearance, photoreal30), moulded ABS's own
+##                      the grid (clearance, photoreal30) and a high-key
+##                      exposure (high_key, photoreal30), moulded ABS's own
 ##                      unevenness (peel, sink, polish, scuff: photoreal15), a set
 ##                      photographed (floor: photoreal19), and the
 ##                      camera's tone and balance) at 0, and its
@@ -521,7 +522,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var without: PackedStringArray = _arg("without", "").split(",", false)
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
-			"rubbed", "table", "table_light", "fill", "edge", "clearance", "source", "source_rise", "source_turn",
+			"rubbed", "table", "table_light", "fill", "edge", "clearance", "high_key", "source", "source_rise", "source_turn",
 			"source_wide", "source_tall", "source_fall", "source_key", "source_spill",
 			"peel", "sink", "polish", "scuff", "floor", "floor_boxes", "floor_over", "floor_key",
 			"floor_shade", "floor_bounce", "floor_f0", "floor_rough"]:
