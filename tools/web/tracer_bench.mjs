@@ -19,6 +19,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { deflateSync } from "node:zlib";
+import { launch } from "./browser.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, "../..");
@@ -100,8 +101,6 @@ async function packMode(capture, out) {
 }
 
 async function pageMode(capture, outPng) {
-	const { chromium } = await import(pathToFileURL(join(ROOT, "tools/web/node_modules/playwright/index.mjs")).href)
-		.catch(() => import("playwright"));
 	const js = arg("js", "");
 	if (!js || !existsSync(js)) throw new Error("--js=tracer.js (tools/web/tracer_port.py --js) is wanted");
 	const c = readCapture(capture);
@@ -109,7 +108,8 @@ async function pageMode(capture, outPng) {
 	const draw = Number(arg("draw", "0"));
 	const seconds = Number(arg("seconds", "0"));
 	const width = Number(arg("width", "0"));
-	const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+	// browser.mjs's launch: SwiftShader as every check here, and its storage mirror (test_storage_mirror).
+	const browser = await launch({ signedOut: true, args: ["--ignore-gpu-blocklist"] });
 	const page = await browser.newPage();
 	const logs = [];
 	page.on("console", (m) => logs.push(m.text()));
