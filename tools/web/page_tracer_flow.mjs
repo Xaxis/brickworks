@@ -14,8 +14,11 @@
 // on a loaded box), so the traced Best is given --minutes (20; 60 on a
 // loaded box). Fails if Best is not path traced there, the dialog does not
 // say what it waits on before counting the picture's samples, its
-// sample count does not climb while the dialog shows the picture, Finish
-// now leaves it running or downloads nothing, the PNG is not the size
+// sample count does not climb while the dialog shows the picture, the
+// dialog never says the trace is behind the picture it shows (photoreal29:
+// the frames averaged stay until the trace's measured noise is under the
+// judge's level), Finish now leaves it running, downloads nothing, or says
+// frames averaged without saying it kept them as better, the PNG is not the size
 // asked or is one flat colour, the page's thread is held over --stall
 // seconds (default 2) while it traces, Cancel once it traces leaves it
 // running or downloads anything, the page without ?tracer=on does
@@ -121,6 +124,8 @@ const where = (page) => async (name, seconds = 60) => {
 };
 const press = (page, name) => clickStill(page, name, { find: where(page), after: 1100 });
 const state = (page) => page.evaluate(() => window.brickworksRender || {});
+// The words counting the picture's samples: alone, or after what the dialog shows meanwhile (photoreal29).
+const SAMPLES = /(^|: )\d+ of \d+ samples$/;
 const waits = (page) => page.evaluate(() => ({ beat: Math.round(window.__wait.worstBeat),
   frame: Math.round(window.__wait.worstFrame) }));
 const resetWaits = (page) => page.evaluate(() => { window.__wait.worstBeat = 0; window.__wait.worstFrame = 0; });
@@ -203,7 +208,7 @@ async function tracedPart() {
     }
     // The picture's own samples, not the metering's before them: Finish now
     // pressed while the light is metered keeps nothing (StudioRender._traced).
-    const picturing = /^\d+ of \d+ samples$/.test(seen.words || "");
+    const picturing = SAMPLES.test(seen.words || "");
     if (seen.working === "picture" && seen.traced && seen.samples > 0 && picturing) {
       if (!readied) {
         // The shaders compiled and the first samples in: the wait for a frame
@@ -248,14 +253,18 @@ async function tracedPart() {
   check(`its samples climb while the dialog shows it (${[...counts].slice(0, 12).join(", ")})`, counts.size >= 2);
   const words = [...said];
   check(`the dialog says what it waits on, then counts the picture's samples (${words.slice(0, 8).join(" / ")})`,
-    words.includes("metering the light") && words.some((w) => /^\d+ of \d+ samples$/.test(w)) && !staleWords);
+    words.includes("metering the light") && words.some((w) => SAMPLES.test(w)) && !staleWords);
+  check(`while its trace is grainier, the dialog says it traces behind the picture it shows`,
+    words.some((w) => /^Path tracing behind this picture: /.test(w)));
   if (staleWords) console.log(`      (still "${staleWords}")`);
   check(`Finish now ends it at ${seen.samples} samples (pressed at ${enough} or more)`,
     Boolean(finished) && seen.working === "" && seen.samples >= enough && seen.samples < 256);
   const shown = file ? await measure(page, file) : null;
   check(`it downloads a ${width}x${height} PNG, not flat (${shown ? `${shown.width}x${shown.height}, spread ${shown.spread.toFixed(3)}` : "none"})`,
     Boolean(shown) && shown.width === width && shown.height === height && shown.spread > 0.02);
-  check(`the result does not say frames averaged ("${seen.status}")`, !/frames averaged/.test(seen.status || ""));
+  // At a few samples the trace is grainier than the frames averaged, and those are kept, saying so.
+  check(`the result says frames averaged only where it kept them as better ("${seen.status}", kept ${seen.kept_frames})`,
+    !/frames averaged/.test(seen.status || "") || (seen.kept_frames === true && /^Kept the frames averaged/m.test(seen.status || "")));
   check(`the page's thread is never held over ${stallLimit} ms while it traces (${tracing.beat} ms)`,
     tracing.beat <= stallLimit);
 
