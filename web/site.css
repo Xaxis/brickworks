@@ -72,6 +72,11 @@
 	   shadow, its top in light. And the dim behind an open dialog. */
 	--shade: rgba(0, 0, 0, 0.3);
 	--shine: rgba(255, 255, 255, 0.18);
+	/* A colour's swatch in plastic that is not flat (the minifig maker):
+	   metallic and pearl lit along its top left and falling to shadow, a
+	   see-through one's glint. The same in both themes, as the plastic is. */
+	--sheen-metal: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 45%, rgba(0, 0, 0, 0.3));
+	--glint-clear: linear-gradient(135deg, rgba(255, 255, 255, 0.7), transparent 55%);
 	--scrim: rgba(0, 0, 0, 0.6);
 	/* What a model's picture stands on (a card's frame, its page's picture):
 	   the app draws it with nothing behind the model since 2026-10-24
@@ -1623,7 +1628,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .mf-tile .pic > .b { background-color: var(--tint, #c9c9c9); background-blend-mode: multiply;
 	-webkit-mask-size: var(--size); mask-size: var(--size); -webkit-mask-position: var(--at); mask-position: var(--at);
 	-webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-.mf-tile.none .pic::before { content: ""; position: absolute; left: 22%; right: 22%; top: 50%; height: 2px; border-radius: 1px;
+.mf-tile.none .pic::before { content: ""; position: absolute; left: 22%; right: 22%; top: 50%; height: 2px; border-radius: var(--r-pill);
 	background: var(--ink-faint); transform: rotate(-45deg); }
 .mf-tile:hover { box-shadow: inset 0 0 0 1px var(--ink-faint); }
 .mf-tile:has(input:checked) { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent-edge); }
@@ -1631,10 +1636,10 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .mf-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .mf-swatch { position: relative; display: block; margin: 0; cursor: pointer; }
 .mf-swatch > span[style] { display: block; width: 36px; height: 36px; border-radius: 50%; background: var(--c); background-size: cover;
-	background-position: center; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
-.mf-swatch.metal > span[style] { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 45%, rgba(0, 0, 0, 0.3)); }
-.mf-swatch.clear > span[style] { opacity: 0.6; background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.7), transparent 55%); }
-.mf-swatch.skin > span[style] { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), inset 0 0 0 4px var(--panel); }
+	background-position: center; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.mf-swatch.metal > span[style] { background-image: var(--sheen-metal); }
+.mf-swatch.clear > span[style] { opacity: 0.6; background-image: var(--glint-clear); }
+.mf-swatch.skin > span[style] { box-shadow: inset 0 0 0 1px var(--line-strong), inset 0 0 0 4px var(--panel); }
 .mf-swatch.ground > span[style] { width: 48px; height: 48px; border-radius: var(--r-2); }
 .mf-swatches.scenes .mf-swatch.ground > span[style] { width: 72px; height: 72px; }
 .mf-swatch:hover > span[style] { box-shadow: 0 0 0 2px var(--ink-faint); }
