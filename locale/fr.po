@@ -2863,6 +2863,9 @@ msgstr "Reliée à %d autres pièces, directement ou par d'autres"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Reliée à %d autres pièces ou plus, directement ou par d'autres"
 
+msgid "Joined to: counting…"
+msgstr "Reliée à : comptage en cours…"
+
 msgid "Faces: studs up"
 msgstr "Orientation : tenons en haut"
 

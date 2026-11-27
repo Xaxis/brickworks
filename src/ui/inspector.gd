@@ -475,6 +475,7 @@ func _refresh(_now: bool) -> void:
 	if state == _shown:
 		return
 	_shown = state
+	_stop_joining()
 	var assembly: String = shell.assemblies.selected_assembly() \
 		if shell.assemblies != null and not bricks.is_empty() else ""
 	_buttons_for(not assembly.is_empty())
@@ -613,13 +614,26 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	# a while on a big model.
 	if compact:
 		return
-	# Counted up to a point: on a big model all of it is joined to all of it.
-	var joined: int = Later.script(&"SelectBy").connected(shell.world, shell.builder.lattice,
-		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
-	var lines := PackedStringArray()
-	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (
-		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
-			% ("%d" % joined if joined < JOINED_MOST else "%d or more" % JOINED_MOST)))))
+	# The line kept for the count, so the buttons under the facts stay where
+	# the pointer found them when it comes.
+	_facts_of = brick.id
+	_joined_line = JOINED_COUNTING
+	_write_facts()
+	_facts.visible = true
+	_count_joined(brick.id)
+
+
+## The part whose facts are shown, its joined line first: 0 when the facts
+## are another selection's.
+var _facts_of: int = 0
+var _joined_line: String = ""
+
+
+func _write_facts() -> void:
+	var brick: BrickWorld.Brick = shell.world.get_brick(_facts_of)
+	if brick == null:
+		return
+	var lines := PackedStringArray([_joined_line])
 	lines.append("Faces: studs %s" % _face_of(brick.transform.basis))
 	if not brick.group.is_empty():
 		lines.append("In %s" % _chain(Assemblies.path_of(brick)))
@@ -629,7 +643,47 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	if shell.builder.is_locked(brick.id):
 		lines.append(Keymap.filled("Locked — {unlock|unlocks everything}"))
 	_facts.text = "\n".join(lines)
-	_facts.visible = true
+
+
+## The count of what the part shown is joined to, put first among its facts
+## once looked for: a slice a frame (FramePace), the first of them short and
+## on the click, so a click on a part answers at once and a small model's
+## count is there with it. Counted whole on the click it held the window
+## 1.7 s at each click on a part of 10030, and as long at Simple's way back
+## to Full with one selected (simple2b).
+var _joining: Working.Job = null
+
+## The line until the count is done.
+const JOINED_COUNTING := "Joined to: counting…"
+## The count's first slice, on the click itself: microseconds.
+const JOINED_FIRST_US := 2000
+
+
+func _count_joined(brick_id: int) -> void:
+	var job := Working.Job.new()
+	job.can_cancel = true
+	job.first_slice(JOINED_FIRST_US)
+	_joining = job
+	# Counted up to a point: on a big model all of it is joined to all of it.
+	var found: Array = await Later.script(&"SelectBy").connected_paced(shell.world,
+		shell.builder.lattice, [brick_id], shell.store.scenery, job, JOINED_MOST + 1)
+	if _joining != job or job.cancelled or _facts_of != brick_id:
+		return
+	_joining = null
+	var joined: int = found.size() - 1
+	_joined_line = "Joined to %s" % ("nothing" if joined <= 0 else (
+		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
+			% ("%d" % joined if joined < JOINED_MOST else "%d or more" % JOINED_MOST))))
+	_write_facts()
+
+
+## Whatever count was being looked for, given up: the part it was for is no
+## longer the one shown.
+func _stop_joining() -> void:
+	_facts_of = 0
+	if _joining != null:
+		_joining.cancel()
+		_joining = null
 
 
 func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
@@ -966,26 +1020,61 @@ static func _plates(plates: float) -> String:
 
 ## Which step of the instructions puts a brick in, worked out once for the
 ## model as it stands — and not for a model so big that working it out
-## would hold the screen up.
+## would hold the screen up. Nothing until then ([method _plan_steps]).
 func _step_words(brick_id: int) -> String:
 	var count: int = shell.world.brick_count()
 	if count > 600:
 		return ""
-	var key: String = "%d|%d" % [count, shell.builder.history_depth()]
+	var key: String = _steps_key()
 	if key != _steps_for:
-		_steps_for = key
-		_step_of.clear()
-		# The author's steps when there are any, numbered as the booklet is.
-		var steps: Array = Instructions.plan(shell.world, shell.library, shell.store.scenery,
-			{}, true)
-		_step_count = (steps.back() as Instructions.Step).number if not steps.is_empty() else 0
-		for n: int in steps.size():
-			var step: Instructions.Step = steps[n]
-			for id: int in step.brick_ids:
-				_step_of[id] = step.number
+		_plan_steps(key)
+		return ""
 	if not _step_of.has(brick_id):
 		return ""
 	return "Step %d of %d in the instructions" % [int(_step_of[brick_id]), _step_count]
+
+
+func _steps_key() -> String:
+	return "%d|%d" % [shell.world.brick_count(), shell.builder.history_depth()]
+
+
+## The steps for the model as it stands, worked out a slice a frame from the
+## click (Instructions.plan_paced), and the part shown by then given its
+## step. Worked out on the click, the first click on a part after each edit
+## held the window 80-110 ms on 6685-1 and 5972-1 (clickfast).
+var _planning: String = ""
+var _plan_job: Working.Job = null
+
+
+func _plan_steps(key: String) -> void:
+	if _planning == key:
+		return
+	if _plan_job != null:
+		_plan_job.cancel()
+	_planning = key
+	var job := Working.Job.new()
+	job.can_cancel = true
+	job.first_slice(0)
+	_plan_job = job
+	# The author's steps when there are any, numbered as the booklet is.
+	var steps: Array = await Instructions.plan_paced(shell.world, shell.library,
+		shell.store.scenery, {}, job, true)
+	if _planning != key or job.cancelled:
+		return
+	_planning = ""
+	_plan_job = null
+	# Worked out for a model since changed: the next look asks again.
+	if key != _steps_key():
+		return
+	_steps_for = key
+	_step_of.clear()
+	_step_count = (steps.back() as Instructions.Step).number if not steps.is_empty() else 0
+	for n: int in steps.size():
+		var step: Instructions.Step = steps[n]
+		for id: int in step.brick_ids:
+			_step_of[id] = step.number
+	if _facts_of != 0 and _step_of.has(_facts_of):
+		_write_facts()
 
 
 func controls_by_name() -> Dictionary:

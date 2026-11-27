@@ -42,6 +42,11 @@ func _init(least_us: int = LEAST_US) -> void:
 	_until = Time.get_ticks_usec() + _slice(_least)
 
 
+## This slice spent [param us] from now (Working.Job.first_slice).
+func ends_in(us: int) -> void:
+	_until = Time.get_ticks_usec() + us
+
+
 ## Whether this slice is spent.
 func due() -> bool:
 	return Time.get_ticks_usec() > _until

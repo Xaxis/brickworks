@@ -106,6 +106,13 @@ class Job extends RefCounted:
 	func slices_of(least_us: int) -> void:
 		_pace = FramePace.new(least_us)
 
+	## The slice under way over [param us] from now: work begun on a click,
+	## whose frame has the click's own work to do (Inspector._count_joined).
+	func first_slice(us: int) -> void:
+		if _pace == null:
+			_pace = FramePace.new()
+		_pace.ends_in(us)
+
 	var _pace: FramePace = null
 
 	func cancel() -> void:
