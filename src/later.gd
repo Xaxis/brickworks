@@ -51,6 +51,9 @@ const PATHS: Dictionary[StringName, String] = {
 	&"PageEditor": "res://src/ui/page_editor.gd",
 	&"PageSetupDialog": "res://src/ui/page_setup_dialog.gd",
 	&"PhoneShell": "res://src/ui/phone_shell.gd",
+	# Simple's controls over the model, made the first time the studio
+	# goes into Simple (Main.use_controls).
+	&"SimpleLayer": "res://src/ui/simple_layer.gd",
 	&"PinsDialog": "res://src/ui/pins_dialog.gd",
 	&"PosePanel": "res://src/ui/pose_panel.gd",
 	&"PrintStudio": "res://src/prints/print_studio.gd",

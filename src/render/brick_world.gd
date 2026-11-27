@@ -1058,13 +1058,12 @@ func copy_for_reading() -> BrickWorld:
 		var brick: Brick = _bricks[brick_id]
 		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
 			brick.transform)
-		twin.group = brick.group
 		# And its sub-model's path (Assemblies.path_of), by which a hose's
 		# pieces are one hose: read on a worker without it, 42080-1's
 		# pneumatic tubes were one thing in pieces with the parts round them,
 		# glued to them, and neither cylinder raised its crane (grabfloor,
 		# 2026-11-04).
-		twin.unit = brick.unit
+		_same_paths(twin, brick)
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
 	return copy
@@ -1133,12 +1132,26 @@ func _copy_head() -> BrickWorld:
 func _twin(brick: Brick, at_home: bool) -> Brick:
 	var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
 		home_of(brick) if at_home else brick.transform)
-	twin.group = brick.group
-	twin.unit = brick.unit
+	_same_paths(twin, brick)
 	twin.step = brick.step
 	twin.hidden = brick.hidden
 	twin.origin = brick.origin
 	return twin
+
+
+## [param brick]'s group and unit on its [param twin] in a copy, not counted
+## in [member paths_written]: a copy holds the same tree as the model it was
+## taken of, and counted, every copy put every sub-assembly the model's
+## Assemblies had worked out out of date. Properties' plan of the steps
+## copies the model over frames once a part is selected (copy_paced), and on
+## Orthanc each copy cost the walk of every path again, 30 ms of the frame
+## Full came back in from Simple (simple3 T6). Made on the main thread, so
+## the only writes between the two reads of the count are these.
+static func _same_paths(twin: Brick, brick: Brick) -> void:
+	var written: int = paths_written
+	twin.group = brick.group
+	twin.unit = brick.unit
+	paths_written = written
 
 
 ## A brick written into a world of that kind, which draws nothing and keeps

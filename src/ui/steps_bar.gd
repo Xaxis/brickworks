@@ -1410,6 +1410,26 @@ func refresh(number: int = -1, inside: int = 0,
 	if _mode != 0 and _mode != AUTHORS:
 		_show(_shown)
 		return
+	_show_step(number, inside)
+
+
+## The timeline on the end of the main step numbered [param number], or of
+## its callout's step [param inside]; in an order with no steps, [param
+## shown] of its places (Main._timeline_back: back from Simple on the step
+## it was left at, whatever was put down or taken off meanwhile). A number
+## or a count under nought leaves it where it opened.
+func show_step(number: int, inside: int = 0, shown: int = -1) -> void:
+	if not visible or _steps.is_empty():
+		return
+	if _mode != 0 and _mode != AUTHORS:
+		if shown >= 0:
+			_show(mini(shown, _length()))
+		return
+	if number >= 0:
+		_show_step(number, inside)
+
+
+func _show_step(number: int, inside: int) -> void:
 	var end: int = -1
 	for index: int in _steps.size():
 		if _steps[index].number <= number:

@@ -38,6 +38,19 @@ var brand: Button
 ## the booklet's page laid out by hand (looking): the menus, the model's name
 ## and the Claude tab out of sight, the mark, Menu and Account kept.
 var plain: bool = false
+## Simple | Full (AppHeader.controls_switch): on the studio's header, and
+## on the plain one Simple keeps (set_simple); not on the viewer's, Build
+## it's or the page laid out by hand.
+var controls: PanelContainer
+## Simple's header: plain, the switch kept (Main.use_controls).
+var simple: bool = false
+## Simple | Full put away for a row too narrow for it, Simple a row of "…"
+## instead (Shell._fold_into): where the switch would fold a menu or make
+## the header smaller ([method _fit_header]). French File went into "…" for
+## it at a narrow window (simplereview2 D).
+var switch_folded: bool = false
+## Simple or Full picked on the switch.
+signal controls_picked(layer: StringName)
 ## Looking at somebody else's model: Account is the site's settings page,
 ## since the viewer reads nobody's account (Main._enter_view).
 var visiting: bool = false
@@ -257,6 +270,11 @@ func _build() -> void:
 	_claude_words.pressed.connect(func() -> void: account_wanted.emit())
 	_claude_tab.add_child(_claude_words)
 
+	# Simple | Full, the controls over the model (Main.use_controls), before
+	# Menu and Account as a site's mode switch sits before its account.
+	controls = AppHeader.controls_switch(1.0, false, func(layer: StringName) -> void:
+		controls_picked.emit(layer))
+	row.add_child(controls)
 	# In a browser the app's menu, Menu, before Account: the site's phone
 	# header has its Menu there, and your account last at the far right.
 	if home != null:
@@ -469,13 +487,19 @@ func _fit_header() -> void:
 	# into "…": at 150% or in German a narrow window's row was wider than
 	# the window, and the whole column with it (wingreview3 F3).
 	if not Phone.on():
-		var count: int = _menu_buttons().size()
-		var shown: int = count
-		var fits: float = _fitting_pt(gutter, shown)
 		var least: float = minf(pt, LEAST_PT)
-		while shown > 0 and fits < least:
-			shown -= 1
-			fits = _fitting_pt(gutter, shown)
+		var shown: int = _shown_at(gutter, least, true)
+		var fits: float = _fitting_pt(gutter, shown, true)
+		# Simple | Full on the row only where it folds no menu and makes the
+		# header no smaller; otherwise Simple is in "…" (switch_folded). The
+		# same in every mode, so the header is one size in all of them.
+		var without: int = _shown_at(gutter, least, false)
+		var fits_without: float = _fitting_pt(gutter, without, false)
+		switch_folded = without > shown or minf(pt, fits_without) > minf(pt, fits) + 0.001
+		if switch_folded:
+			shown = without
+			fits = fits_without
+		_show_switch()
 		_fold_menus(shown)
 		pt = minf(pt, maxf(fits, 0.5))
 	points = pt
@@ -487,6 +511,7 @@ func _fit_header() -> void:
 	if home != null:
 		AppHeader.dress_button(mark, pt)
 	AppHeader.dress_button(_account, pt)
+	AppHeader.dress_switch(controls, pt, false)
 	_dress_count(pt)
 	if is_equal_approx(density, _mark_drawn_at) and is_equal_approx(pt, _mark_drawn_pt):
 		return
@@ -520,7 +545,7 @@ var points: float = 1.0
 ## where Claude reaches this tab). With the first [param shown] menus on the
 ## row, and "…" where any is folded; less than nothing where the units alone
 ## are wider than the window.
-func _fitting_pt(gutter: float, shown: int) -> float:
+func _fitting_pt(gutter: float, shown: int, with_switch: bool = true) -> float:
 	var row: HFlowContainer = brand.get_parent()
 	var gap: float = float(row.get_theme_constant("h_separation"))
 	var font: Font = _account.get_theme_font("font")
@@ -539,19 +564,27 @@ func _fitting_pt(gutter: float, shown: int) -> float:
 		if control == null or control == brand or control == more:
 			continue
 		var studio: bool = control == menus or control == _name
-		if not control.visible and not studio:
+		# The switch counted by [param with_switch], shown or not: the row
+		# with it and without it, whichever shows now.
+		if control == controls:
+			if not with_switch:
+				continue
+		elif not control.visible and not studio:
 			continue
 		units += gap
 		if control == _account or (home != null and control == mark):
 			var button: Button = control as Button
 			per_pt += 28.0 + font.get_string_size(button.atr(button.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		elif control == controls:
+			per_pt += AppHeader.switch_points(controls, false)
 		elif control == _name:
 			units += NAME_NARROW
 		elif control == menus:
 			var buttons: Array[MenuButton] = _menu_buttons()
 			for n: int in mini(shown, buttons.size()):
 				units += _menu_width(buttons[n]) + float(menus.get_theme_constant("separation"))
-			if shown < buttons.size():
+			# "…" where it holds a menu, or Simple for want of the switch.
+			if shown < buttons.size() or not with_switch:
 				units += gap + _menu_width(more)
 		else:
 			units += control.get_combined_minimum_size().x
@@ -563,6 +596,22 @@ func _fitting_pt(gutter: float, shown: int) -> float:
 ## The least points to the header before the menus give way: its buttons
 ## no smaller than the toolbar's under it.
 const LEAST_PT := Toolbar.BUTTON / AppHeader.TARGET
+
+
+## How many menus the row keeps at no fewer than [param least] points,
+## with the switch on it or without.
+func _shown_at(gutter: float, least: float, with_switch: bool) -> int:
+	var shown: int = _menu_buttons().size()
+	while shown > 0 and _fitting_pt(gutter, shown, with_switch) < least:
+		shown -= 1
+	return shown
+
+
+## Simple | Full where it is wanted and the row has room: in Simple always
+## (the way back), on Full's header unless folded, never on the viewer's,
+## Build it's or the page laid out by hand.
+func _show_switch() -> void:
+	controls.visible = simple or (not plain and not switch_folded)
 
 
 ## The menus on the row, in order (Shell's), "…" not among them.
@@ -590,7 +639,7 @@ func _fold_menus(shown: int) -> void:
 	shown = clampi(shown, 0, buttons.size())
 	for n: int in buttons.size():
 		buttons[n].visible = n < shown
-	more.visible = shown < buttons.size() and not plain
+	more.visible = (shown < buttons.size() or switch_folded) and not plain
 	if shown != menus_shown:
 		menus_shown = shown
 		menus_folded.emit()
@@ -611,10 +660,24 @@ func set_plain(yes: bool) -> void:
 	plain = yes
 	for part: Control in [menus, _name]:
 		part.visible = not yes
-	more.visible = not yes and menus_shown < _menu_buttons().size()
+	_show_switch()
+	more.visible = not yes and (menus_shown < _menu_buttons().size() or switch_folded)
 	if _claude_tab != null:
 		_claude_tab.visible = not yes and not _claude_words.text.is_empty()
 	_fit_mark.call_deferred()
+
+
+## Simple's header (Main.use_controls): plain, as Build it's is, the switch
+## kept and Simple chosen on it; back in Full, the studio's whole.
+func set_simple(yes: bool) -> void:
+	simple = yes
+	set_plain(yes)
+	show_controls(&"simple" if yes else &"full")
+
+
+## Which of Simple | Full the switch shows chosen.
+func show_controls(layer: StringName) -> void:
+	AppHeader.show_controls(controls, layer)
 
 
 ## Account pressed: who is signed in, in the app; on somebody else's model,
@@ -669,6 +732,9 @@ func controls_by_name() -> Dictionary:
 	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark, "app_header": self}
 	if home != null:
 		out["app_home"] = home
+	if controls.is_visible_in_tree():
+		for button: Node in controls.get_child(0).get_children():
+			out[button.name] = button
 	if _claude_tab != null and _claude_tab.is_visible_in_tree():
 		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.

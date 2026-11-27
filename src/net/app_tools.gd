@@ -172,6 +172,7 @@ const WINDOW_ONLY: Dictionary = {
 	"reset_panels": "the window's panels, laid out as the person left them",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
+	"simple_mode": "the person's controls over the model, Simple or Full: theirs to pick; a session's tools are the same in both",
 	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
