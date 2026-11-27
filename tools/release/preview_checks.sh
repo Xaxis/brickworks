@@ -61,6 +61,8 @@ declare -A CMD=(
   # local only: pastereview_flow.mjs. Two tabs of a local web export on a local relay, throwaway accounts (pastereview, appfix).
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: talk2_flow.mjs. It pages a crowd of 560 threads and a 200-post thread that only the stand-in
+  # relay holds (--talk-crowd); talk carries a thread, a reply and the list on previews (talk2).
   # local only: ways_flow.mjs. Google's, GitHub's and orangecheck Connect's answers come from ways_stand_in.mjs in a local relay (--ways-stand-in); oc and signin carry the dialog on a deployment (signin3).
   # local only: set3d_flow.mjs. It turns ten sets of up to 9,092 parts in 3D at two widths and both themes,
   # an hour of SwiftShader under load, and counts storage bytes only through the local relay's preload
