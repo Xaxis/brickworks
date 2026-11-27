@@ -4,7 +4,7 @@ panels: RenderDialog#render, RenderQueue#render-queue
 ai: Photo-real renders, line art and comic looks, turntables, motion animations and building videos, the model's own lights, and the render queue. An assistant renders with render_model or render_motion (both jobs: follow them with job), queues pictures with render_queue, and places the model's lights with light_model.
 rules:
   - A render answers with a job number; follow it with job.
-  - Path tracing runs only in the desktop app on a graphics card that traces rays; in a browser Best averages frames.
+  - Best is path traced on a graphics card: in the desktop app where the card traces rays, and in a browser on the card's WebGL2; a browser without a graphics card averages frames.
   - A model keeps at most 8 lights of its own, no more than 4 of them suns.
 title: Render
 nav: Render
@@ -44,10 +44,11 @@ lib:studio renderer
 **Best** averages many frames for soft shadows, smooth edges, shading under every ledge and depth of field. **Best's frames** sets how many: **As this device does best** is 32 in a browser.
 
 > [!NOTE]
-> In the desktop app (coming soon), on a graphics card that traces rays, Best is path traced: light bounces off the floor and between the parts, and glass tints what is behind it, in 256 samples unless you set fewer. A browser cannot trace rays; the Quality note says when Best is not path traced.
+> On a graphics card Best is path traced: light bounces off the floor and between the parts, and glass tints what is behind it, in 256 samples unless you set fewer. In a browser your own graphics card traces it: you see Best's frames averaged first, and the path traced picture takes their place only once it is cleaner, then keeps getting cleaner while you watch. The dialog says which one you are looking at. **Finish now** keeps whichever of the two is better at that moment. The first time, the browser readies the path tracer for your card, which can take a minute; the dialog says what it is waiting on. The desktop app (coming soon) traces it on a card that traces rays. A browser without a graphics card, or one that would stop the page while it readied the tracer, averages frames, and the result says why.
 
 <!-- covers
 lib:path tracer
+lib:path tracer in a browser
 -->
 
 ### Product {#product-look}
@@ -57,7 +58,7 @@ lib:path tracer
 ![The car rendered at Best in the Product look on white, path traced: glossy red and black plastic, clear windows, a soft shadow under it.](/docs/img/render-product.webp "Quality › Best, Look › Product: the car as a set's box shows it.")
 
 > [!NOTE]
-> Where Best is path traced (the desktop app, coming soon), no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time. In a browser, Best raises the logo on every stud too, as the desktop's path tracer does.
+> Where Best is path traced, no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time. Where Best averages frames, it raises the LEGO logo on every stud too, as the path tracer does.
 
 <!-- covers
 lib:product look
@@ -67,7 +68,7 @@ lib:moulded edges
 
 ### New or played with {#plastic}
 
-Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look, never the model. In a browser, where Best is not path traced, Best's own frames draw it too: the same yellowing, dust, finger marks, scuffs and seating, without the traced picture's reflections.
+Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look, never the model. Where Best is not path traced, Best's own frames draw it too: the same yellowing, dust, finger marks, scuffs and seating, without the traced picture's reflections.
 
 ![The boat rendered at Best in the Product look with Plastic › Played with: its white hull a little yellowed, each part its own amount, dust on its tops, each part seated its own way.](/docs/img/render-played.webp "Plastic › Played with: the boat as a set played with for years.")
 
@@ -87,7 +88,7 @@ At Best, in the Product look, a staged picture is lit as a photograph is: by a s
 
 On a desk, a table, a leather pad or terrazzo, a large bright light stands behind the model, as a window or a softbox behind a photographed model does. Glossy tops mirror it, so a black brick's top shines nearly white while its sides stay dark, the way they do in a photograph. It rises with the camera, so a top seen from high up still catches it. It lights the table without shining in it, so the wood, the leather and the terrazzo keep their own colour. On the seamless paper the studio's own lights are kept, and the paper is a product photograph's: white wherever nothing shades it, glossy enough to mirror the model faintly, and its shade under the model cool and tinted by the parts' colours.
 
-In a browser, and wherever Best is not path traced, a staged picture is drawn on the stage's colour alone.
+Wherever Best is not path traced, a staged picture is drawn on the stage's colour alone.
 
 <!-- covers
 lib:staged product photographs

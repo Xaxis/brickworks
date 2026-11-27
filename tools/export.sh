@@ -147,7 +147,8 @@ report_web() {
   done
   local total=0
   for f in "$dir"/*; do
-    case "$f" in *.br|*/index.*.bin|*/index.data.pck) continue ;; esac
+    # tracer.js is fetched only when Best is path traced (photoreal28).
+    case "$f" in *.br|*/index.*.bin|*/index.data.pck|*/tracer.js) continue ;; esac
     if [ -f "$f.br" ]; then total=$(( total + $(bytes "$f.br") )); else total=$(( total + $(bytes "$f") )); fi
   done
   printf "  over the wire before the engine starts (brotli where it helps): %s\n" "$(human $total)"
@@ -207,7 +208,13 @@ build_rest() {
   godot --headless --path . --script src/dev/write_part_names.gd -- --out="$dir/part_names" > "$dir/part_names/log.txt" 2>&1 \
     || { echo "export FAILED: no part names (src/dev/write_part_names.gd: $dir/part_names/log.txt)"; return 1; }
   grep -E '^part_names' "$dir/part_names/log.txt"
-  took "knowledge, part names"
+  # Best path traced in the browser (photoreal28): the desktop's tracer as
+  # WebGL2 shaders in the page's tracer, beside the build, fetched only when
+  # Best is pressed (src/render/page_tracer.gd). Fails the export when the
+  # desktop's shader moved a line the port replaces.
+  python3 tools/web/tracer_port.py --js "$dir/tracer.js" \
+    || { echo "export FAILED: no tracer.js (tools/web/tracer_port.py)"; return 1; }
+  took "knowledge, part names, tracer"
   [ $# -eq 0 ] || build_engine "$@"
 }
 

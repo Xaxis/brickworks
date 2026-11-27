@@ -5845,8 +5845,20 @@ msgstr "%d gemittelte Bilder: weiche Schatten einer Flächenleuchte, glatte Kant
 msgid "With nothing behind the model it is not path traced."
 msgstr "Ohne etwas hinter dem Modell wird es nicht mit Pathtracing gerendert."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "Pathtracing braucht die Desktop-App, die bald kommt: Ein Browser kann keine Strahlen verfolgen."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "Das Pathtracing ist in diesem Browser abgebrochen, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Dieser Browser zeichnet ohne Grafikkarte, zu langsam für Pathtracing, daher werden für Beste Bilder gemittelt."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "Pathtracing ist für diese Seite ausgeschaltet, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Dieser Browser würde die Seite anhalten, während er das Pathtracing vorbereitet, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Die Grafik dieses Browsers kann kein Pathtracing, daher werden für Beste Bilder gemittelt."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Pathtracing braucht den vollen Grafikmodus, und dieses Fenster zeichnet im einfacheren."
@@ -5950,6 +5962,24 @@ msgstr "Modell wird vorbereitet"
 
 msgid "fetching the photographed light"
 msgstr "fotografiertes Licht wird geladen"
+
+msgid "fetching the path tracer"
+msgstr "Pathtracing wird geladen"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "Pathtracing wird für diese Grafikkarte vorbereitet"
+
+msgid "metering the light"
+msgstr "Licht wird gemessen"
+
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Pathtracing hinter diesem Bild: %d von %d Samples"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "Mit Pathtracing, wird noch verfeinert: %d von %d Samples"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "Die gemittelten Bilder wurden behalten: das Bild mit Pathtracing war noch körniger."
 
 msgid "the contact shadow"
 msgstr "der Kontaktschatten"
