@@ -353,19 +353,36 @@ async function load() {
   return body;
 }
 
-/// The thread marked answered or not over the posts, as the answer now is.
-function answeredSaid(on) {
+/// The thread marked answered or not over the posts, and the way to its
+/// answer beside them, as the answer now is ([id], or none).
+function answeredSaid(id) {
   const meta = $(".talk-thread-meta");
   const pill = $(".talk-thread-meta .pill.answered");
-  if (!on) {
+  $(".talk-jumps [data-jump-answer]")?.remove();
+  for (const one of root.querySelectorAll(".talk-jumps a[href*='#post-']")) {
+    if (one.querySelector(".icon")) one.closest("li")?.remove();
+  }
+  if (!id) {
     pill?.remove();
     return;
   }
   const mark = $("#talk-posts .is-answer .pill.answered");
-  if (pill || !meta || !mark) return;
-  const made = mark.cloneNode(true);
-  made.lastChild.textContent = say("Answered");
-  meta.prepend(made, " ");
+  if (!mark) return;
+  if (!pill && meta) {
+    const made = mark.cloneNode(true);
+    made.lastChild.textContent = say("Answered");
+    meta.prepend(made, " ");
+  }
+  const jumps = $(".talk-jumps");
+  if (jumps) {
+    const item = document.createElement("li");
+    item.dataset.jumpAnswer = "";
+    const go = document.createElement("a");
+    go.href = document.getElementById(`post-${Number(id)}`) ? `#post-${Number(id)}` : postHref(id);
+    go.append(mark.querySelector(".icon")?.cloneNode(true) || "", say("The answer"));
+    item.append(go);
+    jumps.firstElementChild ? jumps.firstElementChild.after(item) : jumps.append(item);
+  }
 }
 
 /// [post] (the reader's reply in their box): its words quoted, "> " a line,
@@ -424,7 +441,7 @@ async function markAnswer(post, on) {
     return tellOver({ title: say("The answer was not marked"), body: told(done.body?.error, say("That did not work just now. Try again in a minute.")) });
   }
   await load();
-  answeredSaid(Boolean(done.body.answer));
+  answeredSaid(done.body.answer || null);
   document.getElementById(`post-${Number(post.dataset.post)}`)?.querySelector("[data-act$='answer']")?.focus();
 }
 

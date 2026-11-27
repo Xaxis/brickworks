@@ -223,7 +223,11 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             # whole on the server, and what they do in the browser.
             "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
                              "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
-                             "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell"),
+                             "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell",
+                             # Its second round (talk2, 2026-11-27): the list as a
+                             # table, its sorts, pages, answers and quotes.
+                             "sortSaid", "periodSaid", "threadLineHtml", "solutionHtml", "boardTabsHtml", "sortsHtml",
+                             "threadsHtml"),
             "web/talk.js": (),
             # Ask the builders (askhelp, 2026-11-23): the ask at the top of
             # its thread and an answer's part.

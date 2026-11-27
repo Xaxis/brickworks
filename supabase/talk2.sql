@@ -216,10 +216,9 @@ begin
                             and to_tsvector('simple'::regconfig, p.body) @@ q and public.talk_post_shown(p, t, viewer)))
            and (sort <> 'unanswered' or not exists (select 1 from public.talk_posts p where p.thread = t.id and not p.first
                                                       and public.talk_post_shown(p, t, viewer)))
-           and (sort <> 'unread' or (t.author <> viewer and (
-                    exists (select 1 from public.talk_posts p where p.thread = t.id and p.author <> viewer
-                             and p.at > public.talk2_mark(t, viewer) and public.talk_post_shown(p, t, viewer))
-                    or (public.talk2_mark(t, viewer) is null and t.at > seen))))
+           and (sort <> 'unread' or exists (select 1 from public.talk_posts p where p.thread = t.id and p.author <> viewer
+                                                 and p.at > public.talk2_mark(t, viewer) and public.talk_post_shown(p, t, viewer))
+                or (t.author <> viewer and public.talk2_mark(t, viewer) is null and t.at > seen))
     ), ordered as (
         select b.*, row_number() over (order by
                    case when sort = 'latest' and q is null and b.pinned then 0 else 1 end,
