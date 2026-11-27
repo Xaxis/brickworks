@@ -1094,13 +1094,25 @@ function nearStudioLink(x, y) {
       stop.abort();
       studioAhead(by);
     };
-    let looked = 0;
+    // The pointer's place read at most every 100 ms, and always its last:
+    // dropping the moves inside the 100 ms dropped where a quick move came
+    // to rest, beside Start building (diag_keep_intent, webstart14).
+    let looked = -Infinity;
+    let last = null;
+    let later = 0;
+    const look = () => {
+      later = 0;
+      looked = performance.now();
+      if (last && nearStudioLink(last.x, last.y)) go("near");
+    };
     addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-      if (event.timeStamp - looked < 100) return;
-      looked = event.timeStamp;
-      if (nearStudioLink(event.clientX, event.clientY)) go("near");
+      last = { x: event.clientX, y: event.clientY };
+      const wait = 100 - (performance.now() - looked);
+      if (wait <= 0) look();
+      else if (!later) later = setTimeout(look, wait);
     }, { passive: true, signal: stop.signal });
+    stop.signal.addEventListener("abort", () => clearTimeout(later));
     addEventListener("focusin", (event) => {
       if (inStudioLink(event.target)) go("focus");
     }, { signal: stop.signal });
