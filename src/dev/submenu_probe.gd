@@ -3,7 +3,9 @@
 ## recent' are almost completely unresponsive ... they take forever to load
 ## and then flash away").
 ##
-##   godot --headless --path . --script src/dev/submenu_probe.gd -- [--saves=50]
+##   godot --path . --resolution 1280x800 --script src/dev/submenu_probe.gd -- [--saves=50]
+##
+## In a window: headless, the menus are never shown as a hand would see them.
 ##
 ## The pointer is moved as a mouse moves it: each move's speed is the one the
 ## platform gives it (Input.get_last_mouse_velocity, as DisplayServerX11 and
@@ -53,9 +55,12 @@ func _check(what: String, ok: bool) -> bool:
 
 
 func _run() -> void:
+	var only: PackedStringArray = []
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--saves="):
 			_saves = int(arg.get_slice("=", 1))
+		if arg.begins_with("--only="):
+			only = arg.get_slice("=", 1).split(",")
 	_shelve(_saves)
 	await process_frame
 	_main = load("res://src/main.tscn").instantiate()
@@ -76,8 +81,10 @@ func _run() -> void:
 	# What a row costs as its menu opens, alone: the engine's part left out.
 	_costs()
 	for pair: Array in SUBMENUS:
-		await _try(str(pair[0]), str(pair[1]))
+		if only.is_empty() or str(pair[1]) in only:
+			await _try(str(pair[0]), str(pair[1]))
 	await _rest_then_next()
+	await _crossed_and_left()
 	if _saves > 0:
 		await _open_recent_row()
 	print("SUBMENU %d failed" % _failures)
@@ -133,8 +140,10 @@ func _row_of(popup: PopupMenu, words: String) -> int:
 # -- the pointer, as a mouse moves it ---------------------------------------------
 
 
+## A point of the root's canvas as the window's pixels, where a platform puts
+## its events.
 func _as_event(at: Vector2) -> Vector2:
-	return at * (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)
+	return at * (Vector2(root.size) / root.get_visible_rect().size)
 
 
 func _move(to: Vector2) -> void:
@@ -187,26 +196,30 @@ func _band(popup: PopupMenu, index: int) -> Vector2:
 	var x: float = popup.position.x + 40.0
 	var top: float = -1.0
 	var bottom: float = -1.0
+	var plain: float = -1.0
 	var y: float = popup.position.y + 2.0
 	while y < popup.position.y + popup.size.y:
 		_move(Vector2(x, y))
 		await process_frame
 		await process_frame
-		if popup.get_focused_item() == index:
+		var lit: int = popup.get_focused_item()
+		if lit >= 0 and popup.get_item_submenu_node(lit) == null and not popup.is_item_disabled(lit):
+			plain = y
+		if lit == index:
 			if top < 0.0:
 				top = y
 			bottom = y
 		elif top >= 0.0:
 			break
 		y += 2.0
-	# Off the panel to its right: the menu forgets the submenu row it was
-	# timing (submenu_over) and stops the timer. Left on a row whose long
-	# timer still ran, the menu never timed that row again when the pointer
-	# came back onto it straight (popup_menu.cpp _mouse_over_update starts the
-	# timer only for a row other than submenu_over).
-	_move(Vector2(popup.position.x + popup.size.x + 40.0, _pointer.y))
-	await process_frame
-	await process_frame
+	# Back onto a row with no submenu: the menu stops its long timer and
+	# forgets the submenu row it was timing, as a hand's pointer passing over
+	# such a row has it do. (Left timing a row, the engine never times that
+	# row again when the pointer comes back onto it: _crossed_and_left.)
+	if plain >= 0.0:
+		_move(Vector2(x, plain))
+		await process_frame
+		await process_frame
 	popup.submenu_popup_delay = delay
 	return Vector2(top, bottom)
 
@@ -245,6 +258,10 @@ func _rest_on(popup: PopupMenu, index: int, band: Vector2) -> Dictionary:
 	var longest: int = 0
 	for frame: int in _frames:
 		longest = maxi(longest, frame)
+	if opened < 0:
+		print("SUBMENU (not open: menu %s at %s, lit row %d of wanted %d, pointer %s, band %s)" % [
+			"shown" if popup.visible else "hidden", str(popup.position), popup.get_focused_item(),
+			index, str(at), str(band)])
 	return {"at": at, "sub": sub, "ms": (opened - rested) / 1000.0 if opened > 0 else -1.0,
 		"longest": longest / 1000.0}
 
@@ -332,6 +349,34 @@ func _rest_then_next() -> void:
 	await _shut()
 
 
+## A hand that came onto Import, went on past the menu's side before Import
+## opened, and came back onto it: Import opens as it rests there. (The engine
+## times a submenu's row only once until the pointer goes to another row:
+## Shell._wake_submenus.)
+func _crossed_and_left() -> void:
+	var popup: PopupMenu = await _open("File")
+	var import: int = _row_of(popup, "Import")
+	var band: Vector2 = await _band(popup, import)
+	popup = await _open("File")
+	var sub: PopupMenu = popup.get_item_submenu_node(import)
+	var on := Vector2(popup.position.x + 40.0, (band.x + band.y) / 2.0)
+	await _glide(on, 6)
+	await create_timer(0.03).timeout
+	var shut_on_leaving: bool = not sub.visible
+	await _glide(Vector2(popup.position.x + popup.size.x + 80.0, on.y), 2, 0.02)
+	await create_timer(0.5).timeout
+	await _glide(on, 3)
+	var rested: int = Time.get_ticks_usec()
+	while not sub.visible and Time.get_ticks_usec() - rested < 1500000:
+		await process_frame
+	var ms: float = (Time.get_ticks_usec() - rested) / 1000.0
+	_check("onto Import, out past the menu's side before it opened, back onto it: Import opens "
+		+ "(%.0f ms, bar %d)" % [ms, DRAWN_MS], shut_on_leaving and sub.visible and ms <= DRAWN_MS)
+	print("SUBMENU row File › Import, crossed and left | drawn %.0f ms | %s" % [ms,
+		"opens" if sub.visible else "NEVER OPENS"])
+	await _shut()
+
+
 ## Open recent's first row, clicked, opens its model.
 func _open_recent_row() -> void:
 	var popup: PopupMenu = await _open("File")
@@ -342,10 +387,17 @@ func _open_recent_row() -> void:
 	var sub: PopupMenu = rest.sub
 	if not _check("Open recent opens with %d models saved" % _saves, sub.visible and sub.item_count > 0):
 		return
-	var first: Array = await _third(sub)
-	var band0: Vector2 = await _band(sub, 0)
-	var at := Vector2(sub.position.x + 40.0, (band0.x + band0.y) / 2.0)
-	var words: String = sub.get_item_text(0)
+	# The second row: the first may be the model the app opened as it started.
+	var row: int = mini(1, sub.item_count - 1)
+	var band_row: Vector2 = await _band(sub, row)
+	var at := Vector2(sub.position.x + 40.0, (band_row.x + band_row.y) / 2.0)
+	var words: String = sub.get_item_text(row)
+	var listed: Array = _shell.get("_recent")
+	var path: String = listed[row].path if row < listed.size() else ""
+	var store: ModelStore = _main.get("_store")
+	var before: String = store.title
+	_move(at)
+	await process_frame
 	await _click(at)
 	var bar: ModelBar = _main.get("_bar")
 	for _n: int in 60:
@@ -353,10 +405,10 @@ func _open_recent_row() -> void:
 	var dont: Button = bar.get("_dont_save_button")
 	if dont != null and dont.is_visible_in_tree():
 		dont.pressed.emit()
-	var store: ModelStore = _main.get("_store")
 	var began: int = Time.get_ticks_usec()
-	while Time.get_ticks_usec() - began < 30000000 and (store.laying or not store.title.begins_with("Shelf model")):
+	while Time.get_ticks_usec() - began < 30000000 and (store.laying or str(store.get("_known_path")) != path):
 		await process_frame
-	_check("Open recent's first row (%s), clicked, opens its model: \"%s\"" % [words, store.title],
-		words.begins_with(store.title) and store.title.begins_with("Shelf model"))
-	print("SUBMENU (first row of %d found: %s)" % [first.size(), str(first[0])])
+	var opened: String = str(store.get("_known_path"))
+	_check("Open recent's row \"%s\", clicked, opens its model: \"%s\" from %s (was \"%s\")"
+		% [words, store.title, opened.get_file(), before],
+		not path.is_empty() and opened == path and not store.laying)

@@ -1915,6 +1915,7 @@ func _fold_into(more: MenuButton) -> void:
 	var popup: PopupMenu = more.get_popup()
 	popup.add_theme_font_size_override("font_size", 13)
 	popup.submenu_popup_delay = SUBMENU_DELAY
+	_with_submenus.append(popup)
 	for menu: Array in MENUS:
 		var sub := PopupMenu.new()
 		sub.name = "folded_" + str(menu[0]).to_lower()
@@ -2009,9 +2010,66 @@ func _pointer_moved(event: InputEvent) -> void:
 	if motion.velocity.is_zero_approx() and motion.relative != Vector2.ZERO:
 		motion.velocity = motion.relative / seconds
 		motion.screen_velocity = motion.velocity
+	if not _waking and not _with_submenus.is_empty():
+		_waking = true
+		_wake_submenus.call_deferred()
 
 
 var _moved_at_usec: int = 0
+## The menus with rows that open submenus (_fill, _fold_into), each looked at
+## after a move by [method _wake_submenus], once a frame.
+var _with_submenus: Array[PopupMenu] = []
+var _waking: bool = false
+
+
+## A submenu whose row the pointer is on is opened even where the engine
+## would leave it shut. The engine opens a row's submenu when a timer, started
+## as the pointer comes onto the row, runs out; it starts that timer only for a
+## row other than the one it timed last (PopupMenu._mouse_over_update's
+## submenu_over), and forgets that row only when the pointer goes onto a row
+## with no submenu or its submenu closes. A pointer that came onto Import and
+## left the menu by its side before Import opened (the row under the pointer
+## is cleared as it leaves, so the move outside is never read), or a menu shut
+## in that time, left Import timed for good: back on it, the pointer could rest
+## and nothing opened until it went to another row and back (menufix,
+## 2026-11-27). After each move, a menu whose row under the pointer has a shut
+## submenu, none of its submenus open and its timer not running, has the timer
+## started again. When it runs out the engine opens the submenu only if that
+## row is the one it timed (_submenu_timeout); on any other row it starts the
+## timer itself, so this is never the reason a submenu opens there.
+func _wake_submenus() -> void:
+	_waking = false
+	for popup: PopupMenu in _with_submenus:
+		if not is_instance_valid(popup) or not popup.visible:
+			continue
+		var row: int = popup.get_focused_item()
+		if row < 0 or row >= popup.item_count or popup.is_item_disabled(row):
+			continue
+		var sub: PopupMenu = popup.get_item_submenu_node(row)
+		if sub == null or sub.visible or _a_submenu_open(popup):
+			continue
+		var timer: Timer = submenu_timer(popup)
+		if timer != null and timer.is_stopped():
+			timer.start(popup.submenu_popup_delay)
+
+
+static func _a_submenu_open(popup: PopupMenu) -> bool:
+	for row: int in popup.item_count:
+		var sub: PopupMenu = popup.get_item_submenu_node(row)
+		if sub != null and sub.visible:
+			return true
+	return false
+
+
+## The engine's timer that opens a menu's submenus: one of the menu's own
+## children (PopupMenu adds two timers; this one waits the menu's
+## submenu_popup_delay, the other close_suspended_timer's half second).
+static func submenu_timer(popup: PopupMenu) -> Timer:
+	for child: Node in popup.get_children(true):
+		var timer := child as Timer
+		if timer != null and timer.is_one_shot() and is_equal_approx(timer.wait_time, popup.submenu_popup_delay):
+			return timer
+	return null
 
 
 func _fill(popup: PopupMenu, items: Array) -> void:
@@ -2028,6 +2086,8 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			sub.submenu_popup_delay = SUBMENU_DELAY
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(SUBMENU_WORDS[kind], sub, SUBMENU_ID + popup.item_count)
+			if not _with_submenus.has(popup):
+				_with_submenus.append(popup)
 			if SUBMENUS.has(kind):
 				_fill(sub, SUBMENUS[kind])
 				sub.id_pressed.connect(_on_id)

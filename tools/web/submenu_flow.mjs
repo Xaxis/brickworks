@@ -285,14 +285,23 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
     const button = where[`menu_${title.toLowerCase()}`];
     const edges = { x0: button.x - button.w / 2, y1: button.y + button.h / 2 };
     if (!geometry[title]) {
-      await shut();
-      const closed = await shot();
-      await page.mouse.move(button.x, button.y);
-      await page.mouse.click(button.x, button.y);
-      await page.waitForTimeout(800);
-      await caughtUp(page);
-      const open = await shot();
-      const found = await lab.evaluate(([a, b, e]) => window.lab.menu(a, b, e), [closed, open, edges]);
+      // Found by what changes as it opens: a notice the app shows at the
+      // same moment (its storage warning, with 50 models saved) changes
+      // more, so a count that is not the menu's is looked at again.
+      let found = {};
+      let open = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await shut();
+        await page.waitForTimeout(attempt ? 1500 : 0);
+        const closed = await shot();
+        await page.mouse.move(button.x, button.y);
+        await page.mouse.click(button.x, button.y);
+        await page.waitForTimeout(800);
+        await caughtUp(page);
+        open = await shot();
+        found = await lab.evaluate(([a, b, e]) => window.lab.menu(a, b, e), [closed, open, edges]);
+        if ((found.rows || []).length === MENUS[title].length) break;
+      }
       writeFileSync(`${out}/${title}_menu.png`, Buffer.from(open, "base64"));
       check(`${title}: its menu has ${MENUS[title].length} rows (${(found.rows || []).length} found)`,
         (found.rows || []).length === MENUS[title].length);
@@ -408,7 +417,8 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
   // Open recent's row, pressed, opens its model.
   if (tried.some(([, row]) => row === "Open recent") && saves > 0) {
     const menu = await openMenu("File");
-    const rested = await rest("File", "Open recent", menu);
+    const rested = menu.rows && menu.rows.length === MENUS.File.length
+      ? await rest("File", "Open recent", menu) : { sub: { open: false } };
     // Its second row: the first is the model the app opened at the start.
     const before = await page.evaluate(() => document.title);
     if (rested.sub.open && rested.sub.rows.length > 1) {

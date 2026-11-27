@@ -372,14 +372,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   row (`Shell.SUBMENU_DELAY`), and every pointer move reaches them with a
   speed (`Shell._pointer_moved` on the root window's `window_input`): the
   engine's PopupMenu skips a move whose velocity is zero, which every move in
-  the first tenth of a second after the pointer stood still was. Open recent
-  reads no model as it opens: `ModelStore.recent_saved` counts only the eight
+  the first tenth of a second after the pointer stood still was. A row the
+  engine timed, and the pointer left by the menu's side before it opened, is
+  woken when the pointer comes back (`Shell._wake_submenus` restarts the
+  engine's own timer, `Shell.submenu_timer`): the engine times a row only
+  once until the pointer visits another. Open recent reads no model as it
+  opens: `ModelStore.recent_saved` counts only the eight
   it lists, each kept by its file's time and size (`_counted`), and they are
   counted 3 s after the start and 0.5 s after a save, removal or rename.
   `submenus probe` (headless, `-- --saves=50`) times each submenu of File,
   Edit and View from the pointer's rest (150 ms bar, no frame over 50 ms),
-  drives a straight and a slanted way into it to its third row, and a rest on
-  Open recent then down to Import; `submenus in a browser` (preview_checks
+  drives a straight and a slanted way into it to its third row, a rest on
+  Open recent then down to Import, and Import crossed, left by the side and
+  come back to; `submenus in a browser` (preview_checks
   `submenu`) does the same by pictures and a screencast, 50 models saved.
 - `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
   drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`
