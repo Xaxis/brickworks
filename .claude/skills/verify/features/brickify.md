@@ -43,9 +43,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   thinner than a stud or a plate (`_thin`): a cell the surface passes through
   (`_touched`, triangle against cell by separating axes) counts where nothing
   measured is in the 26 round it, the cells it passes through between such a
-  part and the body join them, and a part one plate thick is made two, so a
-  fox's legs, a spout or a wing claim their cells at the size chosen and a
-  thick body comes out no fatter. Then join, don't drop (`_join`): each piece
+  part and the body join them, so a fox's legs, a spout or a wing claim their
+  cells at the size chosen and a thick body comes out no fatter; then any
+  part one plate thick, measured or thin, made two and its columns laid plain
+  (`_two_plates`: the Bell X-1's wing tip at 48 studs held so). Then join, don't drop (`_join`): each piece
   apart is joined to the rest by the cheapest way (`_reach`: through the
   model free, along its thin surface cheaply, through air a plate up or down
   2 and a stud across 5), a floating largest piece is stood on the ground by
@@ -103,11 +104,13 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   trial kept where the core kept its side studs); a piece of the core of 16
   parts or fewer a shell cuts off joined to the rest first, a plate of it and
   one of the rest side by side laid again across, a brick beside it laid again
-  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), and what
-  that leaves taken out before the check (`Plan.cut_off`,
-  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`;
-  what the shells took, gave back and cut off in `Shapes.last["shelled"]`,
-  `"given_back"`, `"cut_cells"`, `"shell_frames"`); a side-stud brick never
+  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), what
+  that leaves given to the stitch (since the eleventh round none of it
+  taken out before the stitch), and what the stitch leaves apart taken out
+  before the check (`Plan.cut_off`, `Shapes.last["cut_off"]`; what the cubes
+  came to in `Shapes.last["cubes"]`; what the shells took, gave back and cut
+  off in `Shapes.last["shelled"]`, `"given_back"`, `"cut_cells"`,
+  `"shell_frames"`); a side-stud brick never
   plain to the stitch (`Plan._plain`); a stud joint past its working load
   left after the props, beside a shell, has the cubes about it and what it
   hangs from laid again upright in the build itself, as a wall is patched
@@ -141,7 +144,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   footprint stacked, merged (a merge only joins, so never more pieces); a
   bonded build that leaves a region of the model out laid again by the colours
   measured (`Options.bond` false) and the one filling more kept, both times
-  counted (the temple at 48 studs keeps its moon so, at twice the time);
+  counted (the temple at 48 studs fills 2.5 points more so, at twice the
+  time; its moon on a stick is left out either way), but the first kept
+  where the second leaves out every region it did and fills at most half a
+  point more (`_wins_back`, since the eleventh round);
   every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
   once a round for it, not once a piece tried; its first ways, kept
