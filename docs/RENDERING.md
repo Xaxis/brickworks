@@ -3111,6 +3111,12 @@ Sets against today's tracer +0.337 (95% +0.076 .. +0.609), against today's deskt
 (-0.008 .. +0.047): within. 6512's photograph is itself a render and nothing reads it as a
 photograph, so it holds every column at about 0.036.
 
+**What a person's render gained.** The bar's arms differ in the scene as well as the renderer: the
+bench now plays with the three old sets and frames 6532 as its photograph, which Render already
+offered. The renderer's own share is high-key's +0.089 (+0.015 .. +0.177) over the matched scene
+(pool p2); the rest of the +0.226 over today's desktop is the bench matching its scenes. Compare
+rounds on the same scenes from here on.
+
 Sheets, each set's photograph beside today's tracer at 256, today's desktop Best and this round's
 (draw 22), in `bench/results/photoreal30-2026-11-27/sheets/`: `set_6532.jpg`, `set_6660.jpg`,
 `set_6657.jpg`. The first screen is
