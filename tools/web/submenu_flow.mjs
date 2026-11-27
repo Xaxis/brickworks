@@ -218,7 +218,10 @@ await lab.evaluate(() => {
     async menu(closed, open, button) {
       const a = await decode(closed, "image/png");
       const b = await decode(open, "image/png");
-      const box = panel(a, b, { x: button.x0 - 6, y: button.y1 + 1, w: 520, h: 800 });
+      // A fine limit: the menu's dark panel over the dark toolbar and parts
+      // bin changes each pixel by little, and at 24 its lines there broke
+      // the run two rows down (File and View, live, 2026-11-27).
+      const box = panel(a, b, { x: button.x0 - 6, y: button.y1 + 1, w: 520, h: 800 }, 6);
       if (box.w === undefined) return { box };
       return { box, ...rowsOf(b, box) };
     },
