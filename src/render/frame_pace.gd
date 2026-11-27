@@ -29,17 +29,28 @@ const UNWATCHED_US := 200000
 ## Whether nobody can see the app. Main says so.
 static var unwatched: bool = false
 
+## Work beside the person's own, which must drop no frame while they orbit
+## or build (Properties' count and steps, Inspector): slices of 4 ms, an
+## eighth of a frame where frames are slow. At half a frame from 12 ms,
+## Properties' count on 10030 held frames of up to 97 ms.
+const LIGHT_US := 4000
+const LIGHT_SHARE := 8
+
 var _until: int = 0
 ## The least a slice is: [constant LEAST_US] unless asked for more.
 var _least: int = LEAST_US
+## A slice is a frame over this, at the least [member _least].
+var _share: int = 2
 
 
 ## [param least_us]: slices of at least this long, for work that draws
 ## nothing while it goes on (a model being laid, ModelStore._open_into), where
-## each frame given back costs as much again as a short slice.
-func _init(least_us: int = LEAST_US) -> void:
+## each frame given back costs as much again as a short slice. [param share]:
+## a slice is the frame over it ([constant LIGHT_SHARE] for light work).
+func _init(least_us: int = LEAST_US, share: int = 2) -> void:
 	_least = least_us
-	_until = Time.get_ticks_usec() + _slice(_least)
+	_share = share
+	_until = Time.get_ticks_usec() + _slice(_least, _share)
 
 
 ## This slice spent [param us] from now (Working.Job.first_slice).
@@ -58,13 +69,13 @@ func next() -> void:
 	# at full rate, not the slower ones of a model standing still.
 	IdleDraw.keep_awake()
 	await Engine.get_main_loop().process_frame
-	_until = Time.get_ticks_usec() + _slice(_least)
+	_until = Time.get_ticks_usec() + _slice(_least, _share)
 
 
-static func _slice(least: int = LEAST_US) -> int:
+static func _slice(least: int = LEAST_US, share: int = 2) -> int:
 	if unwatched:
 		return maxi(UNWATCHED_US, least)
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var frame_us: int = int(tree.root.get_process_delta_time() * 1000000.0) \
 		if tree != null else 0
-	return clampi(frame_us / 2, least, maxi(MOST_US, least))
+	return clampi(frame_us / share, least, maxi(MOST_US, least))

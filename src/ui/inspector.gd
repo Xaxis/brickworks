@@ -673,6 +673,7 @@ const STEPS_MOST := 600
 func _count_joined(brick_id: int) -> void:
 	var job := Working.Job.new()
 	job.can_cancel = true
+	job.slices_of(FramePace.LIGHT_US, FramePace.LIGHT_SHARE)
 	job.first_slice(JOINED_FIRST_US if shell.world.brick_count() <= STEPS_MOST else 0)
 	_joining = job
 	# Counted up to a point: on a big model all of it is joined to all of it.
@@ -1048,15 +1049,11 @@ func _steps_key() -> String:
 	return "%d|%d" % [shell.world.brick_count(), shell.builder.history_depth()]
 
 
-## The steps for the model as it stands, worked out once the click's frame
-## is drawn, and the part shown by then given its step. Worked out on the
-## click, the first click on a part after each edit held the window
-## 80-110 ms on 6685-1 and 5972-1 (clickfast).
-##
-## In one go, not a slice a frame (Instructions.plan_paced): a plan paced
-## over frames reads the parts of a model the person goes on editing, and a
-## part deleted under it was a script error (modelinfo's Delete), as was
-## its cancel (assembly: _kept_paced given an untyped []).
+## The steps for the model as it stands, worked out a light slice a frame
+## (FramePace.LIGHT_US) from once the click's frame is drawn, and the part
+## shown by then given its step. Worked out on the click, the first click on
+## a part after each edit held the window 80-110 ms on 6685-1 and 5972-1,
+## and in one go after it, the frame after (clickfast).
 var _planning: String = ""
 var _plan_job: Working.Job = null
 
@@ -1069,13 +1066,14 @@ func _plan_steps(key: String) -> void:
 	_planning = key
 	var job := Working.Job.new()
 	job.can_cancel = true
+	job.slices_of(FramePace.LIGHT_US, FramePace.LIGHT_SHARE)
 	job.first_slice(0)
 	_plan_job = job
-	await job.next()
-	if _planning != key or job.cancelled:
-		return
 	# The author's steps when there are any, numbered as the booklet is.
-	var steps: Array = Instructions.plan(shell.world, shell.library, shell.store.scenery, {}, true)
+	var steps: Array[Instructions.Step] = await Instructions.plan_paced(shell.world,
+		shell.library, shell.store.scenery, {}, job, true)
+	if job.cancelled:
+		return
 	_planning = ""
 	_plan_job = null
 	# Worked out for a model since changed: the next look asks again.

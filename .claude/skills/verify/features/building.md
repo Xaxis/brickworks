@@ -465,8 +465,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to
-  (up to 500, counted a slice a frame, the first 2 ms on the click, and given
-  up when another part is shown, `Inspector._count_joined`; a part of many
+  (up to 500, counted 4 ms a frame, `FramePace.LIGHT_US`, the first 2 ms on
+  the click, and given up when another part is shown, `Inspector._count_joined`;
+  at half a frame from 12 ms a slice it held frames of up to 97 ms; a part of many
   boxes is asked a piece of its faces at a time, `SelectBy._joined_to_paced`,
   since 10030's 6 x 12 plate asked whole was one frame of 130-370 ms; "Joined to …
   other parts, directly or through others" holds its line until then, wrapped
@@ -474,14 +475,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the click it held 10030's window 1.2-1.7 s, and Simple's way back to Full as
   long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1,
   5972-1 and Orthanc to the next frame under one, reads the line against a whole
-  look on the spot, holds every frame of the count to 100 ms and the buttons
-  where they were, and switches parts mid-count; `simple_switch_probe --case=models` reads
-  it after the switch),
+  look on the spot, holds every frame after the click's, of the count and of the
+  steps, to one (16.7 ms) and the buttons where they were, and switches parts
+  mid-count; `simple_switch_probe --case=models` reads it after the switch),
   which way its studs face, its sub-model, its step in the instructions (models
-  of 600 parts or fewer, worked out in one go once the click's frame is drawn,
-  `Inspector._plan_steps`: on the click, the first click after each edit held
-  6685-1 and 5972-1 80-110 ms; paced over frames, a part deleted under it was
-  a script error) and whether it is locked; Joined, Lock, Hide. Several:
+  of 600 parts or fewer, worked out 4 ms a frame from once the click's frame is
+  drawn, `Inspector._plan_steps`: on the click, the first click after each edit
+  held 6685-1 and 5972-1 80-110 ms. `Instructions.plan_paced` plans a copy
+  taken a slice at a time, `BrickWorld.copy_paced`: read from the model itself
+  across frames, a part deleted under it was a script error, and so was a
+  cancel, an untyped [] handed to an Array[Step]) and whether it is locked;
+  Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs. Asked for from a part's actions or its More

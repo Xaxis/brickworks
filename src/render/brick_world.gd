@@ -1077,10 +1077,47 @@ func copy_for_reading() -> BrickWorld:
 ## read (Sections). Draws nothing and is in no tree; the caller frees it.
 func copy_at_home(at_home: bool = true) -> BrickWorld:
 	_in_order()
+	var copy: BrickWorld = _copy_head()
+	for brick_id: int in _bricks:
+		if not _ghosts.has(brick_id):
+			copy._bricks[brick_id] = _twin(_bricks[brick_id], at_home)
+	return copy
+
+
+## [method copy_at_home] with each part where it stands, a slice of
+## [param job] at a time: what Instructions.plan_paced plans, over many
+## frames, while the person goes on building. Planned from the model itself,
+## a part deleted under the plan stopped it on a script error (clickfast,
+## modelinfo's Delete). A part changed while the copy is taken is in it as
+## it was or as it is, and one put down meanwhile is not, as with an edit
+## made just after. Null when the job is cancelled; the caller frees it.
+func copy_paced(job: Working.Job) -> BrickWorld:
+	_in_order()
+	var copy: BrickWorld = _copy_head()
+	var ids: Array = _bricks.keys()
+	for n: int in ids.size():
+		if n % 64 == 63 and job.due():
+			await job.next()
+			if job.cancelled:
+				copy.free()
+				return null
+		var brick: Brick = _bricks.get(ids[n])
+		if brick != null and not _ghosts.has(brick.id):
+			copy._bricks[brick.id] = _twin(brick, false)
+	return copy
+
+
+## A world of its own for a copy of this one, with all of it but its bricks
+## ([method copy_at_home]).
+func _copy_head() -> BrickWorld:
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
-	copy.held = held
+	# What is held as it is now: a copy is read later, on a worker or over
+	# frames, and a part landing meanwhile is not in its bricks.
+	var holding: Array = held_parts().duplicate()
+	copy.held = func() -> Array: return holding
+	copy.held_paths = held_paths.duplicate()
 	copy.unit_steps = unit_steps.duplicate()
 	copy.steps_own = steps_own
 	copy.step_looks = step_looks.duplicate(true)
@@ -1088,21 +1125,20 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	# Read, never changed: the lines the file carried, and where its
 	# sub-models' parts stood in them (Assemblies._read_frames).
 	copy.kept_lines = kept_lines
-	for brick_id: int in _bricks:
-		if _ghosts.has(brick_id):
-			continue
-		var brick: Brick = _bricks[brick_id]
-		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
-			home_of(brick) if at_home else brick.transform)
-		twin.group = brick.group
-		twin.unit = brick.unit
-		twin.step = brick.step
-		twin.hidden = brick.hidden
-		twin.origin = brick.origin
-		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
 	copy.unit_chains = unit_chains.duplicate()
 	return copy
+
+
+func _twin(brick: Brick, at_home: bool) -> Brick:
+	var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
+		home_of(brick) if at_home else brick.transform)
+	twin.group = brick.group
+	twin.unit = brick.unit
+	twin.step = brick.step
+	twin.hidden = brick.hidden
+	twin.origin = brick.origin
+	return twin
 
 
 ## A brick written into a world of that kind, which draws nothing and keeps

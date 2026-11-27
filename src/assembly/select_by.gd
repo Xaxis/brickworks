@@ -310,9 +310,10 @@ static func _joined_to(world: BrickWorld, lattice: BrickLattice,
 
 
 ## How many boxes of a face [method _joined_to_paced] asks the lattice
-## about at once. A 6 x 12 plate on 10030 has 3,720 boxes, and its three
-## faces asked whole were one frame of 130-220 ms of Properties' count.
-const PIECE := 256
+## about at once: well inside a light slice (FramePace.LIGHT_US). A 6 x 12
+## plate on 10030 has 3,720 boxes, and its three faces asked whole were one
+## frame of 130-220 ms of Properties' count.
+const PIECE := 128
 
 
 ## [method _joined_to] between [param job]'s slices: a part with more boxes

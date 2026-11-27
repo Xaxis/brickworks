@@ -21,11 +21,13 @@
 ##            name the part clicked at once; the line "Joined to N" reached
 ##            within 3,000 frames, the same words a whole look from the part
 ##            finds on the spot (SelectBy.connected, no limit), no frame
-##            while it counted over 100 ms, and Joined, Lock and Hide where
-##            they were when a count of several came; on the two of 600 parts or
-##            fewer, its step in the instructions, worked out in one go once
-##            the first click's frame is drawn (that frame said, not held to
-##            100 ms), as the steps worked out on the spot after the clicks.
+##            after the click's while it counted over a frame (its slices are
+##            4 ms, FramePace.LIGHT_US), and Joined, Lock and Hide where they
+##            were when a count of several came; on the two of 600 parts or
+##            fewer, its step in the instructions, worked out in light slices
+##            too from once the first click's frame is drawn (no frame of
+##            them over a frame), as the steps worked out on the spot after
+##            the clicks.
 ##   switch   a part clicked, a second one clicked two frames later while the
 ##            first's count is under way: every frame after, Properties name
 ##            the second and never say the first's count, and once the first's
@@ -45,10 +47,10 @@ const MODELS: Array = [
 	["flexible", "res://vendor/omr/files/5972-1.mpd"],
 	["orthanc", "res://models/orthanc.ldr"],
 ]
-## The longest a frame may be while the count is under way: FramePace's
-## slices are 12-50 ms, and one part's look was a single frame of 130-370 ms
-## on 10030 before a part of many boxes was asked a piece at a time.
-const COUNT_FRAME_MS := 100.0
+## A frame, the most any frame may be while the count or the steps are under
+## way: at half a frame from 12 ms a slice, the count held frames of up to
+## 97 ms on 10030 and 5972-1, and one part's look was a single frame of
+## 130-370 ms before a part of many boxes was asked a piece at a time.
 const FRAME_MS := 1000.0 / 60.0
 ## The line while the count is under way (Inspector._count_joined).
 const COUNTING := "Joined to … other parts, directly or through others"
@@ -175,21 +177,23 @@ func _case_model(tag: String, path: String) -> void:
 				if step_of.has(id) else ""
 			_check("%s #%d: \"%s\" %d frames after the count, as the steps worked out on the spot (\"%s\")"
 				% [tag, n + 1, took[n]["step"], took[n]["step_frames"], want], took[n]["step"] == want)
+		var planned: Array = []
+		for got: Dictionary in took:
+			planned.append(snappedf(float(got["step_longest"]), 0.1))
+		planned.sort()
+		_check("%s: no frame while the steps were worked out over a frame (the longest %.1f of %s)"
+			% [tag, planned.back(), planned], float(planned.back()) < FRAME_MS)
 	warm.sort()
 	_check("%s: the first click's frame %.1f ms, under a frame" % [tag,
 		took[0]["answer"]], float(took[0]["answer"]) < FRAME_MS)
 	_check("%s: a click's frame %.1f ms, under a frame (the least of %s)" % [tag,
 		warm[0], warm], warm[0] < FRAME_MS)
-	# The first click's frames said apart: on a model of 600 parts or fewer
-	# the steps are worked out in one of them (Inspector._plan_steps).
 	var longest: Array = []
-	for n: int in range(1, took.size()):
-		longest.append(snappedf(float(took[n]["longest"]), 0.1))
+	for got: Dictionary in took:
+		longest.append(snappedf(float(got["longest"]), 0.1))
 	longest.sort()
-	_note("%s: the first click's longest frame while it counted %.1f ms" % [tag,
-		float(took[0]["longest"])])
-	_check("%s: no frame while it counted over %.0f ms, the first click's apart (the longest %.1f of %s)"
-		% [tag, COUNT_FRAME_MS, longest.back(), longest], float(longest.back()) <= COUNT_FRAME_MS)
+	_check("%s: no frame after the click's while it counted over a frame (the longest %.1f of %s)"
+		% [tag, longest.back(), longest], float(longest.back()) < FRAME_MS)
 	await _switch(tag, parts, took)
 	await _pieces(tag, parts[1])
 	_builder.clear_selection()
@@ -349,7 +353,8 @@ func _click(part: Dictionary) -> Dictionary:
 	out["buttons_at"] = _inspector._actions.global_position.y
 	var frames: int = 0
 	var longest: float = 0.0
-	var last: int = t2
+	# From the end of the click's own frame ("answer"): each frame after.
+	var last: int = t3
 	while not _counted() and frames < 3000:
 		await process_frame
 		var now: int = Time.get_ticks_usec()
@@ -362,13 +367,20 @@ func _click(part: Dictionary) -> Dictionary:
 	out["line"] = _first_line()
 	await _frames(2)
 	out["buttons_after"] = _inspector._actions.global_position.y
-	# Its step in the instructions, on a model of 600 parts or fewer.
+	# Its step in the instructions, on a model of 600 parts or fewer, and the
+	# longest frame while the steps were worked out.
 	var waited: int = 0
+	var planned: float = 0.0
+	last = Time.get_ticks_usec()
 	while _world.brick_count() <= 600 and _step_line().is_empty() and waited < 900:
 		await process_frame
+		var now: int = Time.get_ticks_usec()
+		planned = maxf(planned, (now - last) / 1000.0)
+		last = now
 		waited += 1
 	out["step"] = _step_line()
 	out["step_frames"] = waited
+	out["step_longest"] = planned
 	return out
 
 
