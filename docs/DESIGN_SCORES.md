@@ -8270,6 +8270,110 @@ apart where designs sit. Lay SNOT parts with what they hold at rung 1.5 on
 System sets, so the half never floats. Results:
 `bench/results/ladder2-2026-11-22/` (ladder_report.md, ladder_sheet.png).
 
+### A Technic subject built the way Technic is built: studless, closed with panels in the body's colour (2026-11-26, design42, `358dcd233`, NO-GO)
+
+**Why.** pre261 builds a Technic subject 76% from System bricks. Real Technic
+sets are about 88% studless, and pins are their biggest family. design39 named
+the one combination never benched: design32's studless Technic brief together
+with design37's daylight closing call.
+
+**The change** (on pre261 `48e9ffb48`, not merged):
+- design32's brief: on a Technic subject the HOW of a studless build is told
+  once, and a first build more than half studded is sent back once.
+- design37's daylight: the background seen through the model in the judge's
+  three views is measured, and one closing `edit_model` call is offered.
+- `358dcd233`: on a studless model that call closes a side with Technic panels
+  (15458, 64782, 71709) in the model's own body colour, not black or grey
+  beams as a wall. Nothing in it is specific to a subject.
+
+**The bench.** The 12 tune subjects (6 Technic, 6 System), paired, each judged
+against its set, 4 verdicts each way round. Daylight was never in pre261, so the
+lever's arm measures brief, daylight and panels together.
+- The idiom moved at will. The lever's Technic finals are 89% studless (the sets
+  87%), with pins 36% (36%) and beams 17% (19%). System finals did not move.
+- But they hold 247 parts against the sets' 432. Three of six lever Technic
+  sessions timed out at 45 minutes.
+- Technic, lever minus base: likeness -33.3 (-66.7..-4.2), overall -4.2
+  (-16.7..+0.0). The studded base kept the silhouette and won likeness on 42061
+  (7 of 8) and 9393 (6 of 8).
+- System: overall +8.3 (+0.0..+29.2), resting on two subjects (40148, 7634).
+- Why it lost: the studless brief swaps SYSTEM for OPEN as the first cause (33
+  of 41 lost Technic verdicts). The judge saw "an unfinished frame", "cage-like".
+- One design left no model: 42061, where 19 `save_model` calls were refused over
+  one Technic gear the exact check found not held. That alone failed the bar.
+- Leaks 0 of 24, limits 0 of 24.
+
+**Verdict.** NO-GO. The family share is not what the judge rewards. A studless
+design loses on being open, and a closing call comes too late to fix it: by then
+the session has too few parts and too few minutes.
+
+**Next.** Technic density per minute, not idiom: whole studless sub-assemblies
+placed in one call (design43). Watch parts at minute 30 beside the set's count,
+and OPEN. Results: `bench/results/design42-2026-11-26/` (FINDINGS.txt,
+pictures/).
+
+### A Technic chassis laid whole in one call, and a save that never loses the model (2026-11-26, design43, `1c5e15b95`, kit NO-GO)
+
+**Why.** design42's studless designs lost on density: 148 parts at minute 30
+against the sets' 432. And one session lost its whole model to a refused save.
+
+**The change** (on design42's lever, not merged):
+- The chassis kit, one `submit_design` pattern:
+  `{"pattern": "technic", "kit": "chassis", "length": studs, "width": 5|7|9,
+  "wheels": [...], "color": body}`. It lays a studless frame whole in about two
+  seconds, fitted to any length: beam rails (laminated past 15 studs and pinned
+  at each joint), axles and wheels through the rails' holes, and 3 x 7 door
+  panels in the body's colour between the wheels. Every part is named, and the
+  answer lists each rail's free sockets, so the body goes on by `attach`.
+- The Technic HOW text teaches the kit in place of copying a frame.
+- The save fix, on a branch of its own to merge alone (d43save): see below.
+
+**Density** (mean parts at minutes 10/20/30/45; the set 431.5):
+
+| Technic arm | @10 | @20 | @30 | @45 | first parts |
+|---|---|---|---|---|---|
+| design42 base (pre261, studded) | 235.5 | 293.3 | 352.2 | 444.7 | 7.7 min |
+| design43 base (studless) | 52.0 | 115.2 | 187.8 | 208.0 | 7.0 min |
+| design43 lever (+ kit) | 52.7 | 126.5 | 186.0 | 264.0 | 3.8 min |
+
+- The kit was laid in 5 of 6 Technic sessions (42107, a motorcycle, has no
+  chassis), every one built, with 35 to 43 parts in one call.
+- It moved the start, not the pace. Half a session is still the model writing
+  between calls (22 of 42 minutes), and after the kit `edit_model` places a
+  median of 8 parts a call. One session reached the set: 8464's loader, 564 of
+  574 parts.
+- With the frame done, sessions spent the time saved on a studded body over it:
+  the lever's Technic finals are 14.3% System bricks against the sets' 6.0%.
+
+**The bench.** The same 12 subjects, paired. Technic likeness and overall
+against the set are 0% in both arms (48 verdicts each), a floored measure.
+Creativity +20.8 (-4.2..+47.9). OPEN as the first cause: 16 base, 15 lever,
+flat. SYSTEM rose from 0 to 5. System overall +0.0 (-18.8..+18.8). Leaks 0,
+limits 0, a model in every one of the 24 sessions after the save fix. Looking at
+the pictures, the lever's bodies are denser (42079's pallet and panels, 8464's
+bucket and cab), but the judge's vs-set verdict cannot see it while both arms
+sit at 0.
+
+**Verdict.** Kit NO-GO: Technic did not rise beyond its interval and OPEN did
+not fall.
+
+**The save.** On the bench a part the exact check refuses (not held, or
+colliding) no longer refuses the whole save. Before a bench writes its file, the
+design's own unlocked parts at fault come off as one edit (undo puts them back),
+the check is asked again, everything else is written, and the answer names each
+part. After a person's file is written the gate only speaks, and never changes
+their model. A chat's undo leaves the person's own step, except one made while
+that chat's call runs, which is still stamped as the chat's (savereview2 G2, as
+on pre261; owed, with G1). realset's end save skips features not settled. The
+second review (savereview2) said SHIP on F1-F4; `saved_without_attack_probe` and
+`save_whole_probe` pass.
+
+**Next.** A judge that can see Technic density (pairs of lever against base, not
+each against its set), and the body in the same one-call form as the frame:
+panels, fairings and bent liftarms fitted to the kit's named sockets, with
+studded bricks kept off a Technic body. Results:
+`bench/results/design43-2026-11-26/` (FINDINGS.txt, pictures/).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
