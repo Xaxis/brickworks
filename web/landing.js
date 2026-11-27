@@ -988,3 +988,67 @@ if (heroLoop) {
   if (document.readyState === "complete") whenIn();
   else addEventListener("load", whenIn, { once: true });
 }
+
+// --- the studio, fetched ahead -------------------------------------------------
+//
+// Start building leads to the studio, whose start waits for its engine and
+// its first pack before anything of it can run: 9.7 MB, 5.3 s of a desktop's
+// first visit on broadband (webstart14, 2026-11-27, against live's preview).
+// Fetched here once the page is in and the browser idle, they come from the
+// browser's own cache when the visitor goes on, as on a return: the studio's
+// page asks for those very addresses (the engine at its own /e/<hash>/, the
+// pack under the release's /b/<sha>/, both kept for good), and this reads
+// them from /app's own GODOT_CONFIG, so it never asks for other bytes. The
+// data pack and the rest of the parts are not: they come while the studio's
+// scripts compile, on a connection that can bring these.
+//
+// Not where it costs a visitor who never goes on: a connection that asks to
+// save data or reads as slow, and a window a phone's width where the browser
+// cannot say (WebKit has no navigator.connection), nor an iPhone or iPad,
+// whose engine is the owner's switch's to choose (shell.html). One file at a
+// time, at low priority, after the hero's loop has had its turn.
+// <html data-studio-ahead>: skipped, fetching, fetched or failed.
+const AHEAD_AFTER_MS = 3000;
+function aheadSkipped() {
+  const line = navigator.connection;
+  if (line?.saveData) return "save-data";
+  if (line && /(^|-)2g$|^3g$/.test(String(line.effectiveType || ""))) return "slow";
+  if (!line && PHONE_CUT.matches) return "phone";
+  const agent = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)) return "apple";
+  return "";
+}
+async function studioAhead() {
+  const why = aheadSkipped();
+  if (why) {
+    html.dataset.studioAhead = `skipped ${why}`;
+    return;
+  }
+  html.dataset.studioAhead = "fetching";
+  try {
+    const page = await fetch("/app", { credentials: "same-origin" }).then((answer) => (answer.ok ? answer.text() : ""));
+    const found = /const GODOT_CONFIG = (\{[^\n]*\});/.exec(page);
+    const config = found ? JSON.parse(found[1]) : null;
+    const engine = typeof config?.engine === "string" ? config.engine : "";
+    const build = typeof config?.executable === "string" ? config.executable : "";
+    if (!engine.startsWith("/e/") || !build.startsWith("/b/")) {
+      html.dataset.studioAhead = "skipped unplaced";
+      return;
+    }
+    for (const address of [`${engine}.js`, `${build}.pck`, `${engine}.wasm`]) {
+      const answer = await fetch(address, { credentials: "same-origin", priority: "low" });
+      if (!answer.ok || !answer.body) throw new Error(`${address}: ${answer.status}`);
+      // Read through and let go: the browser keeps it, this page needs none of it.
+      await answer.body.pipeTo(new WritableStream());
+    }
+    html.dataset.studioAhead = "fetched";
+  } catch {
+    html.dataset.studioAhead = "failed";
+  }
+}
+{
+  const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
+  const whenIn = () => setTimeout(() => idle(studioAhead, { timeout: 4000 }), AHEAD_AFTER_MS);
+  if (document.readyState === "complete") whenIn();
+  else addEventListener("load", whenIn, { once: true });
+}
