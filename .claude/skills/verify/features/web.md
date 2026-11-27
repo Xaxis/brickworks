@@ -2555,8 +2555,8 @@ plan with Claude as the client.
   snackbar (`offerFirstSteps`, kept in localStorage
   `brickworks.first_steps_due` until offered, also on the next page if that
   one went; checkdrift 2026-11-23). It waits for two quiet looks in a row:
-  no `call()` on its way (20 s at most) and no dialog open (however long a
-  person takes in it); `age()` and `nameFirst` (its look-up, its script and
+  no `call()` on its way (20 s at most after the last dialog closed) and no
+  dialog open (however long a person takes in it); `age()` and `nameFirst` (its look-up, its script and
   its Make your profile) count as calls, so after a comment the offer comes
   once the comment is posted, never under its name step (firststeps,
   2026-11-26: homefeed 9 failed so on 11-25/26): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the

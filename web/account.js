@@ -1324,11 +1324,12 @@ export async function askAgeIfAsked({ pending = false } = {}) {
 // once).
 const STEPS_DUE = "brickworks.first_steps_due";
 // A moment for the page to start what was pressed; then quiet for two
-// looks in a row. A call that never answers is waited for no longer than
-// the longest wait; a dialog open is a person answering it (their name, a
+// looks in a row. A dialog open is a person answering it (their name, a
 // list to keep it in), and a snackbar under it is never seen, so it is
-// waited out however long it takes. A comment's Make your profile took a
-// newcomer more than the 20 s, and First steps came and went under it.
+// waited out however long it takes; a call that never answers is waited
+// for no longer than the longest wait after the last dialog closed. A
+// comment's Make your profile typed in over 20 s had First steps come and
+// go under it, and offered as the comment went once it closed (firststeps).
 const STEPS_LATER_MS = 1000;
 const STEPS_QUIET_MS = 250;
 const STEPS_LONGEST_MS = 20000;
@@ -1355,8 +1356,12 @@ function keepStepsDue(address) {
 async function offerFirstSteps() {
   const pause = (ms) => new Promise((done) => setTimeout(done, ms));
   await pause(STEPS_LATER_MS);
-  const giveUp = Date.now() + STEPS_LONGEST_MS;
-  const busy = () => document.querySelector("dialog[open]") || (calling > 0 && Date.now() < giveUp);
+  let giveUp = Date.now() + STEPS_LONGEST_MS;
+  const busy = () => {
+    if (!document.querySelector("dialog[open]")) return calling > 0 && Date.now() < giveUp;
+    giveUp = Date.now() + STEPS_LONGEST_MS;
+    return true;
+  };
   for (let quiet = 0; quiet < 2; quiet = busy() ? 0 : quiet + 1) await pause(STEPS_QUIET_MS);
   const address = stepsDue();
   if (!address || !signedIn() || address !== email()) return;
