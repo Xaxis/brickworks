@@ -2980,7 +2980,11 @@ Three things the pictures taught:
 **Never worse.** Best in a browser draws Best's frames averaged first (10% of the bar) and keeps
 showing them while the trace refines behind ("Path tracing behind this picture: N of 256 samples").
 Each second the page measures what the denoise leaves on the model (`PageTracer.gauge`: the halves'
-noise after the passes, relative to the light, over a 4x4 grid of every 16x16 pixels). It shows
+noise after the passes, relative to the light, over a 4x4 grid of every 16x16 pixels). The cells
+are copied into a buffer behind a fence and read a second later, once the card has drawn them, so
+the page's thread never waits on the card for the measure (read at once, the traced page on
+SwiftShader was held 2.4 s once); an older measure is grainier, so the switch only comes later.
+The end's decision measures and reads at once. It shows
 the traced picture only once that is under `StudioRender.TRACED_NOISE`, and then says "Path
 traced, still refining". Finish now, a lost context or the end keep whichever picture is better,
 and the result says when it kept the frames.
