@@ -202,10 +202,12 @@ const PRODUCT_FILL := 0.0
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
 ## Parts moulded under the grid (photoreal30, RenderSettings.clearance,
-## PathTracer.clearance; docs/RENDERING.md 5ae): each part drawn 0.5 LDU
-## narrower across than the grid it stands on, as a real 1 x 1 brick is
-## 7.8 mm for 8 mm of grid, so parts side by side leave a slot.
-const PRODUCT_CLEARANCE := 0.5
+## PathTracer.clearance; docs/RENDERING.md 5ae): asked for, each part drawn
+## that many LDU narrower across than the grid it stands on (a real 1 x 1
+## brick is 7.8 mm for 8 mm of grid, 0.5 LDU), so parts side by side leave
+## a slot. 0 unless asked: at 0.5 the judge called the sets photographs no
+## more often (-0.037 against none, 95%: -0.130 to +0.022).
+const PRODUCT_CLEARANCE := 0.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
@@ -320,11 +322,14 @@ const PAPER_WHITE := 0.8
 ## the tent close-ups' photographs from the tracer's raw light
 ## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
 const PHOTO_EV := 0.33
-## How many stops more than PHOTO_EV a whole model's picture is exposed
-## (photoreal30, RenderSettings.high_key): the set photographs are exposed
-## so a white part's lit side is as bright as the paper (L 92-98, docs/
-## RENDERING.md 5y), where the card metered at PHOTO_EV left it at L 86.
-const PRODUCT_HIGH_KEY := 0.0
+## How many stops more than PHOTO_EV the product look on a backdrop is
+## exposed (photoreal30, RenderSettings.high_key; docs/RENDERING.md 5ae):
+## a product photograph is exposed high-key, a white part's lit side nearly
+## as bright as the paper (254 of 255 on 6660's door, where the card metered
+## at PHOTO_EV alone drew 215). Half a stop lifted the sets beside their
+## photographs by +0.089 (95%: +0.015 to +0.177); a whole stop washed them
+## out and gained nothing.
+const PRODUCT_HIGH_KEY := 0.5
 const PHOTO_LINEAR_SATURATION := 1.3
 const CAMERA_KNEE := 0.6
 const CAMERA_TOP := 2.5
