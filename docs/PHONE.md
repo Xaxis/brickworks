@@ -373,6 +373,38 @@ the scripts' 6.5 s and the 5 s from the window to working cut, which is the
 300 MB is the same cycle's compile (300 to 360 at its height on an iPhone,
 over 360 on Chromium).
 
+### Start building, and what the timer could not see (webstart14)
+
+webstart14, 2026-11-27 (`bench/results/webstart14-2026-11-27/FINDINGS.txt`,
+every phase before and after).
+
+- **webstart13's proof was a stale page.** `place_build.py` pointed
+  `index.html` at `/e/<hash>/` and `/b/<sha>/` and left export.sh's
+  `index.html.br` of the page before it; `serve.py --compressed` sent that
+  to Chromium (which takes brotli from 127.0.0.1; WebKit does not), so every
+  Chromium visit asked for an `index.js` that was not there: "Engine is not
+  defined". The stale copies now go (`tests/test_place_build.py`).
+- **No timed Chromium return read its cache.** The parts mirror's routes
+  (`page_routes.mjs`) turned each page's HTTP cache off, as Playwright's
+  do, so every return fetched the engine and its pack again (CDP
+  `fromDiskCache` false), 5 s of a desktop return at 20 Mbps that no
+  visitor's return pays. `start_phases` now launches with `keepCache`.
+- **Start building finds the engine here.** The home page prefetches the
+  engine and its pack once it is in and idle, on a computer's connection
+  (`web/landing.js` `studioAhead`): 9.7 MB, the 5 s a desktop first visit
+  spent on the files. Not on a phone's width, a cellular, slow or
+  Save-Data connection, nor an iPhone or iPad.
+- **Not the car's parts.** Asked for as soon as the catalogue is read,
+  they were read in the open and the time from the first part to working
+  did not shrink: tried and taken out.
+
+**What is left** is the page's own work, which no ordering of the start
+moves: the first screen's GDScript compile (4.3 s on a desktop, 4.6 on a
+phone, 6.5 on an iPhone, every visit, the 124-script cycle above), the
+engine's own start (0.6 to 1.3), the catalogue and the window (2 to 2.5),
+and 1.6 to 3.2 s from the first part to the car drawn, two frames of which
+one is 1 to 2 s of drawing in software.
+
 ## The no-threads export on WebKit
 
 `Web (no threads)` (`build/web-nothreads`, unshared memory) against the
