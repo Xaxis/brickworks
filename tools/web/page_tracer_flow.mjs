@@ -9,8 +9,11 @@
 //
 // Checks run on SwiftShader, which the app keeps to frames averaged (a
 // path traced picture there takes minutes): the first page asks for the
-// tracer by its address (?tracer=on), at a small Custom size, so a few
-// samples come in a minute. Fails if Best is not path traced there, its
+// tracer by its address (?tracer=on), at a small Custom size. The product
+// look meters its light first (96 samples of a 120-row picture, 20 s each
+// on a loaded box), so the traced Best is given --minutes (20; 60 on a
+// loaded box). Fails if Best is not path traced there, the dialog does not
+// say what it waits on before counting the picture's samples, its
 // sample count does not climb while the dialog shows the picture, Finish
 // now leaves it running or downloads nothing, the PNG is not the size
 // asked or is one flat colour, the page's thread is held over --stall
@@ -33,6 +36,9 @@ const out = args.out || "shots/page_tracer";
 const stallLimit = Number(args.stall || 2) * 1000;
 const [width, height] = String(args.size || "192x108").split("x").map(Number);
 const enough = Number(args.samples || 6);
+// How long the traced Best may take: on SwiftShader the product look's light
+// is metered first, 96 samples at 20 s each on a loaded box.
+const minutes = Number(args.minutes || 20);
 const withParam = (address, param) => `${address}${address.includes("?") ? "&" : "?"}${param}`;
 mkdirSync(out, { recursive: true });
 
@@ -170,7 +176,7 @@ try {
   // The tracer, asked for by the address.
   const page = await openPage(withParam(url, "tracer=on"));
   await chooseBest(page);
-  const download = page.waitForEvent("download", { timeout: 20 * 60000 }).catch(() => null);
+  const download = page.waitForEvent("download", { timeout: minutes * 60000 }).catch(() => null);
   const started = Date.now();
   await resetWaits(page);
   await press(page, "render_picture");
@@ -185,13 +191,18 @@ try {
   let staleWords = "";
   let finished = false;
   let shot = 0;
-  for (let n = 0; n < 20 * 120; n++) {
+  // A poll every half second, and the page's own answer, a frame on SwiftShader.
+  let polls = 0;
+  for (const end = Date.now() + minutes * 60000; Date.now() < end; polls++) {
     seen = await state(page);
     if (seen.working === "picture" && seen.words) said.add(seen.words);
     if (seen.working === "picture" && seen.samples > 0 && /^setting up/.test(seen.words || "")) {
       staleWords = `${seen.words} at ${seen.samples} samples`;
     }
-    if (seen.working === "picture" && seen.traced && seen.samples > 0) {
+    // The picture's own samples, not the metering's before them: Finish now
+    // pressed while the light is metered keeps nothing (StudioRender._traced).
+    const picturing = /^\d+ of \d+ samples$/.test(seen.words || "");
+    if (seen.working === "picture" && seen.traced && seen.samples > 0 && picturing) {
       if (!readied) {
         // The shaders compiled and the first samples in: the wait for a frame
         // until now was the readying's.
@@ -209,10 +220,18 @@ try {
         finished = Date.now();
       }
     }
-    if (n % 20 === 0 && seen.working) {
-      console.log(`      ${seen.words || ""} ${Math.round((seen.fraction || 0) * 100)}%, ${seen.samples || 0} samples`);
+    if (polls % 20 === 0 && seen.working) {
+      // How the page's tracer paces itself: its band, the page's own frame
+      // and the last gap between frames (page_tracer.js).
+      const pace = await page.evaluate(() => {
+        const t = window.brickworksTracer && window.brickworksTracer.tracer;
+        return t ? `${t.size[0]}x${t.size[1]}, ${t.rows} rows x ${t.perPass}, own frame ${Math.round(t.ownGap || 0)} ms,`
+          + ` gap ${Math.round(t.frameGap || 0)} ms, ${t.passes} passes` : "";
+      }).catch(() => "");
+      console.log(`      ${seen.words || ""} ${Math.round((seen.fraction || 0) * 100)}%, ${seen.samples || 0} samples`
+        + (pace ? ` (${pace})` : ""));
     }
-    if (seen.working === "" && n > 20) break;
+    if (seen.working === "" && polls > 20) break;
     await page.waitForTimeout(500);
   }
   const tracing = await waits(page);
