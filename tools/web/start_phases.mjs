@@ -224,7 +224,11 @@ async function one(job) {
   const config = CONFIGS[job.config];
   const dir = mkdtempSync(join(tmpdir(), "start-phases-profile-"));
   const type = config.engine === "webkit" ? webkit : chromium;
-  const options = config.engine === "webkit" ? { env: { ...process.env, ...WEBKIT_SOFTWARE } } : { args: SOFTWARE };
+  // Chromium's pages keep their HTTP cache under the parts mirror's routes
+  // (keepCache, page_routes.mjs): without it every return fetched the engine
+  // and its pack again (webstart14). WebKit's persistent contexts are not
+  // mirrored, and keep theirs.
+  const options = config.engine === "webkit" ? { env: { ...process.env, ...WEBKIT_SOFTWARE } } : { args: SOFTWARE, keepCache: true };
   const result = { url: job.url, label: job.label, config: job.config, load: loadavg()[0] };
   const context = bypassCookie(await type.launchPersistentContext(dir, { ...options, ...config.context }));
   try {

@@ -1005,8 +1005,10 @@ if (heroLoop) {
 // Not where it costs a visitor who never goes on: a connection that asks to
 // save data or reads as slow, and a window a phone's width where the browser
 // cannot say (WebKit has no navigator.connection), nor an iPhone or iPad,
-// whose engine is the owner's switch's to choose (shell.html). One file at a
-// time, at low priority, after the hero's loop has had its turn.
+// whose engine is the owner's switch's to choose (shell.html). As the
+// browser's own prefetches, after the hero's loop has had its turn: at the
+// lowest priority, and on through a click on Start building, where a fetch
+// of this page's own was cut off with the page and the studio began again.
 // <html data-studio-ahead>: skipped, fetching, fetched or failed.
 const AHEAD_AFTER_MS = 3000;
 function aheadSkipped() {
@@ -1035,12 +1037,14 @@ async function studioAhead() {
       html.dataset.studioAhead = "skipped unplaced";
       return;
     }
-    for (const address of [`${engine}.js`, `${build}.pck`, `${engine}.wasm`]) {
-      const answer = await fetch(address, { credentials: "same-origin", priority: "low" });
-      if (!answer.ok || !answer.body) throw new Error(`${address}: ${answer.status}`);
-      // Read through and let go: the browser keeps it, this page needs none of it.
-      await answer.body.pipeTo(new WritableStream());
-    }
+    await Promise.all([`${engine}.js`, `${build}.pck`, `${engine}.wasm`].map((address) => new Promise((done, failed) => {
+      const ahead = document.createElement("link");
+      ahead.rel = "prefetch";
+      ahead.href = address;
+      ahead.onload = done;
+      ahead.onerror = () => failed(new Error(address));
+      document.head.append(ahead);
+    })));
     html.dataset.studioAhead = "fetched";
   } catch {
     html.dataset.studioAhead = "failed";

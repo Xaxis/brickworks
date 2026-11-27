@@ -3417,9 +3417,10 @@ plan with Claude as the client.
   kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
   `studioAhead`): 3 s after the load, at idle, the page reads `/app`'s own
   `GODOT_CONFIG` and fetches its engine's `.js` and `.wasm` (`/e/<hash>/`)
-  and its pack (`/b/<sha>/index.pck`), one at a time at low priority, so
-  Start building's studio takes them from the browser's cache (both
-  immutable); not on Save-Data or a 2g/3g connection, a window under 600 px
+  and its pack (`/b/<sha>/index.pck`) as `<link rel=prefetch>`, at the
+  lowest priority and on through the click, so Start building's studio
+  takes them from the browser's cache (both immutable; CDP says
+  `fromDiskCache` for both, the wasm compiled at 1.2 s, webstart14); not on Save-Data or a 2g/3g connection, a window under 600 px
   where `navigator.connection` is missing (WebKit), an iPhone or iPad (its
   engine is the switch's), nor a build not placed. `<html
   data-studio-ahead>`: fetching, fetched, failed, `skipped <why>`
@@ -5107,6 +5108,11 @@ plan with Claude as the client.
   may be a deployment, so live is timed beside a build at the same moments;
   a protected preview is let in by `BW_BYPASS` (from `.env`'s
   `VERCEL_BYPASS`: without it every visit timed Vercel's login page).
+  Its Chromium keeps its HTTP cache under the parts mirror's routes
+  (`launchPersistentContext(dir, { keepCache: true })`, page_routes.mjs
+  `pageRoute(..., { keepCache })`): before webstart14 every return fetched
+  the engine and its pack again (CDP `fromDiskCache` false), which a
+  visitor's never does, and 5 s of a desktop return was that.
   Since webstart14, `--from=/` has the first visit come from the home page,
   read `--from-wait` ms (10000) first, as Start building's does, its
   `data-studio-ahead` at the click in the table.
@@ -5942,7 +5948,9 @@ plan with Claude as the client.
   uploaders' local folders. A run ends with `(storage mirror: N cache, N bucket,
   N local …; the bucket asked N time(s))`, and each answer carries
   `x-brickworks-mirror`. load_check alone reads the bucket (`realStore: true`):
-  it times a first visit. `tools/check.sh --network` gives its three probes the
+  it times a first visit. Its routes turn each page's HTTP cache off, as
+  Playwright's do; `launchPersistentContext(dir, { keepCache: true })`
+  leaves it on (start_phases, which times returns: webstart14). `tools/check.sh --network` gives its three probes the
   copy over HTTP (`node tools/web/storage_mirror.mjs serve`, PARTS_URL).
   `tests/test_storage_mirror.py` holds it.
 - `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the
