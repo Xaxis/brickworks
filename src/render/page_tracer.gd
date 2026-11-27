@@ -19,6 +19,8 @@ extends RefCounted
 ## What this browser was found to do: "" not yet asked, "yes", "software",
 ## "off" (the address said), "no WebGL2", "no float targets", "no parallel
 ## compile" (no KHR_parallel_shader_compile: the compile would hold the page).
+## A browser drawing without a graphics card says "software" first: that is
+## why it does not trace, whatever else it lacks (SwiftShader has neither).
 static var _can: String = ""
 ## Why the tracer stopped in this tab, "" while it has not: Best is frames
 ## averaged from then on.
@@ -39,8 +41,8 @@ const CAN := """(function () {
 		var lose = gl.getExtension('WEBGL_lose_context');
 		if (lose) { lose.loseContext(); }
 		if (!floats) { return 'no float targets'; }
-		if (!parallel && asked !== 'on') { return 'no parallel compile'; }
 		if (/swiftshader|llvmpipe|software|basic render/i.test(name) && asked !== 'on') { return 'software'; }
+		if (!parallel && asked !== 'on') { return 'no parallel compile'; }
 		return 'yes';
 	} catch (e) {
 		return 'no WebGL2';

@@ -3566,8 +3566,9 @@ picture the assistant is shown.
   `PageTracer.usable()`: WebGL2 with EXT_color_buffer_float and
   KHR_parallel_shader_compile on a graphics card (without the last, the page
   could only wait out the half-minute compile frozen; a software renderer,
-  SwiftShader or llvmpipe, keeps Best frames averaged too; both unless the
-  address says `?tracer=on`; `?tracer=off` keeps it so anywhere).
+  SwiftShader or llvmpipe, keeps Best frames averaged too, and is the reason
+  given when both hold, as on SwiftShader; both unless the address says
+  `?tracer=on`; `?tracer=off` keeps it so anywhere).
   tracer.js is fetched only when a path-traced Best starts (`PageTracer.ready`,
   `import()` from `Origin.build()`), its shaders compiled beside the page; a
   pass is given only once the last one's fence has signalled, sized by the
