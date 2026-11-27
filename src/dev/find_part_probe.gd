@@ -23,8 +23,9 @@
 ## Select all's longest frame was 138 to 211 ms over eleven, and here a row
 ## of 1,074 was 45 to 86 (2026-10-23, the RX 6700 XT at load 9 to 27).
 ##
-## Pictures: shots/findpart_list.png, findpart_row.png, findpart_find.png
-## and findpart_found.png. Look at them.
+## Pictures: shots/findpart_list.png, findpart_row.png, findpart_find.png,
+## findpart_found.png and findpart_asked.png (the find the moment it is
+## asked, the list still coming). Look at them.
 extends SceneTree
 
 const HOTEL := "res://vendor/omr/files/10297-1.mpd"
@@ -216,6 +217,7 @@ func _hotel() -> void:
 	_shell.run("select_find")
 	_check("the find has the keys at once, the list still coming (%s)"
 		% ("coming" if _list.is_filling() else "in"), _list.visible and find.has_focus())
+	await _shot("findpart_asked")
 	await _type("3004")
 	_check("...and keeps every key typed: '%s'" % find.text, find.text == "3004")
 	await _key(KEY_ENTER)
