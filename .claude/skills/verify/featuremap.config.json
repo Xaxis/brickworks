@@ -3998,7 +3998,7 @@
       "kind": "cli",
       "label": "submenus probe",
       "entry": "src/dev/submenu_probe.gd",
-      "reach": "tools/probe.sh submenu_probe [-- --saves=N]   (in a 1280x800 window on the GPU, the X server's pointer moved: every submenu of File, Edit and View open and drawn within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and on a slant whose first move is off its row, a rest-then-next move opens the next, Open recent's row opens its model; 50 saves unless given; SUBMENU lines) | tools/probe.sh submenu_probe -- --paths   (headless, as the release train runs it: the same paths, untimed)",
+      "reach": "tools/probe.sh submenu_probe [-- --saves=N]   (in a 1280x800 window on the GPU, the X server's pointer moved: every submenu of File, Edit and View open and drawn within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and on a slant whose first move is off its row, a rest-then-next move opens the next, Open recent's row opens its model; 50 saves unless given; SUBMENU lines) | tools/probe.sh submenu_probe -- --paths   (headless: the same paths, untimed; not yet in the train's lists: under the probe the bar's menus open and shut every frame, live's sha too)",
       "area": "building"
     },
     {

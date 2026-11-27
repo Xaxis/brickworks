@@ -2082,7 +2082,7 @@ func _wake_submenus() -> void:
 ## worth of moves, gathered into one) is already on Import or below: the
 ## place is then the one left on the row of some submenu opened before, and
 ## a pointer going on a slant straight into the submenu was read as going
-## away from it, and the submenu shut ("flash away", menufix2, 2026-11-27:
+## away from it, and the submenu shut (the owner: it flashes away; menufix2, 2026-11-27:
 ## File › Open recent on a slant to its third row shut on live and menufix
 ## alike). The submenu, open and holding the pointer's moves, hears one now,
 ## where the pointer is, and keeps that place.

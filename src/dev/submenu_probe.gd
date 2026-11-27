@@ -91,6 +91,7 @@ func _run() -> void:
 			break
 		await process_frame
 	_shell = _main.get("_shell")
+	_watch_menus()
 	process_frame.connect(func() -> void:
 		var now: int = Time.get_ticks_usec()
 		if _frame_at > 0:
@@ -210,10 +211,45 @@ func _click(at: Vector2) -> void:
 
 
 func _shut() -> void:
+	_shutting = true
 	for button: MenuButton in _shell.get("_menus"):
 		button.get_popup().hide()
+	_shutting = false
 	for _n: int in 4:
 		await process_frame
+
+
+var _shutting: bool = false
+var _opened_at: int = 0
+
+
+## A menu the probe opened, shut by anything but the probe: when, and what
+## else was on screen and had just taken the window's focus.
+func _watch_menus() -> void:
+	for button: MenuButton in _shell.get("_menus"):
+		var popup: PopupMenu = button.get_popup()
+		popup.popup_hide.connect(func() -> void:
+			if _shutting:
+				return
+			var shown: PackedStringArray = []
+			for node: Node in root.find_children("*", "Window", true, false):
+				var window := node as Window
+				if window != null and window.visible and window != popup:
+					shown.append("%s(%s)" % [window.name, window.get_class()])
+			print("SUBMENU (%s shut by itself %.2f s after it opened; windows shown: %s; focused control: %s)"
+				% [button.text, (Time.get_ticks_usec() - _opened_at) / 1000000.0, ", ".join(shown),
+				str(root.gui_get_focus_owner())]))
+	for node: Node in root.find_children("*", "MenuButton", true, false):
+		var other := node as MenuButton
+		other.get_popup().about_to_popup.connect(func() -> void:
+			if Time.get_ticks_usec() - _opened_at < 1000000:
+				var on_bar: PackedStringArray = []
+				for button: MenuButton in _shell.get("_menus"):
+					on_bar.append("%s %s%s" % [button.text, "shown" if button.is_visible_in_tree() else "FOLDED",
+						" (its menu up)" if button.get_popup().visible else ""])
+				print("SUBMENU (%s %s opens; hovered %s; frame %d; bar: %s; mouse buttons %d; from %s)" % [other.name,
+					other.text, str(root.gui_get_hovered_control()), Engine.get_process_frames(),
+					", ".join(on_bar), Input.get_mouse_button_mask(), str(get_stack())]))
 
 
 ## A row's band in its menu, top and bottom, found as the pointer finds it:
@@ -260,10 +296,13 @@ func _open(title: String) -> PopupMenu:
 	var at: Vector2 = button.get_global_rect().get_center()
 	_move(at)
 	await process_frame
+	_opened_at = Time.get_ticks_usec()
 	await _click(at)
 	for _n: int in 6:
 		await process_frame
 	await create_timer(0.4).timeout
+	if not button.get_popup().visible:
+		print("SUBMENU (%s not open after its click)" % title)
 	return button.get_popup()
 
 
