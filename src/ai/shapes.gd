@@ -5318,6 +5318,11 @@ class Plan extends RefCounted:
 					plates[cell] = at(cell, j)
 			for one: Dictionary in _wedged_off(plates, j):
 				made.append(one)
+			if flank and j == 0 and not held.is_empty():
+				for one: Dictionary in _rows_paired(plates, tops, under, j):
+					made.append(one)
+					for cell: Vector2i in one["_cells"]:
+						covered[Vector3i(cell.x, j, cell.y)] = true
 			for one: Dictionary in _layer(plates, j, Shapes.CORE_PLATES, -1):
 				made.append(_annotated(one, Shapes.CORE_PLATES, 1, true))
 			for one: Dictionary in _layer(tops, j, Shapes.TOPS, -1):
@@ -5354,6 +5359,65 @@ class Plan extends RefCounted:
 		one["_studs"] = cells if studded else ([] as Array[Vector2i])
 		one["_base"] = cells
 		return one
+
+	## A shell's first layer, against the core, laid as a builder lays a panel
+	## on its side: every row no side stud reaches in one part with the row
+	## beside it that one does, two rows tall. A side-stud brick is three
+	## plates tall and a row on its side two and a half, so only every second
+	## row has one ([method _anchored]); a row between, laid in plates a row
+	## tall, was held by nothing, pruned, and its plates given back to the core,
+	## which stood them upright inside a turned cube. Over the fourteen at 48
+	## studs those were 3% of the steep faces, nearest an upright part in a
+	## turned cube, most of them in its lowest three plates. Each such row with
+	## the row over it first, then with the row under it; only where that row's
+	## side stud holds it, in one colour. A tile where both are a top's or
+	## under a shell, a plate otherwise. Taken out of [param plates],
+	## [param tops] and [param under]: placements.
+	func _rows_paired(plates: Dictionary, tops: Dictionary, under: Dictionary, j: int) -> Array:
+		var out: Array = []
+		var kinds: Array = [plates, tops, under]
+		var kind_of := func(cell: Vector2i) -> int:
+			for k: int in kinds.size():
+				if (kinds[k] as Dictionary).has(cell):
+					return k
+			return -1
+		var two_plates: Array = CORE_PLATES.filter(func(e: Array) -> bool: return int(e[1]) == 2)
+		var two_tiles: Array = TOPS.filter(func(e: Array) -> bool: return int(e[1]) == 2)
+		for way: int in [-1, 1]:
+			var odd: Array = []
+			for d: Dictionary in kinds:
+				for key: Variant in d:
+					if (key as Vector2i).y % 2 == 1:
+						odd.append(key)
+			odd.sort()
+			var groups: Dictionary = {}    ## Vector3i(band's top row, colour, tiled) -> wanted
+			for raw: Variant in odd:
+				var cell: Vector2i = raw
+				var mate: Vector2i = cell + Vector2i(0, way)
+				var k: int = kind_of.call(cell)
+				var m: int = kind_of.call(mate)
+				if k < 0 or m < 0 or not held.has(mate):
+					continue
+				var colour: int = int((kinds[k] as Dictionary)[cell])
+				if int((kinds[m] as Dictionary)[mate]) != colour:
+					continue
+				var group := Vector3i(mini(cell.y, mate.y), colour, 1 if k > 0 and m > 0 else 0)
+				if not groups.has(group):
+					groups[group] = {}
+				(groups[group] as Dictionary)[cell] = true
+				(groups[group] as Dictionary)[mate] = true
+			var keys: Array = groups.keys()
+			keys.sort()
+			for raw: Variant in keys:
+				var group: Vector3i = raw
+				var tiles: Array = two_tiles if group.z == 1 else two_plates
+				var laid: Dictionary = {}
+				for one: Dictionary in _tile(groups[group], j, group.y, tiles, laid, -1):
+					out.append(_annotated(one, tiles, 1, group.z == 0))
+				for cell: Variant in laid:
+					for d: Dictionary in kinds:
+						d.erase(cell)
+		return out
 
 	## Only the parts joined to the shape's foot by studs, each into a part
 	## over it or under it: a plate a stud wide on the rim, its neighbours all
