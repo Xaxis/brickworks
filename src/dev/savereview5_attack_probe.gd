@@ -353,6 +353,14 @@ func _judge(tag: String, colour: int, maker: String, what: String, other: String
 	_check("%s every designed part standing is in a step, so some undo takes it (%d of %d)" % [tag, holding,
 		standing - was], holding >= standing - was)
 	var before: int = _count(colour)
+	# By number: what the undo takes is a designed part standing before it and
+	# gone after. One its own step puts back is not taken: the chat's clear,
+	# landed after the design was laid, holds the design as it took it off, and
+	# its undo gives it back (PC, when the clear comes after the laying).
+	var stood: Array[int] = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.color_code == colour:
+			stood.append(brick.id)
 	var told := PackedStringArray()
 	for _n: int in 4:
 		var said: String = await _say("undo", {}, other)
@@ -361,8 +369,14 @@ func _judge(tag: String, colour: int, maker: String, what: String, other: String
 		if not said.begins_with("Undid") and not said.begins_with("Redid"):
 			break
 	print("    %s's undo, as often as it undoes: %s" % [other, " || ".join(told)])
-	print("    MEASURE %s: designed parts %d before %s's undo, %d after" % [tag, before, other, _count(colour)])
-	_check("%s %s's undo takes none of %s's parts" % [tag, other, what], _count(colour) == before)
+	var taken: int = 0
+	for brick_id: int in stood:
+		var now: BrickWorld.Brick = _world.get_brick(brick_id)
+		if now == null or now.color_code != colour:
+			taken += 1
+	print("    MEASURE %s: designed parts %d before %s's undo, %d after, %d of those before taken" % [tag,
+		before, other, _count(colour), taken])
+	_check("%s %s's undo takes none of %s's parts (%d taken)" % [tag, other, what, taken], taken == 0)
 
 
 ## How many parts of [param colour] the step [param step] put down (its undo takes off).

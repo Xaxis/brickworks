@@ -3615,7 +3615,7 @@ func _tool_answer(block: Dictionary, by: String) -> Variant:
 			if _keeps_to_focus():
 				return _not_while_scoped()
 			progress.emit("standing %s in the model" % str(args.get("name", "a figure")))
-			var stood: Dictionary = await FigureTool.add(args, library, world, builder)
+			var stood: Dictionary = await FigureTool.add(args, library, world, builder, by)
 			_placed_ids.append_array(stood["ids"])
 			if not bool(stood["ok"]) or not ModelShot.possible():
 				return str(stood["text"])

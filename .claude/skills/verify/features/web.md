@@ -717,7 +717,9 @@ plan with Claude as the client.
   own (savereview5 F1: a review took 916). A clear during a design starts the design's
   ledger again, so what it lays after the clear is in its step, never in none
   (`BrickWorld.clear`; F2). A feature or surface piece's parts are the ones its own
-  edit laid (`Ledger.laid`, `FeaturePass.lay`, `SurfacePass._edit`).
+  edit laid (`Ledger.laid`, `FeaturePass.lay`, `SurfacePass._edit`). A tool that puts
+  parts down after a wait names its caller as it does (`FigureTool.add`'s figure:
+  unnamed, add_minifig's parts were in no step, `claude_undo_probe`).
   `savereview5_attack_probe` (headless, API stand-in on 13080-13089;
   `--sr5=pr,ps,pc,cr,cc`): pr/ps/pc the person's panel design beside their chat's
   review, save and clear; cr/cc a chat's design beside another chat's review and
