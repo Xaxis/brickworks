@@ -72,11 +72,14 @@ func next() -> void:
 	_until = Time.get_ticks_usec() + _slice(_least, _share)
 
 
-## How long a slice of light work is now, usec ([constant LIGHT_US] and
-## [constant LIGHT_SHARE]): for work spread over frames by hand, a slice
-## at each of a node's turns, rather than by awaiting [method next].
+## How long a slice of light work is, usec: [constant LIGHT_US] whatever
+## the frame's length, for work spread over frames by hand, a slice at each
+## of a node's turns, rather than by awaiting [method next]. A share of the
+## frame was a long slice on a slow one: an eighth of Orthanc's 220 ms
+## frames as it opened was a 27.8 ms slice of GrabDrag's copy (grabtake).
+## With nobody watching, the unwatched slice.
 static func light_us() -> int:
-	return _slice(LIGHT_US, LIGHT_SHARE)
+	return maxi(UNWATCHED_US, LIGHT_US) if unwatched else LIGHT_US
 
 
 static func _slice(least: int = LEAST_US, share: int = 2) -> int:
