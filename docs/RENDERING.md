@@ -2952,6 +2952,83 @@ a set is not. What is left is a clean that holds at 4 to 8 samples: an edge-avoi
 several passes, guided by the normals and albedo the tracer already writes, in place of the one
 7x7 pass. Then f28 again.
 
+## 5ad. Denoised in the browser, and never worse than the raster (photoreal29)
+
+**The filter.** The desktop's only denoiser is the resolve's one 7x7 guided pass (`cleaned()`),
+which wants about 256 samples. The browser now goes past it with SVGF's spatial part
+(`src/render/page_denoise.frag`, run by page_tracer.js before the resolve). There are five à-trous
+passes, 1, 2, 4, 8 and 16 pixels apart, on a 5x5 B3 kernel. The ported tracer sums two more targets
+for it. u_more holds the eye's first hit: its albedo and its depth along the camera. u_even holds the
+even samples' light and kind apart from the odd ones. So each pixel has two halves of its samples.
+Their difference is the pixel's measured noise, never an assumed one, and the passes carry that
+variance on, weights squared. Two neighbours are averaged as far as they are alike in light (in units
+of that noise, blurred 3x3), albedo, normal, depth (against the surface's own slope) and kind
+(plastic by lightness, clear plastic, the sweep, nothing).
+Three things the pictures taught:
+
+- SVGF divides the light by the albedo and filters that. Here the clear coat's white reflection,
+  divided by a saturated blue's red channel, came back fifty times over and turned the white print
+  on a minifig's overalls pink. The light is filtered as it is, and the albedo is an edge stop.
+- An edge out of focus is a band of pixels, each a mean of the part and what is behind it, from 1
+  to 5 samples. By luck some are all part and some all backdrop, and their guide is as noisy as
+  their light. Every stop held them apart, and the blurred edge stayed torn. Where the halves of
+  most pixels round a pixel met different kinds, only the light stops the filter, in units of how
+  the band's light varies. A print's line is two pixels wide, a third of those, and stays sharp.
+- Each pass is drawn in bands of half a megapixel. On this box's card a pass over 2 Mpx takes
+  9-27 ms in all, so about 100 ms on a mid laptop's card.
+
+**Never worse.** Best in a browser draws Best's frames averaged first (10% of the bar) and keeps
+showing them while the trace refines behind ("Path tracing behind this picture: N of 256 samples").
+Each second the page measures what the denoise leaves on the model (`PageTracer.gauge`: the halves'
+noise after the passes, relative to the light, over a 4x4 grid of every 16x16 pixels). It shows
+the traced picture only once that is under `StudioRender.TRACED_NOISE`, and then says "Path
+traced, still refining". Finish now, a lost context or the end keep whichever picture is better,
+and the result says when it kept the frames.
+
+**The judge** (pool g29: photoreal16's solo judge, 6 trials x 8 rounds, the ten shots). Each shot
+was drawn as a mid laptop's 5, 15 and 30 s leave it (f28's sample counts at a sixth, a half and
+all of them; `laptop29.sh`, one `gpu --brief` job a shot), then denoised. d is the light stop at 8
+standard deviations, e at 4.
+
+| label | close-ups | sets |
+| --- | --- | --- |
+| raster | 0.047 | 0.033 |
+| d, 5 s | 0.450 | 0.031 |
+| d, 15 s | 0.587 | 0.036 |
+| d, 30 s | 0.600 | 0.046 |
+| e, 30 s | 0.653 | 0.049 |
+| tracer, 256 samples | 0.655 | 0.057 |
+
+Against the raster, shot by shot, both 30 s arms are ahead beyond the interval on every shot. The
+sets with e: +0.010, +0.015, +0.036 and +0.003. With d: +0.011, +0.007, +0.022 and +0.010. f28's raw
+30 s sets had scored 0.032 against the raster's 0.033. At 30 s, e on the close-ups is the tracer at
+256 (0.653 against 0.655). grey_1x3, f28's worst at -0.502, scores 0.884 against 256's 0.824.
+At 5 s a set has one sample. Two sets are below the raster (-0.004 and -0.005, beyond the
+interval) and two tie it. So at 5 s those sets must keep the frames.
+
+**Where to switch.** With d, every draw that left 0.059 or less (`laptop29`'s measure, the app's
+own) scored at or over the raster: at 15 s the sets by +0.001 to +0.005, at 30 s by +0.007 to
++0.022. Every set's first sample left 0.166 or more. So `TRACED_NOISE` is 0.1, and at a mid
+laptop's pace a set switches at its second or third sample. A close-up switches at its first
+measure (0.010 to 0.032 at 5 s), and so does the clear round (0.033, +0.009). red_slope's first
+sample left 0.218 and scored +0.103: it keeps the frames a few seconds longer than it had to.
+Pool h29 judged e at 5 and 15 s too. There set_6532 at 15 s was 0.002 under the raster (beyond
+the interval) though it left only 0.043, where d's draw left 0.040 and scored +0.005. e is ahead
+at 30 s, but no level of e's noise separates its draws as cleanly. So the page filters with d
+(`DENOISE_TUNE`, light stop 8).
+
+Bar by bar: the 30 s draws, denoised, beat the raster beyond the interval on every close-up and
+every set. What Render shows at 5, 15 and 30 s is the raster where the trace left over 0.1 and the
+trace where it left under, and in g29 every one of those scored at or over the raster. The first
+screen is the same 220 scripts and 7,390,694 bytes. Sheets: `sheets/grey_1x3.jpg`,
+`sheets/set_6532.jpg`, `sheets/red_slope_2x4.jpg` (the raster, raw and denoised at 30 s,
+denoised at 5 and 15 s, and 256).
+
+What is left. The à-trous leaves a faint grid in a shadow on white at 5 samples. An edge out of
+focus is softer than raw but still not smooth. Both show only at twice the judge's size. The
+desktop's Best still has only the 7x7 pass. It traces at 256 on a card that traces rays, so it
+does not need this, but it could use the same filter for Finish now.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

@@ -130,8 +130,12 @@ const PRODUCT_DENOISE := 5.0
 ## In a browser (photoreal29): the share of the progress Best's frames take
 ## before the tracer; the grain (PathTracer.gauge's "left") under which the
 ## traced picture is shown over them; and what the dialog says meanwhile.
+## Pool g29 judged every shot at a mid laptop's 5, 15 and 30 s: each draw
+## that left 0.059 or less scored at or over the frames (sets by +0.001 to
+## +0.022), and the sets' first samples, which left 0.166 or more, two of
+## them under (-0.004, -0.005). TRACED_NOISE is between, near their middle.
 const FRAMES_SHARE := 0.1
-const TRACED_NOISE := 0.05
+const TRACED_NOISE := 0.1
 const TRACING_BEHIND := "Path tracing behind this picture: %d of %d samples"
 const STILL_REFINING := "Path traced, still refining: %d of %d samples"
 ## The product look's camera and wear (photoreal4), where a render asks for
@@ -3783,8 +3787,8 @@ func _held_back() -> bool:
 
 ## Whether the traced picture is cleaner than the frames' (photoreal29): its
 ## grain left after the denoise (PathTracer.gauge, relative to the light over
-## the model's plastic) under TRACED_NOISE, the level below which the judge
-## preferred it to them on every shot of pool g29. Kept in [member last_noise].
+## the model, plastic and clear) under TRACED_NOISE, the level below which the judge
+## scored it at or over them on every shot of pool g29. Kept in [member last_noise].
 func _settled(clean: float) -> bool:
 	last_noise = _tracer.gauge(clean)
 	return not last_noise.is_empty() and float(last_noise.get("left", INF)) <= TRACED_NOISE

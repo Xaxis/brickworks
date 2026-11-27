@@ -44,7 +44,7 @@ lib:studio renderer
 **Best** averages many frames for soft shadows, smooth edges, shading under every ledge and depth of field. **Best's frames** sets how many: **As this device does best** is 32 in a browser.
 
 > [!NOTE]
-> On a graphics card Best is path traced: light bounces off the floor and between the parts, and glass tints what is behind it, in 256 samples unless you set fewer. In a browser your own graphics card traces it, the picture getting cleaner while you watch; **Finish now** keeps it as clean as it is. The first time, the browser readies the path tracer for your card, which can take a minute; the dialog says what it is waiting on. The desktop app (coming soon) traces it on a card that traces rays. A browser without a graphics card, or one that would stop the page while it readied the tracer, averages frames, and the result says why.
+> On a graphics card Best is path traced: light bounces off the floor and between the parts, and glass tints what is behind it, in 256 samples unless you set fewer. In a browser your own graphics card traces it: you see Best's frames averaged first, and the path traced picture takes their place only once it is cleaner, then keeps getting cleaner while you watch. The dialog says which one you are looking at. **Finish now** keeps whichever of the two is better at that moment. The first time, the browser readies the path tracer for your card, which can take a minute; the dialog says what it is waiting on. The desktop app (coming soon) traces it on a card that traces rays. A browser without a graphics card, or one that would stop the page while it readied the tracer, averages frames, and the result says why.
 
 <!-- covers
 lib:path tracer

@@ -3613,6 +3613,24 @@ picture the assistant is shown.
   timed); bench/results/photoreal28-2026-11-26/scripts/gpu28.py runs the same
   shaders and textures on the card through EGL under `gpu`, a band of rows
   a pass (a whole picture's pass of a set ran past the kernel's 10 s).
+  Denoised and never worse (photoreal29, docs/RENDERING.md 5ad): each
+  picture is filtered before the resolve by `src/render/page_denoise.frag`
+  (SVGF's spatial a-trous, five passes in bands, guided by the first hit's
+  normal, depth, albedo and kind that the ported tracer sums into two more
+  targets, u_more and u_even; the even samples apart give each pixel two
+  halves, and their difference its noise). Best in a browser draws Best's
+  frames averaged first (`StudioRender._picture(..., raster)`, 10% of the
+  bar) and keeps them on screen while the trace refines behind ("Path
+  tracing behind this picture: N of M samples"); it shows the trace only
+  once `PageTracer.gauge` measures what the denoise leaves under
+  `StudioRender.TRACED_NOISE` ("Path traced, still refining"). Finish now
+  and the end keep whichever is better; `kept_frames` and `noise` go to
+  window.brickworksRender and the result says "Kept the frames averaged"
+  when it kept them. page_tracer_flow fails if the dialog never says the
+  trace is behind, or the result says frames averaged without having kept
+  them. bench/results/photoreal29-2026-11-27/scripts/laptop29.sh draws each
+  judge shot as a mid laptop's 5, 15 and 30 s leave it, raw and denoised,
+  one `gpu --brief` job a shot, passes held to 90 ms.
 - `render queue` (File, Render queue…; `src/ui/render_queue.gd`,
   `RenderQueue.of(app)`, loaded by name so main and the shell do not
   compile it at start): a panel in the bottom right of the model's room.
