@@ -4111,7 +4111,170 @@ it. On Smithsonian-1 its rejoining goes from 25 to 48 s and the mend from
 
 ![The Bell X-1 at 48 studs: on pre261 laid again with its sides upright (left, 633 parts), on snot10 with 35 cubes turned and its right wing's tip held (right, 697 parts)](brickify/unit6-eleventh-bell-x1-48.jpg)
 
+### The twelfth round: a sliver of the model past a turned cube is laid by the cube's shell (2026-11-27)
+
+This round counts what leaves a steep face stacked on today's `pre261`, with
+the cube rule split into its five tests, and changes the largest of them at
+its root. Unit `snot11b`, from `pre261` at `87461726`. Scripts, logs and
+pictures are in `bench/results/snot11-2026-11-27`.
+
+**In short: GO.** A sliver of the model, fewer than four plates, standing
+in the cube past a steep cube no longer leaves that side stacked: the
+cube's shell lays it. Over the fourteen at 48 studs, turned rises from
+45.5% to 47.6% and nearer than studs up from +6.8% to +7.3%. Every model
+is one piece, with no joint past its load, at least 97.6% of it in a part,
+and at most 1.023 times `pre261`'s parts. In same-moment pairs it takes at
+most 1.26 times as long (Spot). "Past the model" goes from 7.8% of the
+steep faces to 3.4%.
+
+#### What leaves a steep face stacked
+
+`study11.py` (the tenth round's `study9.py`, every reason kept per phase)
+read both arms of the bench at 48 studs, and `refusals.py` and `coarse.py`
+made the table. Each share is the mean over the fourteen models of their
+steep faces.
+
+| Why a steep face is left stacked | `pre261` | This round |
+|---|---:|---:|
+| **Turned** (the part nearest it on its side) | **45.5%** | **47.6%** |
+| In a turned cube, the part nearest it upright | 7.5% | 7.6% |
+| The whole laid again studs up (the temple) | 6.9% | 6.9% |
+| Too thin | 9.9% | 9.9% |
+| Too small | 2.3% | 2.1% |
+| **Cube rule: past the model** | **7.8%** | **3.4%** |
+| Cube rule: a band between phases | 6.4% | 7.4% |
+| Cube rule: a cap or cover | 5.9% | 6.6% |
+| Cube rule: too little core behind | 2.8% | 3.3% |
+| Cube rule: leans too far | 4.5% | 4.5% |
+| *The cube rule, all five* | *27.4%* | *25.3%* |
+| No anchor | 0.2% | 0.3% |
+| Unsure | 0.3% | 0.3% |
+
+Of the 4.4 points that "past the model" gives up, 2.1 are turned; most of
+the rest now stop at the cube rule's other tests (a band, a cap, the core
+behind), which the newly asked cubes meet as any other cube does.
+
+"Past the model" is the largest of the cube rule's five tests. It has two
+parts:
+
+- **The ask moved out and refused, 4.7 points.** Where the model reaches
+  into the cube past a steep cube, that cube is asked to face out instead.
+  Most of these cubes past (2.6 points) then held fewer than four plates of
+  the model (`CUBE_LEAST`) and were refused for it ("few"). The side was
+  left stacked.
+- **The model beyond the shell, 3.1 points.** The cube was refused because
+  the model stands in the cell past its shell.
+
+#### As a builder: a sliver past the cube, or a slab
+
+![Two refused cubes in a slice through the model, a stud a column and a plate a row, the cube blue and the model in the cube past it red. Left, Bob: one plate of the model past the cube, refused. Right, the Stanford bunny: 15 plates past it, refused](brickify/unit6-twelfth-sliver-or-slab.png)
+
+- **A sliver is stricter than needed.** Bob's cube at (4, 30, 7) holds 20
+  of its own 20 plates and has one plate of the model in the cube past it.
+  Refusing the cube leaves the whole side stacked for that plate. A builder
+  turns the side and lays that plate with it, one stud further out on the
+  shell's own plates.
+- **A slab is a real failure.** The bunny's cube at (4, 71, 15) has 15
+  plates of the model past it. That is a body of the model standing in
+  front of the shell. The shell would not be at the surface, and the body
+  would hang on the shell's face with nothing under it. It is still
+  refused.
+
+#### The change
+
+1. **A sliver past the cube is its shell's** (`Plan._cube_shell`). Where
+   the cube past holds fewer than `CUBE_LEAST` plates of the model and is
+   not turned itself, its plates go to this cube's shell instead of
+   refusing the cube "beyond". Glass is still refused. More than a sliver
+   refuses the cube as before.
+2. **The ask is not moved into a sliver** (`Plan._cube_shells_at`,
+   `_cube_plates`). The cube with the side's surface keeps it, and its
+   shell takes the sliver.
+3. **The shell keeps the air round the sliver** as it keeps its own cube's.
+   Without it, the Utah teapot at 48 studs took 1.65 times `pre261`'s time
+   in a same-moment pair. Its mend took 2 parts out ("it ran into the part
+   beside it") and propped a third: another shell's parts reached into the
+   air beside the sliver, which no shell held, and ran into its plates
+   (`left11.gd`).
+
+A second change tried with the third refused a sliver that has more of the
+model past it again. That gave the Bell X-1 a 1 × 6 plate held on one stud
+at 2.3 times its working load. It is not kept.
+
+| Variant, at 48 studs (`build.gd`) | Teapot: mended | Spot: mended | Avocado: mended | Bell X-1: joints past load |
+|---|---:|---:|---:|---:|
+| the sliver to the shell (`39d4a8cc`) | 2 | 2 | 1 | 0 |
+| and refused with the model past it | 2 | 2 | 1 | 1 |
+| and its air kept too (`9147b194`) | 0 | 1 | 0 | 1 |
+| **the sliver to the shell, its air kept (this round)** | **0** | **1** | **0** | **0** |
+
+**The fourteen at 48 studs**, `pre261` against this round, each set of
+models laid by both at once (snot8's judge):
+
+| Model | Steep faces turned | Nearer than studs up | Parts (x `pre261`) | In a part | Past load | Mended |
+|---|---|---|---|---|---|---|
+| **Bob** | **55% → 64%** | +9.9% → +12.7% | 4,198 (1.023) | 99.5% → 99.4% | 0 | 1 |
+| **Stanford bunny** | **60% → 64%** | +9.8% → +10.5% | 6,543 (0.987) | 99.5% → 99.4% | 0 | 1 |
+| 3DBenchy | 31% → 32% | +3.2% → +3.1% | 3,179 (1.005) | 99.5% → 99.5% | 0 | 0 |
+| **Armadillo** | **50% → 53%** | +6.5% → +6.8% | 3,764 (1.003) | 98.6% → 98.4% | 0 | 0 |
+| **Avocado** | **58% → 61%** | +7.3% → +7.5% | 4,370 (0.991) | 99.5% → 99.3% | 0 | 0 |
+| Figure | 31% → 32% | -2.4% → -2.7% | 2,749 (1.006) | 99.1% → 98.7% | 0 | 3 |
+| Fox | 51% → 52% | +16.4% → +18.1% | 1,052 (1.003) | 98.3% → 98.8% | 0 | 8 |
+| Milk truck | 68% → 69% | +25.2% → +25.7% | 3,911 (1.004) | 99.6% → 99.5% | 0 | 0 |
+| Objaverse (the temple) | 4% → 4% | -5.9% → -5.9% | 10,744 (1.000) | 98.2% → 98.2% | 0 | 179 |
+| Smithsonian-1 | 40% → 35% | +5.9% → +4.3% | 6,335 (1.008) | 98.4% → 98.4% | 0 | 4 |
+| **Smithsonian-2 (the Bell X-1)** | **31% → 36%** | -1.0% → -0.1% | 702 (1.007) | 98.4% → 97.6% | 0 | 0 |
+| **Spot** | **64% → 67%** | +12.9% → +13.6% | 5,274 (1.001) | 99.2% → 99.1% | 0 | 1 |
+| Toy car | 47% → 47% | +9.4% → +8.4% | 3,304 (1.011) | 99.0% → 98.9% | 0 | 2 |
+| **Utah teapot** | **46% → 50%** | +7.2% → +8.5% | 3,607 (0.995) | 99.4% → 99.3% | 0 | 0 |
+| **The fourteen** | **45.5% → 47.6%** | **+6.8% → +7.3%** | 1.175 → 1.177 x studs up | | | |
+
+Timed in same-moment pairs, one for each model and three for the teapot,
+Spot and the avocado, it takes 0.81 to 1.26 times as long: Spot 1.21, 1.26
+and 1.23, the Bell X-1 1.09, Bob and the milk truck 1.07, the teapot 0.94
+to 0.98, the rest 0.81 to 1.04. The temple has no pair (no job file); in
+the bench it took 1.37 times as long, its two arms not started together.
+Spot's extra time is its mend: one part runs into another and is taken
+out, and the check runs twice (28 s against 16 s).
+
+- **Smithsonian-1 turns less**, 40% to 35%, though it turns 348 cubes
+  against 342 (`why.txt`). Its mend takes out 4 parts where `pre261`'s
+  takes out 1. Where the judge's nearest part went upright is not found
+  here.
+- **The Bell X-1 is 97.6% in a part** against 98.4%, 41 cubes turned
+  against 35.
+
+![Bob at 48 studs, its steep faces coloured by why they are where they are, from +x, from +z and a corner: on pre261 (top) 55% turned (green) and 12% past the model (red); this round (bottom) 64% turned and 1% past the model](brickify/unit6-twelfth-bob-48.png)
+
+![The Utah teapot at 48 studs, coloured the same way: on pre261 (top) 46% turned and 11% past the model; this round (bottom) 50% turned and 3% past the model](brickify/unit6-twelfth-teapot-48.png)
+
 ### Proof
+
+The twelfth round's runs (`snot11b`, 2026-11-27), all in
+`bench/results/snot11-2026-11-27`, from the locked snapshot `snot11bsnap3`
+(`117148b4`) against `snot11bbase` (`pre261` at `87461726`):
+
+- **The count:** `study11.py` read both arms of the bench (`study/pre261`,
+  `study/new3`), `refusals.py` and `coarse.py` made the tables
+  (`judge/*-refusals.txt`, `judge/*-coarse-md.txt`), `moved.py` split
+  "past the model" (`judge/moved.txt`) and `cubepic.py` drew the refused
+  cubes (`pics/`).
+- **The teapot's time and the Bell X-1's joint:** `left11.gd` named what
+  the teapot's mend took out (`diag/left-new.log`); `build.gd` laid each
+  variant of the table (`diag/var1-*`, `diag/var2-1`, `diag/bx1-*`).
+- **The fourteen:** `bench.sh` laid both arms of each set at once and ran
+  snot8's judge (`bench3/judge/`); `pairs.sh` laid the same-moment pairs
+  (`time4/`, `time5/`). The first change's bench is `bench1/`, the second's
+  `bench2/`.
+- **The probes snot10 ran, and `brickify_ui_probe`,** from `snot11bsnap3`,
+  0 FAIL: brickify 84, bond 16, side studs 25, snot 11, shapes 84, buy 25,
+  worker 12, techniques 116, face 30, balance 58, stabletruth 12, Brickify's
+  dialog 21, stability 9 (`probes3/`, `probes3b/`, `probes3c/`). Stability
+  missed one timing check on 3 of its 6 runs here: checking 800 bricks took
+  3.1, 3.7 and 4.1 times as long as building them, where it must stay under
+  3 (1.69 to 2.24 on the other three). On `pre261`, run beside it, the same
+  check passed all 5 runs (1.73 to 2.88). It times only `BrickWorld`, the
+  `Builder` and `Stability`, none of which this round changes.
 
 The eleventh round's runs (`snot10`, 2026-11-26), all in
 `bench/results/snot10-2026-11-26`, from the locked snapshot `snot10snap`
@@ -4288,6 +4451,22 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the twelfth round (2026-11-27):
+
+- **The rest of "past the model", 3.4%.** About half is a slab of the
+  model past the cube, which is right to refuse as it is laid today. A
+  builder would turn the slab's own cube instead, or lay the two as one
+  shell two cubes deep (`CUBE_DEEP`) even where the cube past has too
+  little surface of its own to ask for it.
+- **Where the newly asked cubes stop.** A band between phases (+1.0), a
+  cap or cover (+0.7) and too little core behind (+0.5) now hold most of
+  what "past the model" gave up.
+- **Parts running into a sliver's.** Keeping the air round a sliver ended
+  the teapot's mend. Spot's mend still takes out one part, and its check
+  runs twice (1.23 times `pre261`'s time).
+- **Smithsonian-1** turns 6 more cubes but the judge counts 5 points fewer
+  faces turned, with 4 parts mended against 1.
 
 After the eleventh round (2026-11-26):
 
