@@ -188,6 +188,14 @@ if grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script' "$out"; then
   echo "probe.sh: $name printed a script error (above), so it failed"
   [ "$code" = 0 ] && code=1
 fi
+# A change made as a run's or a call's maker while it was at work, with no
+# ledger of theirs open, is in no step and no undo takes it back
+# (BrickWorld.at_work): a choose_sketch whose run read its maker after a wait
+# laid a whole design so (savereview6 F1). Whatever the probe checked.
+if grep -q 'IN NO STEP:' "$out"; then
+  echo "probe.sh: $name changed a part in no step (IN NO STEP above), so it failed"
+  [ "$code" = 0 ] && code=1
+fi
 # And a probe that skipped itself exits 0 having checked nothing: covers2's
 # joint check "passed" that way with its parts' exact shapes gone, which
 # would have shipped 942 parts with no shape to judge a move by (2026-10-19).

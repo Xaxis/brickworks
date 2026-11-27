@@ -102,7 +102,24 @@ func key_in_use() -> String:
 
 var _http: HTTPRequest
 var _messages: Array = []
-var _busy: bool = false
+## A run going. While it is, its code names its changes as [member _run_by]'s
+## (BrickWorld.at_work), so one named so with no ledger of theirs open is said
+## and counted as in no step.
+var _busy: bool = false:
+	set(now):
+		if now == _busy:
+			return
+		_busy = now
+		if world == null:
+			return
+		if _at_work_as != null:
+			world.at_work(str(_at_work_as), false)
+			_at_work_as = null
+		if now and world.ledger_open(_run_ledger):
+			_at_work_as = _run_by
+			world.at_work(_run_by, true)
+## Whose the run went to work as ([member _busy]), null when it is not.
+var _at_work_as: Variant = null
 var _repairs: int = 0
 ## Set when the last reply was cut off by the output limit rather than
 ## finished. Read where an empty design would otherwise be blamed on the
@@ -1095,7 +1112,7 @@ func design(brief: String) -> bool:
 		return false
 	_messages.clear()
 	_drop_sketches()
-	_start(brief)
+	_start(brief, Builder.acting)
 	return true
 
 
@@ -1115,7 +1132,7 @@ func sketch(brief: String) -> bool:
 	_drop_sketches()
 	_sketch_brief = brief
 	_sketch_round = true
-	_start(brief)
+	_start(brief, Builder.acting)
 	return true
 
 
@@ -1451,10 +1468,16 @@ func choose_sketch(number: int, by: Variant = null) -> String:
 	sketch_chosen.emit(number)
 	progress.emit("putting down sketch %d, %s" % [number, one.name])
 	var model: Model = one.model
-	# In the app, the sketch going down begins the design's one step.
+	# In the app, the sketch going down begins the design's one step, and its
+	# ledger says whose the run from it is ([member _run_by]): held here, past
+	# the waits, and handed to the run, never read again after one (an Assistant
+	# run read it from Builder.acting there, got "", and laid the whole design
+	# in no step: savereview6 F1).
+	var mark: Dictionary = {}
 	if not outside:
 		ClaudeStep.drop(world, _run_mark)
-		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design", actor)
+		_run_mark = {}
+		mark = ClaudeStep.mark(builder, world, scenery, "Claude's design", actor)
 	await _ensure_parts(model)
 	await _apply(model, true, true, actor)
 	if outside:
@@ -1463,8 +1486,13 @@ func choose_sketch(number: int, by: Variant = null) -> String:
 		return ("Sketch %d, \"%s\", stands on the baseplate: %d parts, %s. " % [number,
 			one.name, one.parts, one.measures()] + "It is the massing the design is built "
 			+ "from.\n\n" + FROM_SKETCH + " Then review_model, as its answer says.")
+	if _busy:
+		# Another run began while the sketch went down: the sketch is a step of
+		# its own, never parts in none.
+		ClaudeStep.record(builder, world, scenery, mark)
+		return ""
 	_chosen_sketch = one
-	_start(_sketch_brief)
+	_start(_sketch_brief, actor, mark)
 	_chosen_sketch = null
 	return ""
 
@@ -1481,7 +1509,7 @@ func revise(instruction: String) -> bool:
 		return false
 	if _messages.is_empty():
 		return design(instruction)
-	_start(instruction)
+	_start(instruction, Builder.acting)
 	return true
 
 
@@ -1516,17 +1544,32 @@ func cancel() -> void:
 ## change to be one step of the history as it ends (ClaudeStep); {} when no
 ## request is running, or it is about a selection.
 var _run_mark: Dictionary = {}
-## Whose this app's own run is (Builder.BY), read once as it begins
-## ([method _start]): the person's (""), whose panel it is. Only the run's own
-## code reads it; nothing from outside sets it, and no other run begins
-## while one is going.
-var _run_by: String = ""
+## The ledger of this app's own run, opened as it begins ([method _start]) or
+## as the sketch it designs from went down (choose_sketch): [member _run_mark]'s,
+## or of a run about a selection one of its own, whose edits keep their steps
+## as they land. Kept, closed, once the run is over, to say whose it was.
+var _run_ledger: BrickWorld.Ledger = null
+## Whose this app's own run is (Builder.BY): its ledger's maker, its one
+## source, fixed as the ledger opened. Every change the run's code makes is
+## named so (Builder.by), and the ledger notes it. Read from Builder.acting
+## after a wait, as choose_sketch's run once was, it is "" (Builder.by_wait
+## names only its first stretch): a write named for a maker with no ledger, so
+## the whole design was in no step (savereview6 F1). Nothing sets it.
+var _run_by: String:
+	get:
+		return _run_ledger.by if _run_ledger != null else ""
+	set(_value):
+		push_error("Assistant._run_by is its ledger's maker (_run_ledger), never set")
 
 
 ## This request's change, one undo step named as Claude's.
 func _record_run() -> void:
 	var mark: Dictionary = _run_mark
 	_run_mark = {}
+	# A run about a selection keeps its steps as its edits land, and its
+	# ledger only said whose it is.
+	if world != null and _run_ledger != null:
+		world.close_ledger(_run_ledger)
 	if not ClaudeStep.record(builder, world, scenery, mark):
 		return
 	run_kept.emit()
@@ -1574,12 +1617,31 @@ func _model_gone() -> bool:
 const MODEL_GONE := "stopped: another model was opened, and nothing more was built"
 
 
-func _start(text: String) -> void:
+## A run begun, as [param by]'s, read by its caller as it was asked and never
+## after a wait; or, with [param mark], as the maker of the ledger that mark
+## opened as the sketch it designs from went down (choose_sketch), which is
+## then its one source. Nothing while a run is going already.
+func _start(text: String, by: String, mark: Dictionary = {}) -> void:
 	if _busy:
 		return
+	# What this request changes is one undo step, Claude's, kept as it ends
+	# (ClaudeStep): only what the run's own code lays, takes off, moves and
+	# paints, as its ledger's maker ([member _run_by]). About a selection, its
+	# edits gather into one already, and its ledger only says whose it is.
+	if not mark.is_empty():
+		_run_mark = mark
+	elif not _scoped:
+		_run_mark = ClaudeStep.mark(builder, world, scenery,
+			"Claude's design" if _messages.is_empty() else "Claude's change", by)
+	if not _run_mark.is_empty():
+		_run_ledger = _run_mark["ledger"]
+	elif world != null:
+		_run_ledger = world.open_ledger(by, scenery)
+	else:
+		_run_ledger = BrickWorld.Ledger.new()
+		_run_ledger.by = by
+	# At work as its ledger's maker from here (BrickWorld.at_work).
 	_busy = true
-	# Whose the run is, once, as it begins: the person's, asking in the panel.
-	_run_by = Builder.acting
 	_run_generation = world.generation() if world != null else -1
 	_repairs = 0
 	_turns = 0
@@ -1626,13 +1688,6 @@ func _start(text: String) -> void:
 	_spent_on = Brain.sketch_model() if _sketch_round else Brain.chosen()
 	_pending = null
 	_before = _snapshot()
-	# What this request changes is one undo step, Claude's, kept as it ends
-	# (ClaudeStep): only what the run's own code lays, takes off, moves and
-	# paints, as [member _run_by]'s. About a selection, its edits gather into
-	# one already.
-	if not _scoped and _run_mark.is_empty():
-		_run_mark = ClaudeStep.mark(builder, world, scenery,
-			"Claude's design" if _messages.is_empty() else "Claude's change", _run_by)
 	# References first, in the same message as the brief.
 	#
 	# A named real subject was designed entirely from memory of it. The
@@ -24169,7 +24224,7 @@ func about_selection(text: String) -> bool:
 	_scoped = true
 	_scoped_talk = true
 	focus.step = {}
-	_start(text)
+	_start(text, Builder.acting)
 	return true
 
 

@@ -881,6 +881,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			var before: Dictionary = _before_change(name, actor)
 			var held: Dictionary = _held()
 			_at_work += 1
+			_working(before, true)
 			assistant.chat = chat
 			assistant.who = who
 			# Not queued, so it runs beside another call: whose it is goes in
@@ -889,6 +890,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 				return await _run_own(name, input, actor))
 			assistant.chat = ""
 			assistant.who = CLAUDE
+			_working(before, false)
 			_at_work -= 1
 			var followed: Array = _one_step(name, before, actor, who)
 			# Said of the model as the copies that followed it left it, as
@@ -953,6 +955,7 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	var held: Dictionary = _held()
 	var answer: Variant
 	_at_work += 1
+	_working(before, true)
 	assistant.chat = chat
 	assistant.who = who
 	# Whose the call is goes with it, read at its start by what it runs
@@ -972,6 +975,7 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 			answer = await _the_app_tools().findings_pictured(answer, input)
 	assistant.chat = ""
 	assistant.who = CLAUDE
+	_working(before, false)
 	_at_work -= 1
 	var followed: Array = _one_step(name, before, actor, who)
 	# Counted and judged as the copies that followed it left the model; its
@@ -1045,6 +1049,23 @@ func _before_change(name: String, actor: String = NO_SESSION) -> Dictionary:
 	if not leaves_the_model(name):
 		before["mark"] = ClaudeStep.mark(builder, assistant.world, assistant.scenery, "", actor)
 	return before
+
+
+## A call with a mark ([method _before_change]) at work ([param working]) or
+## done, its code naming its changes as its mark's maker's (Builder.by_wait):
+## while it works, a change named as theirs with no ledger of theirs open is
+## said and counted as in no step (BrickWorld.at_work).
+func _working(before: Dictionary, working: bool) -> void:
+	var mark: Dictionary = before.get("mark", {})
+	if mark.is_empty() or assistant == null or assistant.world == null:
+		return
+	var ledger: BrickWorld.Ledger = mark["ledger"]
+	if working and not before.has("working") and assistant.world.ledger_open(ledger):
+		before["working"] = ledger.by
+		assistant.world.at_work(ledger.by, true)
+	elif not working and before.has("working"):
+		assistant.world.at_work(str(before["working"]), false)
+		before.erase("working")
 
 
 ## Whatever a call from outside changed, as one step of the history, named

@@ -2,7 +2,7 @@
 ## (3cadc083e), with savereview5's own undo check judged beside the author's:
 ## savereview5 counted the designed parts before and after the other's undo
 ## (equal), the author counts the parts standing before it and gone after (none).
-## Ports 13100-13104 (savereview6's).
+## Ports 13165-13169 (windowstep2's).
 ##
 ##   godot --headless --path . --script src/dev/savereview6_sr5_probe.gd -- --sr5=pr,ps,pc,cr,cc
 ##
@@ -47,7 +47,7 @@ class _Api extends Node:
 	var _peers: Array = []
 
 	func _init() -> void:
-		for wanted: int in range(13100, 13105):
+		for wanted: int in range(13165, 13170):
 			if _server.listen(wanted, "127.0.0.1") == OK:
 				port = wanted
 				return

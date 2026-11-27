@@ -532,7 +532,7 @@ func put_from_hand(brick_id: int, to: Transform3D) -> bool:
 	# with the part in its batch (StepsBar._on_reveal_ended).
 	if not _reveal_order.is_empty():
 		_stop_reveal()
-	if not _ledgers.is_empty() and _bricks[brick_id].transform != to:
+	if not (_ledgers.is_empty() and _at_work.is_empty()) and _bricks[brick_id].transform != to:
 		_ledger_note(brick_id)
 	_in_hand.erase(brick_id)
 	var brick: Brick = _bricks[brick_id]
@@ -672,17 +672,54 @@ func close_ledger(ledger: Ledger) -> void:
 	_ledgers.erase(ledger)
 
 
+func ledger_open(ledger: Ledger) -> bool:
+	return ledger != null and _ledgers.has(ledger)
+
+
+## The makers whose run or call is at work now (an assistant's run, a
+## session's call that keeps a step), each by how many: [method at_work].
+var _at_work: Dictionary = {}
+## Changes named as a maker at work with no ledger of theirs open: each in no
+## step, so no undo takes it back. Counted for the probes, which fail on any.
+var in_no_step: int = 0
+## Said out loud (push_error): off only for the probe that makes one on
+## purpose to see it counted.
+var say_in_no_step: bool = true
+var _said_in_no_step: Dictionary = {}
+
+
+## A run or a call whose code names its changes as [param by]'s at work
+## ([param working]) or done. It names them so from the ledger its mark opened,
+## the one source of whose it is, so a ledger of theirs is open all the while;
+## a change named as theirs with none is in no step ([method _ledger_note]).
+## An Assistant run read its maker after a wait, got "" with the ledger its
+## chat's, and laid a whole design in no step (savereview6 F1).
+func at_work(by: String, working: bool) -> void:
+	var count: int = int(_at_work.get(by, 0)) + (1 if working else -1)
+	if count > 0:
+		_at_work[by] = count
+	else:
+		_at_work.erase(by)
+	_said_in_no_step.erase(by)
+
+
 ## [param brick_id] about to change, or [param laid] just now: noted as it
 ## stands in each open ledger of the maker the code changing it names
 ## (Builder.naming), the first time only. Code that names no maker changes
 ## the model as nobody's run: the person by hand, keeping their steps as they
-## go, a model opened, a part of it whose shape came late.
+## go, a model opened, a part of it whose shape came late. Named as a maker
+## whose run is at work with no ledger of theirs open, it is in no step: said
+## and counted ([member in_no_step]).
 func _ledger_note(brick_id: int, laid: bool = false) -> void:
 	if not Builder.naming():
 		return
 	var who: String = Builder.acting
+	var theirs: bool = false
 	for ledger: Ledger in _ledgers:
-		if ledger.by != who or ledger.was.has(brick_id) or ledger.scenery.has(brick_id):
+		if ledger.by != who:
+			continue
+		theirs = true
+		if ledger.was.has(brick_id) or ledger.scenery.has(brick_id):
 			continue
 		if laid:
 			ledger.was[brick_id] = null
@@ -690,6 +727,13 @@ func _ledger_note(brick_id: int, laid: bool = false) -> void:
 		var brick: Brick = _bricks[brick_id]
 		ledger.was[brick_id] = [brick.part_id, brick.color_code, brick.transform, brick.group,
 			brick.unit, brick.step]
+	if not theirs and _at_work.has(who):
+		in_no_step += 1
+		if say_in_no_step and not _said_in_no_step.has(who):
+			_said_in_no_step[who] = true
+			push_error(("IN NO STEP: part %d changed as %s's while their run or call is at work "
+				+ "with no ledger of theirs open (BrickWorld.at_work): no undo takes it back")
+				% [brick_id, "\"%s\"" % who if not who.is_empty() else "the person"])
 
 
 ## Place a brick. Returns its id, or 0 if the part has no geometry.
@@ -703,7 +747,7 @@ func _ledger_note(brick_id: int, laid: bool = false) -> void:
 func add_brick(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
 	var brick_id: int = _place(part_id, color_code, at, as_id)
 	if brick_id != 0:
-		if not _ledgers.is_empty():
+		if not (_ledgers.is_empty() and _at_work.is_empty()):
 			_ledger_note(brick_id, true)
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
 			"colour": color_code, "at": _bricks[brick_id].transform})
@@ -784,7 +828,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 func remove_brick(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
-	if not _ledgers.is_empty():
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
 		_ledger_note(brick_id)
 	_hand_change(brick_id, "remove")
 	_unplace(brick_id)
@@ -820,7 +864,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
-	if not _ledgers.is_empty():
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
 		_ledger_note(brick_id)
 	_hand_change(brick_id, "move")
 	_touching_brick(brick_id)
@@ -848,7 +892,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
-	if not _ledgers.is_empty():
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
 		_ledger_note(brick_id)
 	_hand_change(brick_id, "paint")
 	_touching_brick(brick_id)
@@ -2124,7 +2168,7 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
-		if not _ledgers.is_empty():
+		if not (_ledgers.is_empty() and _at_work.is_empty()):
 			_ledger_note(brick_id)
 		brick.transform = at
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):

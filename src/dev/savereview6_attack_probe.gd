@@ -9,9 +9,16 @@
 ##        from it. Is every part of that design in a step, and does Undo take it?
 ##   skp  the same with the person pressing the sketch's card (the control)
 ##   stop the person's panel design stopped (Stop) while it is being laid
+##   skw  skc with the chat's choice going on after a frame (Builder.by_wait)
+##   skf  skc over the socket with one of the sketch's parts fetched first, as on
+##        the web: choose_sketch waits before the design starts (savereview6 F1)
+##   nos  the tripwire itself: a change named as a maker at work with no ledger
+##        of theirs open is counted as in no step (BrickWorld.at_work), in F1's
+##        shape and in a ledger closed while its run still works
 ## Judged by the person's Ctrl+Z: every part the run put down is in a step, and
-## undoing to the person's own grid leaves the grid and nothing else.
-## Ports 13105-13109 (savereview6's).
+## undoing to the person's own grid leaves the grid and nothing else; and no
+## change of any case was made in no step (BrickWorld.in_no_step).
+## Ports 13160-13164 (windowstep2's).
 extends SceneTree
 
 const CHAT := "probe-savereview6-chat"
@@ -41,7 +48,7 @@ class _Api extends Node:
 	var _peers: Array = []
 
 	func _init() -> void:
-		for wanted: int in range(13105, 13110):
+		for wanted: int in range(13160, 13165):
 			if _server.listen(wanted, "127.0.0.1") == OK:
 				port = wanted
 				return
@@ -142,7 +149,51 @@ func _run() -> void:
 				await _sketched("SKW", true, false, true)
 			"skf":
 				await _sketched("SKF", true, false, false, true)
+			"nos":
+				_tripwire("NOS")
 	_quit()
+
+
+## The tripwire, made to go off on purpose and seen counted (said quietly, so
+## probe.sh's IN NO STEP stays for real ones): a change named as a maker whose
+## run is at work with no ledger of theirs open is in no step.
+func _tripwire(tag: String) -> void:
+	print("\n%s a change named as a maker at work with no ledger of theirs: counted as in no step" % tag)
+	# Untyped, so the probe also loads on pre261, which has no tripwire.
+	var world: Object = _world
+	if not world.has_method("at_work"):
+		print("    (pre261: no tripwire)")
+		return
+	var lot: Array = []
+	world.set("say_in_no_step", false)
+	var was: int = int(world.get("in_no_step"))
+	# F1's shape: the run's ledger is its chat's, its code names "" after a wait.
+	var ledger: Object = world.call("open_ledger", CHAT, _store.scenery)
+	world.call("at_work", "", true)
+	lot.append(Builder.by("", _world.add_brick.bind("3001", 14, Transform3D(Basis(), Vector3(0, 0, -30)))))
+	world.call("at_work", "", false)
+	var counted: int = int(world.get("in_no_step")) - was
+	_check("%s named \"\" while a run naming \"\" works and only its chat's ledger is open: counted (%d)"
+		% [tag, counted], counted == 1)
+	# A ledger closed while the run that named it still works.
+	world.call("at_work", CHAT, true)
+	world.call("close_ledger", ledger)
+	was = int(world.get("in_no_step"))
+	lot.append(Builder.by(CHAT, _world.add_brick.bind("3001", 14, Transform3D(Basis(), Vector3(4, 0, -30)))))
+	counted = int(world.get("in_no_step")) - was
+	_check("%s named as a chat at work whose ledger is closed: counted (%d)" % [tag, counted], counted == 1)
+	world.call("at_work", CHAT, false)
+	# And none for a change unnamed (the person by hand), or named as a maker
+	# with no run at work (a chat's undo).
+	was = int(world.get("in_no_step"))
+	lot.append(_world.add_brick("3001", 14, Transform3D(Basis(), Vector3(8, 0, -30))))
+	lot.append(Builder.by(CHAT, _world.add_brick.bind("3001", 14, Transform3D(Basis(), Vector3(12, 0, -30)))))
+	counted = int(world.get("in_no_step")) - was
+	_check("%s none for a change unnamed, or named as a maker not at work (%d)" % [tag, counted], counted == 0)
+	for brick_id: Variant in lot:
+		_world.remove_brick(int(brick_id))
+	world.set("say_in_no_step", true)
+	world.set("in_no_step", 0)
 
 
 ## A chat's edit_model taking off, moving and painting parts named out of
@@ -388,6 +439,9 @@ func _judge(tag: String) -> void:
 	_check("%s the person's Ctrl+Z to their grid leaves none of the run's parts (%d left)" % [tag,
 		_count_not_grid()], _count_not_grid() == 0)
 	_check("%s ...and the grid whole (%d of 9)" % [tag, grid_left], grid_left == 9)
+	if "in_no_step" in _world:
+		_check("%s no change named as a maker at work was made with no ledger of theirs (%d)" % [tag,
+			int(_world.get("in_no_step"))], int(_world.get("in_no_step")) == 0)
 
 
 func _count_not_grid() -> int:
