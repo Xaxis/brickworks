@@ -664,6 +664,8 @@ const CHANGED_WORDS := "the model changed while the swaps were worked out: nothi
 ## given. A model changed in between is left as it is and said ([constant
 ## CHANGED_WORDS]).
 func swap(lots: Array, finder: FindReplace) -> Dictionary:
+	# Whose its step is, carried past the paced work (Builder.acting).
+	var by: String = Builder.acting
 	var builder: Builder = finder.builder
 	var put_back: int = finder.put_back_held()
 	var swapped: int = 0
@@ -712,7 +714,7 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 		_end()
 		stayed.append(CHANGED_WORDS)
 		return out
-	var done: Array = finder.replace_all(jobs)
+	var done: Array = Builder.by(by, finder.replace_all.bind(jobs))
 	for n: int in done.size():
 		changed += int(done[n]["changed"])
 		if int(done[n]["changed"]) > 0:
@@ -720,7 +722,7 @@ func swap(lots: Array, finder: FindReplace) -> Dictionary:
 		if not str(done[n].get("stayed", "")).is_empty():
 			stayed.append("%s: %s" % [(jobs[n]["lot"] as Lot).name, str(done[n]["stayed"])])
 	var words: String = swapped_words(swapped, changed)
-	if changed > 0:
+	if changed > 0 and Builder.whose(builder.last_step()) == by:
 		builder.name_newest(words)
 	_look(finder)
 	_end()

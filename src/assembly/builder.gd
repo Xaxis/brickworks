@@ -81,6 +81,28 @@ signal selection_changed(count: int)
 var _history: Array[Dictionary] = []
 var _redo: Array[Dictionary] = []
 
+## Whose a step is: a step kept by a session from outside holds the session
+## under [constant BY] (its chat, CommandSocket.actor_of); a step without it
+## is the person's own, made in their tab. A step is the person's unless the
+## code that keeps it says otherwise, and only a session's own code does: it
+## keeps its changes inside [method by], and a tool that lands a change
+## frames later carries the session with it to the frame it lands in
+## (EditVerbs.press, Working.attend). Nothing is read off the clock. Before,
+## a step was a call's when it was kept while the call was at work, so a
+## part the person laid while their Claude saved was folded into the save
+## and its undo took it (savereview2 G2); and an act of the person's the
+## app ran a frame late, a Delete of 320 said first, was written as the
+## chat's (savereview3 F1). A session's undo and redo take back only steps
+## that hold it (AppTools._undo); the person's Undo takes back any step.
+const BY := "by"
+
+## The session keeping steps now ([constant BY]), "" for the person: of the
+## code running now, so one for the whole app, as there is one main thread.
+## Set only by [method by] and [method by_wait], for code that runs to its
+## end without waiting: a step the person makes while a session's call waits
+## on a frame can never be kept as the session's.
+static var acting: String = ""
+
 ## The bricks that are scenery (ModelStore.scenery), for the steps that
 ## move a baseplate into the model and back (FloorLayer.adopt).
 var scenery: Dictionary = {}
@@ -260,7 +282,7 @@ func place() -> int:
 	# undo (TrackSnap).
 	if tracks.on_end and not tracks.sleepers.is_empty():
 		step = {"undo": "group", "steps": [step] + _put_sleepers(tracks.sleepers)}
-	_history.append(step)
+	_keep(step)
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
 	# A number typed is spent once it is put down: the next follows the pointer.
@@ -308,7 +330,7 @@ func remove_hovered() -> bool:
 	if brick == null:
 		return false
 
-	_history.append({
+	_keep({
 		"undo": "add",
 		"part": brick.part_id,
 		"color": brick.color_code,
@@ -338,7 +360,7 @@ func paint_hovered(color_code: int) -> bool:
 	if brick == null or brick.color_code == color_code:
 		return false
 
-	_history.append({
+	_keep({
 		"undo": "recolor",
 		"brick": _hovered,
 		"color": brick.color_code,
@@ -497,6 +519,9 @@ func undo(person: bool = true) -> bool:
 	var back: Dictionary = _apply(step)
 	_follow_motions(back)
 	back["words"] = words
+	# Still whoever made it, to redo: a session's redo laid again the part
+	# the person had taken back themselves (savereview2 U4).
+	carry_whose(step, back)
 	_redo.append(back)
 	settled = _history.back() if not _history.is_empty() else {}
 	# What an undo took away is no longer selected: an outline round
@@ -515,6 +540,9 @@ func redo() -> bool:
 	_follow_motions(again)
 	if step.has("words"):
 		again["words"] = step["words"]
+	# Whoever made it, whoever redoes it: kept as it was, never as the
+	# session redoing it.
+	carry_whose(step, again)
 	_history.append(again)
 	settled = again
 	_living_selection()
@@ -1415,7 +1443,7 @@ func paint_selection(color_code: int) -> int:
 		world.recolor_brick(brick_id, color_code)
 	if steps.is_empty():
 		return 0
-	_history.append({"undo": "group", "steps": steps})
+	_keep({"undo": "group", "steps": steps})
 	_redo.clear()
 	return steps.size()
 
@@ -1434,7 +1462,7 @@ func remove_selection() -> int:
 		removed.emit(brick_id)
 	if steps.is_empty():
 		return 0
-	_history.append({"undo": "group", "steps": steps})
+	_keep({"undo": "group", "steps": steps})
 	_redo.clear()
 	clear_selection()
 	return steps.size()
@@ -1510,7 +1538,7 @@ func _moved_joined(by: Vector3) -> int:
 		world.move_brick(brick_id, landing[brick_id])
 		lattice.occupy_boxes(brick_id, boxes_for(
 			library.mesh_for(world.get_brick(brick_id).part_id), landing[brick_id]))
-	_history.append({"undo": "group", "steps": steps,
+	_keep({"undo": "group", "steps": steps,
 		"words": "moved %s %s LDU" % [_many(steps.size()), _ldu_words(by)]})
 	_redo.clear()
 	return steps.size()
@@ -2045,7 +2073,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 	var step: Dictionary = {"undo": "group", "steps": steps}
 	if not words.is_empty():
 		step["words"] = words
-	_history.append(step)
+	_keep(step)
 	_redo.clear()
 	return steps.size()
 
@@ -2085,7 +2113,7 @@ func move_bricks(moves: Dictionary) -> int:
 		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
 	if steps.is_empty():
 		return 0
-	_history.append({"undo": "group", "steps": steps,
+	_keep({"undo": "group", "steps": steps,
 		"words": "seated %s on their studs" % _many(steps.size())})
 	_redo.clear()
 	return steps.size()
@@ -2122,8 +2150,10 @@ const REPLACE_ON_A_WORKER_FROM := 600
 ## second of one frame (replacefast). Asked of a copy of the lattice that
 ## changes as the swaps would ([method _replace_plan]), and the swaps then
 ## made here as planned. When the model changed meanwhile, all of it is
-## asked again as it now is. A coroutine.
+## asked again as it now is. A coroutine; its step is whoever began it's
+## ([member acting] then), landed frames later.
 func replace_selection_paced(part_id: String, in_place: bool = false) -> Vector2i:
+	var maker: String = acting
 	var alive: PackedInt64Array = _living_selection()
 	var into: Lbm.PartMesh = library.mesh_for(part_id)
 	if alive.is_empty() or into == null:
@@ -2154,6 +2184,13 @@ func replace_selection_paced(part_id: String, in_place: bool = false) -> Vector2
 	sharing.lock()
 	var plan: Variant = planned[0]
 	sharing.unlock()
+	return by(maker, _land_replace.bind(alive, part_id, in_place, into, plan, model_at))
+
+
+## The swaps [method replace_selection_paced] planned on a worker, made: or
+## all of it asked again, the model changed since.
+func _land_replace(alive: PackedInt64Array, part_id: String, in_place: bool, into: Lbm.PartMesh,
+		plan: Variant, model_at: Array) -> Vector2i:
 	if plan == null or model_at != [world.generation(), world.revision, lattice.revision]:
 		return replace_selection(part_id, in_place)
 	var decided: PackedByteArray = (plan as Dictionary)["decided"]
@@ -2446,7 +2483,7 @@ func replace_bricks(changes: Array, words: String) -> Vector2i:
 			refused += 1
 	if steps.is_empty():
 		return Vector2i(0, refused)
-	_history.append({"undo": "group", "steps": steps, "words": words})
+	_keep({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	_select_changed(changed)
 	return Vector2i(changed.size(), refused)
@@ -2474,7 +2511,7 @@ func _replaced(part_id: String, steps: Array, swapped: PackedInt64Array,
 	if steps.is_empty():
 		return Vector2i(0, refused)
 	var info: PartLibrary.PartInfo = library.parts.get(part_id)
-	_history.append({"undo": "group", "steps": steps, "words": "swapped %s for %s" % [
+	_keep({"undo": "group", "steps": steps, "words": "swapped %s for %s" % [
 		_many(swapped.size()), Inventory._tidy(info.name) if info != null else part_id]})
 	_redo.clear()
 	_select_changed(swapped)
@@ -2594,7 +2631,7 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 			var kept: Dictionary = world.kept_lines.duplicate()
 			kept["read_as"] = lined
 			world.kept_lines = kept
-	_history.append({"undo": "group", "steps": steps,
+	_keep({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
 	# Each copy mirrored whole is its mirror image, and so is the frame its
@@ -2786,7 +2823,7 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 	for path: String in world.unit_steps:
 		if not units.has(path):
 			steps.append({"undo": "unitstep", "unit": path, "step": -1})
-	_history.append({"undo": "group", "steps": steps, "words": words})
+	_keep({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	return moved
 
@@ -2929,7 +2966,7 @@ func extend_last(steps: Array) -> void:
 	if steps.is_empty():
 		return
 	if _history.is_empty():
-		_history.append({"undo": "group", "steps": steps})
+		_keep({"undo": "group", "steps": steps})
 		return
 	var last: Dictionary = _history.back()
 	# Said as what the person did, before what followed from it is folded
@@ -2938,7 +2975,10 @@ func extend_last(steps: Array) -> void:
 	# "changed 2 parts" where it had said "removed 1 part" (pkreview).
 	if last.get("undo", "") != "group":
 		var words: String = _words_for(last)
-		last = {"undo": "group", "steps": [last], "words": words}
+		var group: Dictionary = {"undo": "group", "steps": [last], "words": words}
+		# What follows from a step is its maker's, as the step is.
+		carry_whose(last, group)
+		last = group
 		_history[_history.size() - 1] = last
 	elif not last.has("words"):
 		last["words"] = _words_for(last)
@@ -2949,20 +2989,51 @@ func extend_last(steps: Array) -> void:
 	last["steps"] = steps + (last["steps"] as Array)
 
 
-## Everything kept since the history was [param depth] deep, as one step:
-## one call of a session's tool is one undo, however many of the window's
-## own commands it took (AppTools). The newest first, as they are undone.
-func fold_since(depth: int, words: String = "") -> void:
-	if _history.size() <= depth + 1:
+## Everything [param by] kept since the history was [param depth] deep, as
+## one step: one call of a session's tool is one undo, however many of the
+## window's own commands it took (AppTools), and so is a person's drag. The
+## newest first, as they are undone. Only [param by]'s own: a step of
+## someone else's kept meanwhile stays where it was kept, a step of its own,
+## and the steps on each side of it are folded each side. The history stays
+## in the order things were done: a chat's paint lifted over the person's
+## paint of the same brick was undone by the chat with the person's red, and
+## the person's Undo then brought back the chat's yellow (savereview3 F2).
+## [param by] null: whoever is [member acting] now.
+func fold_since(depth: int, words: String = "", by: Variant = null) -> void:
+	var from: int = maxi(depth, 0)
+	if _history.size() <= from + 1:
+		return
+	var who: String = acting if by == null else str(by)
+	var since: Array[Dictionary] = _history.slice(from)
+	_history.resize(from)
+	var run: Array[Dictionary] = []
+	for step: Dictionary in since:
+		if whose(step) == who:
+			run.append(step)
+			continue
+		_fold_run(run, words, who)
+		run.clear()
+		_history.append(step)
+	_fold_run(run, words, who)
+
+
+## [param run], steps of [param by]'s kept one after another, kept as one
+## step, newest: one step alone as it is.
+func _fold_run(run: Array[Dictionary], words: String, by: String) -> void:
+	if run.size() == 1:
+		_history.append(run[0])
+	if run.size() < 2:
 		return
 	var steps: Array = []
 	var said := PackedStringArray()
-	while _history.size() > depth:
-		var last: Dictionary = _history.pop_back()
-		said.insert(0, _words_for(last))
-		steps.append(last)
-	_history.append({"undo": "group", "steps": steps,
-		"words": words if not words.is_empty() else "; ".join(said)})
+	for step: Dictionary in run:
+		said.append(_words_for(step))
+		steps.push_front(step)
+	var group: Dictionary = {"undo": "group", "steps": steps,
+		"words": words if not words.is_empty() else "; ".join(said)}
+	if not by.is_empty():
+		group[BY] = by
+	_history.append(group)
 
 
 ## The newest step said as [param words]: what it did, as only its maker
@@ -2987,12 +3058,78 @@ func renumber(old_id: int, new_id: int) -> void:
 func record(steps: Array, words: String, at: int = -1) -> void:
 	if steps.is_empty():
 		return
-	var step: Dictionary = {"undo": "group", "steps": steps, "words": words}
+	_keep({"undo": "group", "steps": steps, "words": words}, at)
+	_redo.clear()
+
+
+## Keep [param step] in the history, newest or [param at] steps deep, as
+## the session [member acting]'s when one is: one key written, nothing
+## walked, whatever its size (savereview3 F3: 11 ms on a 6,000-part step).
+func _keep(step: Dictionary, at: int = -1) -> void:
+	if not acting.is_empty() and not step.has(BY):
+		step[BY] = acting
 	if at < 0 or at >= _history.size():
 		_history.append(step)
 	else:
 		_history.insert(at, step)
-	_redo.clear()
+
+
+## [param act] run, the steps it keeps kept as the session [param actor]'s
+## ([constant BY]), "" the person's; what it returns. [param act] runs to its
+## end without waiting: one that waits goes through [method by_wait].
+static func by(actor: String, act: Callable) -> Variant:
+	var was: String = acting
+	acting = actor
+	var out: Variant = act.call()
+	acting = was
+	return out
+
+
+## [method by] for [param act] that may wait, awaited: `await
+## Builder.by_wait(chat, func() -> Variant: return await tool())`. Its steps
+## are [param actor]'s only as far as its first wait: what it keeps after one
+## is the person's unless it says whose again, as a tool that lands its
+## change frames later does with the session it began with
+## (EditVerbs.press, replace_selection_paced). So whatever the person does
+## while a session's call waits on a frame is theirs.
+static func by_wait(actor: String, act: Callable) -> Variant:
+	var going := _Acting.new()
+	var was: String = acting
+	acting = actor
+	# Not awaited: it hands back at the act's first wait, and goes on.
+	going.go(act)
+	acting = was
+	if not going.finished:
+		await going.ended
+	return going.value
+
+
+## An act run to its end however many frames it takes ([method by_wait]),
+## as Working._Going runs a command: Godot 4 waits on a coroutine only with
+## await, and taking its result without one is a script error in a debug
+## build.
+class _Acting extends RefCounted:
+	signal ended
+	var finished: bool = false
+	var value: Variant = null
+
+	func go(act: Callable) -> void:
+		value = await act.call()
+		finished = true
+		ended.emit()
+
+
+## Whose [param step] is: the session that kept it, "" the person's.
+static func whose(step: Dictionary) -> String:
+	return str(step.get(BY, ""))
+
+
+## [param to] made whose [param from] is.
+static func carry_whose(from: Dictionary, to: Dictionary) -> void:
+	if from.has(BY):
+		to[BY] = from[BY]
+	else:
+		to.erase(BY)
 
 
 ## Take these bricks off and put these down, without asking whether they
@@ -3063,7 +3200,7 @@ func paint_brick(brick_id: int, color_code: int) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null or brick.color_code == color_code or locked.has(brick_id):
 		return false
-	_history.append({"undo": "recolor", "brick": brick_id, "color": brick.color_code})
+	_keep({"undo": "recolor", "brick": brick_id, "color": brick.color_code})
 	_redo.clear()
 	return world.recolor_brick(brick_id, color_code)
 
@@ -3073,7 +3210,7 @@ func remove_brick_id(brick_id: int) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null or locked.has(brick_id):
 		return false
-	_history.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+	_keep({"undo": "add", "part": brick.part_id, "color": brick.color_code,
 		"transform": brick.transform, "group": brick.group, "unit": brick.unit,
 		"step": brick.step, "was": brick.id})
 	_redo.clear()
@@ -3099,7 +3236,7 @@ func name_group(name: String) -> int:
 		brick.group = name
 	if steps.is_empty():
 		return 0
-	_history.append({"undo": "group", "steps": steps,
+	_keep({"undo": "group", "steps": steps,
 		"words": ("made %s the sub-model %s" % [_many(steps.size()), name]) if not name.is_empty()
 			else "took %s out of its sub-model" % _many(steps.size())})
 	_redo.clear()
@@ -3153,7 +3290,7 @@ func swing_selection(degrees: float) -> int:
 		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
 		world.move_brick(brick_id, landing[brick_id]["at"])
 		lattice.occupy_boxes(brick_id, landing[brick_id]["boxes"])
-	_history.append({"undo": "group", "steps": steps,
+	_keep({"undo": "group", "steps": steps,
 		"words": "swung %s on its joint" % _many(steps.size())})
 	_redo.clear()
 	return steps.size()
@@ -3414,7 +3551,7 @@ func _put_lifted() -> int:
 	carry_grip = null
 	if steps.is_empty():
 		return 0
-	_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
+	_keep({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
 	_redo.clear()
 	selection.clear()
 	for step: Dictionary in steps:
@@ -3486,7 +3623,7 @@ func _put_carried() -> int:
 	var words: String = "pasted %s" % _many(ids.size())
 	if bringing:
 		words = _bring_steps(steps, renamed, ids)
-	_history.append({"undo": "group", "steps": steps, "words": words})
+	_keep({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	if lines_in:
 		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had, carrying.frames,
@@ -6586,7 +6723,7 @@ func _put_lifted_part() -> int:
 	# Put down past the step the timeline shows (stepped back while it was in
 	# hand): Main steps on to it and says so, as for a figure.
 	put_unseen = PackedInt64Array([brick_id]) if is_ahead(brick_id) else PackedInt64Array()
-	_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(1)})
+	_keep({"undo": "group", "steps": steps, "words": "moved %s" % _many(1)})
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform))
 	_typed_from = null
@@ -6762,7 +6899,7 @@ func put_part(part_id: String, color_code: int, at: Transform3D) -> int:
 	if brick_id == 0:
 		return 0
 	lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(part_id), at))
-	_history.append({"undo": "remove", "brick": brick_id})
+	_keep({"undo": "remove", "brick": brick_id})
 	_redo.clear()
 	placed.emit(brick_id, part_id)
 	return brick_id
@@ -6774,7 +6911,7 @@ func take_off(brick_id: int) -> bool:
 	if brick == null:
 		return false
 	var step: Dictionary = _apply({"undo": "remove", "brick": brick_id})
-	_history.append(step)
+	_keep(step)
 	_redo.clear()
 	if selection.erase(brick_id):
 		selection_changed.emit(selection.size())
@@ -6849,7 +6986,7 @@ func _place_figure() -> int:
 				put_unseen.append(int(step["brick"]))
 		if put_unseen.size() < steps.size():
 			put_unseen = PackedInt64Array()
-		_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
+		_keep({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
 		_redo.clear()
 		placed.emit(first, held_figure_name)
 		return first
@@ -6861,7 +6998,7 @@ func _place_figure() -> int:
 		world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
 		steps.append({"undo": "remove", "brick": brick_id})
 	riding_later = 0
-	_history.append({"undo": "group", "steps": steps})
+	_keep({"undo": "group", "steps": steps})
 	_redo.clear()
 	placed.emit(ids[0], held_figure_name)
 	return ids[0]

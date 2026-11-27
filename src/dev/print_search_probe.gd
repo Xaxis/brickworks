@@ -167,7 +167,7 @@ func _run() -> void:
 	assistant.library = library
 	get_root().add_child(assistant)
 	var said: String = str(await assistant._tool_answer({"name": "search_parts",
-		"input": {"query": "plate 1 x 3", "limit": 5}}))
+		"input": {"query": "plate 1 x 3", "limit": 5}}, ""))
 	var counted: int = 0
 	var example: String = ""
 	if library.has_method("prints_of"):
@@ -183,7 +183,7 @@ func _run() -> void:
 	else:
 		print("  ok    plate 1 x 3: %s" % said.substr(said.find(note)).get_slice("\n", 0))
 	var porsche: String = str(await assistant._tool_answer({"name": "search_parts",
-		"input": {"query": "porsche print", "limit": 8}}))
+		"input": {"query": "porsche print", "limit": 8}}, ""))
 	if not porsche.contains("3623pt1") or not porsche.contains("a print of 3623"):
 		_fail("search_parts \"porsche print\" does not offer 3623pt1 as a print of 3623:\n%s"
 			% porsche)
@@ -196,7 +196,7 @@ func _run() -> void:
 	if longest > 260:
 		_fail("a search_parts line is %d characters" % longest)
 	var looks: String = str(await assistant._tool_answer({"name": "find_parts_like",
-		"input": {"query": "control panel"}}))
+		"input": {"query": "control panel"}}, ""))
 	var printed_found: bool = false
 	for id: String in ["2431pc1", "3039pcc", "3039pcl", "3069bp61", "3069bpa2",
 			"3039pcd", "3039pcg", "3069bpce", "3069bpsa", "2431pzr", "3039pc2"]:

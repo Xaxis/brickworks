@@ -442,6 +442,8 @@ func _deleted(input: Dictionary, name: String) -> String:
 
 
 func _placed(input: Dictionary, name: String) -> String:
+	# Whose its step is, carried past the wait for shapes (Builder.acting).
+	var by: String = Builder.acting
 	var one: Dictionary = _palette_named(name)
 	if one.is_empty():
 		return _none_called(name)
@@ -515,7 +517,7 @@ func _placed(input: Dictionary, name: String) -> String:
 	var steps: Array = builder.swap_bricks(PackedInt64Array(), adds)
 	for step: Dictionary in steps:
 		changed.append(int(step["brick"]))
-	builder.record(steps, "pasted %s" % Counted.of(changed.size(), "part"))
+	Builder.by(by, builder.record.bind(steps, "pasted %s" % Counted.of(changed.size(), "part")))
 	var verbs: EditVerbs = app.get("_verbs")
 	if verbs != null and verbs.edited.is_valid():
 		verbs.edited.call()

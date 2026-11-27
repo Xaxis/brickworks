@@ -7514,6 +7514,13 @@
       "entry": "src/render/page_tracer.gd",
       "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "high-key exposure on white",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T  (photoreal30, docs/RENDERING.md 5ae: at Best in the Product look on a paper backdrop (PAPER_WHITE or lighter), the white card metered half a stop brighter (RenderSettings.high_key, StudioRender.PRODUCT_HIGH_KEY 0.5, _meter_card), so a white part's lit side is nearly the paper's white; on a coloured backdrop the card as metered; --without=high_key draws the card at PHOTO_EV alone. RenderSettings.clearance (PathTracer.clearance, _narrower; PRODUCT_CLEARANCE 0) draws each part that many LDU under its grid only when asked)",
+      "area": "view"
     }
   ]
 }
