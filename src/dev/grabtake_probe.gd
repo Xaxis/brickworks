@@ -63,6 +63,8 @@ var _marks: Array = [0, 0, -1]
 var _phase: String = ""
 ## Phase -> [frames, worst ms, its frame and state, over LIST_MS, over BAR_MS, listed lines].
 var _seen: Dictionary = {}
+## Per phase: frames, the whole frame's longest processing, frames over the bar.
+var _whole: Dictionary = {}
 var _weigh_worst: float = 0.0
 var _weigh_frame: String = ""
 
@@ -123,7 +125,18 @@ func _run() -> void:
 
 ## The frame before this one: GrabDrag's own work, and the weighing's.
 func _on_frame() -> void:
-	if _phase.is_empty() or int(_marks[2]) != Engine.get_process_frames() - 1:
+	if _phase.is_empty():
+		return
+	# The whole frame's processing (every node, every coroutine resumed):
+	# the weighing's copy and free resume in it, outside GrabDrag's own.
+	var whole: Array = _whole.get(_phase, [0, 0.0, 0])
+	var process_ms: float = Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	whole[0] += 1
+	whole[1] = maxf(whole[1], process_ms)
+	if process_ms > BAR_MS:
+		whole[2] += 1
+	_whole[_phase] = whole
+	if int(_marks[2]) != Engine.get_process_frames() - 1:
 		return
 	var ms: float = float(int(_marks[1]) - int(_marks[0])) / 1000.0
 	var state: String = _state()
@@ -158,6 +171,7 @@ func _model(name: String, path: String) -> void:
 	print("")
 	print("%s:" % name)
 	_seen.clear()
+	_whole.clear()
 	_weigh_worst = 0.0
 	_weigh_frame = ""
 	if _grab.get("taken_worst_ms") != null:
@@ -336,6 +350,12 @@ func _report(name: String) -> void:
 			% [phase, seen[0], seen[1], seen[2], seen[3], LIST_MS, seen[4], BAR_MS, seen[5]])
 		worst = maxf(worst, seen[1])
 		over += int(seen[4])
+	for phase: String in ["open", "idle", "during", "drag"]:
+		if _whole.has(phase):
+			var whole: Array = _whole[phase]
+			print("    %s, the whole frame's processing: %d frames, the longest %.1f ms, %d over %.0f ms"
+				% [phase, whole[0], whole[1], whole[2], BAR_MS])
+			print("WHOLE %s %s longest %.1f over16 %d" % [name, phase, whole[1], whole[2]])
 	var copy_frames: Variant = _grab.get("copy_frames")
 	if copy_frames != null:
 		print("    the last copy: %d frames, its longest slice %.1f ms; the longest taking in %.1f ms"
@@ -364,6 +384,23 @@ func _pieces(name: String) -> void:
 	var free_lattice: float = float(Time.get_ticks_usec() - clock) / 1000.0
 	print("PIECES %s copy world %.1f, copy lattice %.1f, free world %.1f, free lattice %.1f ms"
 		% [name, copy_world, copy_lattice, free_world, free_lattice])
+	# The autosave's own (ModelStore): a model opened from a file has its
+	# parts copied where they came from, in one go, and a section broken out
+	# the whole model copied home.
+	clock = Time.get_ticks_usec()
+	var asked: Dictionary = _store.call("_source_asked", name) if _store != null else {}
+	var source_ms: float = float(Time.get_ticks_usec() - clock) / 1000.0
+	clock = Time.get_ticks_usec()
+	asked = {}
+	var source_free: float = float(Time.get_ticks_usec() - clock) / 1000.0
+	clock = Time.get_ticks_usec()
+	var home: BrickWorld = _world.copy_at_home()
+	var home_ms: float = float(Time.get_ticks_usec() - clock) / 1000.0
+	clock = Time.get_ticks_usec()
+	home.free()
+	var home_free: float = float(Time.get_ticks_usec() - clock) / 1000.0
+	print("PIECES %s autosave's parts where they came from %.1f (dropped %.1f), copied home %.1f (freed %.1f) ms"
+		% [name, source_ms, source_free, home_ms, home_free])
 
 
 func _finish() -> void:

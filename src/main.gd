@@ -11366,23 +11366,27 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		judge.with_margins = margins
 		judge.floor_ids = scenery.duplicate()
 		judge.lattice = copy.lattice
-		var still: BrickWorld = copy.world
+		# The judge (and its lattice) and the copy held only here, so the
+		# worker letting go of them is the last to hold them: the lambdas
+		# hold this array, not the judge, and outlive the let-go until this
+		# coroutine ends.
+		var job: Array = [copy.world, judge]
+		copy.world = null
+		copy.lattice = null
+		judge = null
 		var weighed: Array = [null]
 		_library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
-			weighed[0] = judge.check(still), false, "weigh the model")
-		_library.reading_in(task, func() -> void: judge.stopped = true)
+			weighed[0] = (job[1] as Stability).check(job[0] as BrickWorld), false, "weigh the model")
+		_library.reading_in(task, func() -> void:
+			if not job.is_empty():
+				(job[1] as Stability).stopped = true)
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
 		WorkerTasks.collect(task)
 		_library.end_reading(task)
 		report = weighed[0]
-		var copies: Array = [still, judge]
-		still = null
-		judge = null
-		copy.world = null
-		copy.lattice = null
-		WorkerTasks.let_go(copies)
+		WorkerTasks.let_go(job)
 	if report == null:
 		return null
 	report.total_grams -= floor_grams
