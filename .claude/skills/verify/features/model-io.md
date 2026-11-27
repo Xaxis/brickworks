@@ -951,6 +951,16 @@ Whether what you built is still there tomorrow, and still means the same thing.
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
   3 to 4 s later. The boot mark `model geometry: N of M, R read here` says how it went.
+  A first visit's example car (`res://models/car.ldr`, 61 parts) has its
+  parts asked for the same way, as soon as the catalogue is read, when
+  nothing else will open (`Main._ask_sample_early`, `_sample_likely`: no
+  link, `--model` or given file, not a New tab, no autosave in this tab and
+  no model saved here), from where the page heard parts live, which it now
+  asks for on every start (`window.brickworksEarly.parts`): asked once the
+  car opened after the window, they were most of a desktop first visit's
+  3.2 s from the first part to the car whole, against 1.6 s on a return
+  (webstart14). Not waited for: the car opens as before and its parts land
+  as they come. Proven by `the start by phase` (first part to working).
   A shared model's link takes the same path (viewopen): Open in the
   studio (`/app?copy=`), Build it and the viewer (`/app?view=`, `&build`,
   `&v=`), the page's own fetch of the link's answer

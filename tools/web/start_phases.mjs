@@ -15,6 +15,10 @@
 //   --warm     a return too: the same profile's second tab, everything cached
 //   --hold=S   each visit kept open S s past working, its memory still read:
 //              whether the height comes later than the start (webstart13)
+//   --from=P   the first visit comes from page P (/ the home page, against
+//              each URL's own origin), read --from-wait ms (10000) first, as
+//              Start building's does: what the page fetched ahead of the
+//              studio counts (webstart14); its data-studio-ahead is kept
 //
 // A URL may be a deployment (https://…/app): live is timed so beside a
 // local export or a preview, at the same moments. A protected preview is
@@ -119,7 +123,8 @@ for (let n = 0; n < pairs; n++) {
   const order = n % 2 ? [...urls.keys()].reverse() : [...urls.keys()];
   const load = loadavg()[0];
   const runs = await Promise.all(order.map((i) => child({ url: urls[i], label: labels[i], config: configName,
-    warm: Boolean(args.warm), hold: Number(args.hold || 0), shot: join(out, `${configName}-${labels[i]}-${n + 1}`) })));
+    warm: Boolean(args.warm), hold: Number(args.hold || 0), from: args.from ? String(args.from) : "",
+    fromWait: Number(args["from-wait"] || 10000), shot: join(out, `${configName}-${labels[i]}-${n + 1}`) })));
   const pair = { n: n + 1, load, builds: {} };
   for (const [k, i] of order.entries()) pair.builds[labels[i]] = runs[k];
   all.push(pair);
@@ -205,6 +210,9 @@ function table(rows) {
     row("… the longest, ms", (b) => b?.marks?.after_window?.longest_ms, (m) => String(Math.round(m)));
     row("visits the page took for an iPhone or iPad", (b) => (b?.engine ? Number(Boolean(b.engine.apple)) : NaN), (m) => (m ? "yes" : "no"));
     row("visits on the engine with threads", (b) => (b?.engine ? Number(Boolean(b.engine.threads)) : NaN), (m) => (m ? "yes" : "no"));
+    if (rows.some((r) => Object.values(r.builds).some((b) => b?.[visit]?.from))) {
+      lines.push(`| come from ${rows.find((r) => Object.values(r.builds).some((b) => b?.[visit]?.from)).builds[labels[0]]?.[visit]?.from?.url || "a page"}: its data-studio-ahead at the click | ${labels.map((l) => `${rows.map((r) => r.builds[l]?.[visit]?.from?.ahead || "none").join(", ")} | `).join(" | ")} |`);
+    }
     lines.push("");
   }
   return lines.join("\n");
@@ -273,6 +281,16 @@ async function visit(context, config, job, which) {
   }
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+  // --from: the first visit comes from that page, as Start building's does,
+  // read for --from-wait ms first; its <html data-studio-ahead> is kept.
+  let from = null;
+  if (job.from && which === "cold") {
+    const home = new URL(String(job.from), job.url).href;
+    await page.goto(home, { waitUntil: "load", timeout: 180000 });
+    await page.waitForTimeout(job.fromWait);
+    from = { url: home, waited_ms: job.fromWait,
+      ahead: await page.evaluate(() => document.documentElement.dataset.studioAhead || "").catch(() => "") };
+  }
   await page.goto(job.url, { waitUntil: "commit", timeout: 180000 });
   const deadline = Date.now() + START_MS * 2;
   let state = null;
@@ -368,7 +386,7 @@ async function visit(context, config, job, which) {
   return { at, lasts, memory: { at: marks.memory, most: marks.most, timeline: marks.timeline,
     asked: wants.length ? Math.max(...wants) : NaN, held, grows }, marks, engine: marks.engine,
     pss, cpu: { main: (u.main - t.main) / 100, all: (u.all - t.all) / 100, top }, errors: errors.slice(0, 5),
-    bricks: state?.bricks, awaited: state?.awaited };
+    bricks: state?.bricks, awaited: state?.awaited, from };
 }
 
 // In the page before anything runs: the wasm's compile and instance timed

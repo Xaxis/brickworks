@@ -3414,7 +3414,18 @@ plan with Claude as the client.
   `canPlayType` says so), faded in on `playing` (`.hero-loop.live`); none
   under prefers-reduced-motion or `navigator.connection.saveData`.
   `<html data-hero>`: poster, still, loading, playing, paused,
-  kept-failed. `#loop-say` shows the caption of the moment from
+  kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
+  `studioAhead`): 3 s after the load, at idle, the page reads `/app`'s own
+  `GODOT_CONFIG` and fetches its engine's `.js` and `.wasm` (`/e/<hash>/`)
+  and its pack (`/b/<sha>/index.pck`), one at a time at low priority, so
+  Start building's studio takes them from the browser's cache (both
+  immutable); not on Save-Data or a 2g/3g connection, a window under 600 px
+  where `navigator.connection` is missing (WebKit), an iPhone or iPad (its
+  engine is the switch's), nor a build not placed. `<html
+  data-studio-ahead>`: fetching, fetched, failed, `skipped <why>`
+  (save-data, slow, phone, apple, unplaced). Proven by `the start by phase`
+  with `--from=/` (the visit comes from the home page; the attribute at the
+  click is in its table). `#loop-say` shows the caption of the moment from
   `data-cues-desktop` / `data-cues-phone` ("seconds;t:word,..."; words in
   `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
   Made by `python3 tools/site/hero_capture.py` (the probe
@@ -5093,7 +5104,12 @@ plan with Claude as the client.
   window built to working (how many, their own time, the longest); when the
   engine's wasm was asked for and the shell's `op=phone` answered; and
   which engine the page chose (`brickworksEngine`: threads, apple). A URL
-  may be a deployment, so live is timed beside a build at the same moments.
+  may be a deployment, so live is timed beside a build at the same moments;
+  a protected preview is let in by `BW_BYPASS` (from `.env`'s
+  `VERCEL_BYPASS`: without it every visit timed Vercel's login page).
+  Since webstart14, `--from=/` has the first visit come from the home page,
+  read `--from-wait` ms (10000) first, as Start building's does, its
+  `data-studio-ahead` at the click in the table.
 
   ```sh
   set -a; . ./.env; set +a
