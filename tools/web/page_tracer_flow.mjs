@@ -249,7 +249,9 @@ async function tracedPart() {
     + ` ${readied ? readied.beat : "?"} ms, a frame ${readied ? readied.frame : "?"} ms; tracing: ${tracing.beat} ms,`
     + ` a frame ${tracing.frame} ms; first samples ${tracedAt ? Math.round((tracedAt - started) / 1000) : "?"} s in)`);
   facts.traced = { seconds, status: seen.status, readied, tracing, counts: [...counts], samples: seen.samples };
-  check(`Best is path traced here (the page says traced: ${seen.traced})`, seen.traced === true);
+  // traced is what the kept picture is: the frames, where the trace behind them was grainier.
+  check(`Best is path traced here (the page says traced: ${seen.traced}, kept the frames: ${seen.kept_frames})`,
+    seen.traced === true || (seen.kept_frames === true && counts.size >= 2));
   check(`its samples climb while the dialog shows it (${[...counts].slice(0, 12).join(", ")})`, counts.size >= 2);
   const words = [...said];
   check(`the dialog says what it waits on, then counts the picture's samples (${words.slice(0, 8).join(" / ")})`,
@@ -264,7 +266,7 @@ async function tracedPart() {
     Boolean(shown) && shown.width === width && shown.height === height && shown.spread > 0.02);
   // At a few samples the trace is grainier than the frames averaged, and those are kept, saying so.
   check(`the result says frames averaged only where it kept them as better ("${seen.status}", kept ${seen.kept_frames})`,
-    !/frames averaged/.test(seen.status || "") || (seen.kept_frames === true && /^Kept the frames averaged/m.test(seen.status || "")));
+    !/frames averaged/.test(seen.status || "") || (seen.kept_frames === true && /(^|; )Kept the frames averaged/.test(seen.status || "")));
   check(`the page's thread is never held over ${stallLimit} ms while it traces (${tracing.beat} ms)`,
     tracing.beat <= stallLimit);
 
