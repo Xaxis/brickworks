@@ -461,9 +461,13 @@ async function main() {
   const before = [await fileStatus(`${idC}.mpd`), await fileStatus(`${idC}.png`)];
   check(before.every((s) => s === 200), `but its files are still in the bucket (${before.join(", ")})`);
   r = await call(`/api/share/sweep?only=${id},${idC}`, { token: CRON });
-  const removed = (r.json?.removed || []).slice().sort().join(", ");
-  check(r.status === 200 && removed === `${idC}.mpd, ${idC}.png`,
-    `the sweep takes those two and nothing of the published one (${r.status}: ${removed || r.json?.error})`);
+  // Every file a share keeps goes with it: the model, its picture, and any
+  // picture of its lots (<id>.lots1.png, kept at publish since partpics).
+  const taken = (r.json?.removed || []).slice().sort();
+  const removed = taken.join(", ");
+  check(r.status === 200 && taken.includes(`${idC}.mpd`) && taken.includes(`${idC}.png`)
+    && taken.every((name) => name.startsWith(`${idC}.`)),
+    `the sweep takes the deleted account's files and nothing of the published one (${r.status}: ${removed || r.json?.error})`);
   const after = [await fileStatus(`${idC}.mpd`), await fileStatus(`${idC}.png`)];
   check(after.every((s) => s === 400 || s === 404), `they are gone from the bucket (${after.join(", ")})`);
   r = await call(`/api/share?id=${id}`);
