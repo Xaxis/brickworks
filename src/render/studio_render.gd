@@ -3012,7 +3012,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
 			if _behind != null and not shown_traced:
-				shown_traced = _settled(clean)
+				shown_traced = _settled(clean, false)
 			var so_far: Image = null
 			if _behind == null or shown_traced:
 				so_far = _tracer.picture(exposure * scale, tonemapper, white, contrast,
@@ -3789,8 +3789,10 @@ func _held_back() -> bool:
 ## grain left after the denoise (PathTracer.gauge, relative to the light over
 ## the model, plastic and clear) under TRACED_NOISE, the level below which the judge
 ## scored it at or over them on every shot of pool g29. Kept in [member last_noise].
-func _settled(clean: float) -> bool:
-	last_noise = _tracer.gauge(clean)
+## Not [param wait] (the second's look): the last measure the page finished, so
+## the page's thread never waits on the card; older is grainier, never cleaner.
+func _settled(clean: float, wait: bool = true) -> bool:
+	last_noise = _tracer.gauge(clean, wait)
 	return not last_noise.is_empty() and float(last_noise.get("left", INF)) <= TRACED_NOISE
 
 

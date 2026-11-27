@@ -688,6 +688,10 @@ export class Tracer {
 		this.pairs = null;
 		this.picturePair = null;
 		this.cellPair = null;
+		// The measure's buffer is sized to the cells, and what it holds is the last picture's.
+		this.dropCellRead();
+		if (this.cellBuffer) gl.deleteBuffer(this.cellBuffer);
+		this.cellBuffer = null;
 	}
 
 	// A picture [width] x [height] begun again, traced by [version] with
@@ -713,6 +717,7 @@ export class Tracer {
 		this.samples = 0;
 		this.row = 0;
 		this.noise = null;
+		this.dropCellRead();
 		this.askedAt = 0;
 		this.ownGaps = [];
 		this.ownGap = 0;
@@ -937,8 +942,9 @@ export class Tracer {
 	// trace's spare pair (pairs[1], written only inside a pass) holds them, in turn. Each pass is
 	// drawn in bands of DENOISE_BAND pixels, flushed between, so none holds the card long. The
 	// texture the resolve reads in place of the sums. Not [filtered] (a look with no denoise): the
-	// measure of stage 0 alone, the raw grain. Not [composed] (a measure only): null.
-	denoise(filtered = true, composed = true) {
+	// measure of stage 0 alone, the raw grain. Not [composed] (a measure only): null. Not [wait]: the
+	// measure is read once the card has drawn it (measure).
+	denoise(filtered = true, composed = true, wait = true) {
 		const gl = this.gl;
 		const [w, h] = this.size;
 		const p = this.programs.denoise;
@@ -983,7 +989,7 @@ export class Tracer {
 			stage(1, step, current, 1 - current);
 			current = 1 - current;
 		}
-		this.measure(scratch[current][0]);
+		this.measure(scratch[current][0], wait);
 		if (!composed) return null;
 		gl.useProgram(p);
 		stage(2, 1, current, 1 - current);
@@ -994,19 +1000,27 @@ export class Tracer {
 	// How much grain the picture has left as [numbers] would resolve it (this.noise), measured
 	// without drawing or reading back the picture: Render asks it each second to decide whether the
 	// traced picture is clean enough to show (photoreal29). Null before a sample or the denoise.
-	gauge(numbers) {
+	// Not [wait] (the second's look): the measure the card has finished, at most a second old and
+	// so never cleaner than the picture now, and the next one begun; the page's thread never waits
+	// on the card for it, as for a pass. [wait] (the end's decision): measured now, read at once.
+	gauge(numbers, wait = true) {
 		if (!this.pairs || this.samples <= 0 || this.prepare(this.version) !== "ready") return null;
 		if (!this.programs.denoise || this.programs.denoise.state !== "ready") return null;
-		this.denoise(floats(numbers)[8] > 0, false);
+		if (!wait && this.cellRead) {
+			if (this.gl.getSyncParameter(this.cellRead.sync, this.gl.SYNC_STATUS) !== this.gl.SIGNALED) return this.noise;
+			this.readCells();
+		}
+		this.denoise(floats(numbers)[8] > 0, false, wait);
 		return this.noise;
 	}
 
 	// What the denoise left (stage 3 over [left], the last pass's light and variance), summed over
 	// the cells into this.noise: the raw halves' noise and what is left, each relative to the
-	// light, over the model (plastic and clear), and what is left over the whole picture.
-	measure(left) {
+	// light, over the model (plastic and clear), and what is left over the whole picture. Not
+	// [wait]: copied into a buffer behind a fence (this.cellRead), summed by readCells once the
+	// card has drawn it.
+	measure(left, wait = true) {
 		const gl = this.gl;
-		const [w, h] = this.size;
 		const p = this.programs.denoise;
 		const [cw, ch] = this.cells;
 		gl.uniform1i(p.at.u_stage, 3);
@@ -1016,9 +1030,49 @@ export class Tracer {
 		gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 		gl.viewport(0, 0, cw, ch);
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
-		const cells = new Float32Array(cw * ch * 4);
-		gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.FLOAT, cells);
+		this.dropCellRead();
+		if (wait) {
+			const cells = new Float32Array(cw * ch * 4);
+			gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.FLOAT, cells);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			return this.sumCells(cells, this.samples);
+		}
+		if (!this.cellBuffer) {
+			this.cellBuffer = gl.createBuffer();
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.cellBuffer);
+			gl.bufferData(gl.PIXEL_PACK_BUFFER, cw * ch * 16, gl.STREAM_READ);
+		} else gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.cellBuffer);
+		gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.FLOAT, 0);
+		gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		this.cellRead = { sync: gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0), samples: this.samples };
+		gl.flush();
+		return this.noise;
+	}
+
+	// The cells a measure left behind its fence, summed into this.noise (the fence has signalled).
+	readCells() {
+		const gl = this.gl;
+		const [cw, ch] = this.cells;
+		const cells = new Float32Array(cw * ch * 4);
+		gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.cellBuffer);
+		gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, cells);
+		gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+		const samples = this.cellRead.samples;
+		this.dropCellRead();
+		this.sumCells(cells, samples);
+	}
+
+	dropCellRead() {
+		if (!this.cellRead) return;
+		this.gl.deleteSync(this.cellRead.sync);
+		this.cellRead = null;
+	}
+
+	// The cells' four sums ([cells], as measured at [samples]) as this.noise.
+	sumCells(cells, samples) {
+		const [w, h] = this.size;
+		const [cw, ch] = this.cells;
 		const sum = [0, 0, 0, 0];
 		for (let i = 0; i < cells.length; i++) sum[i & 3] += cells[i];
 		// The pixels sampled: 4 x 4 a cell, at 2, 6, 10 and 14 across and down, inside the picture.
@@ -1028,7 +1082,7 @@ export class Tracer {
 			return count;
 		};
 		const every = inside(w, cw) * inside(h, ch);
-		this.noise = { samples: this.samples, raw: sum[0] / Math.max(sum[2], 1), left: sum[1] / Math.max(sum[2], 1),
+		this.noise = { samples, raw: sum[0] / Math.max(sum[2], 1), left: sum[1] / Math.max(sum[2], 1),
 			plastic: sum[2] / Math.max(every, 1), leftAll: sum[3] / Math.max(every, 1) };
 		return this.noise;
 	}
@@ -1114,7 +1168,7 @@ export function start() {
 		trace: (count, seed, whole) => tracer.trace(count, seed, !!whole),
 		between: () => tracer.row === 0,
 		picture: (numbers) => tracer.picture(numbers),
-		gauge: (numbers) => JSON.stringify(tracer.gauge(numbers) || null),
+		gauge: (numbers, wait) => JSON.stringify(tracer.gauge(numbers, !!wait) || null),
 		mean: () => tracer.mean(),
 		release: () => tracer.release(),
 		stats: () => JSON.stringify({ passes: tracer.passes, rows: tracer.rows, perPass: tracer.perPass,

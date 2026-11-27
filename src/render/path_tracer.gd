@@ -918,13 +918,13 @@ func sample_ms() -> float:
 ## same [param denoise] would draw it (photoreal29): in a browser the page
 ## measures it (PageTracer.gauge: "left", relative to the light over the
 ## model's plastic; "raw" before the denoise), reading nothing back. {} on
-## the desktop and before a sample.
-func gauge(denoise: float) -> Dictionary:
+## the desktop and before a sample. Not [param wait]: the last finished measure.
+func gauge(denoise: float, wait: bool = true) -> Dictionary:
 	if not OS.has_feature("web") or not _page_staged or samples <= 0:
 		return {}
 	var push := PackedFloat32Array([float(samples), 1.0, 1.0, 4.0, 1.0, 1.0, 0.0, 0.0, denoise,
 		1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-	return PageTracer.gauge(push)
+	return PageTracer.gauge(push, wait)
 
 
 ## The picture so far, exposed by [param exposure] and tone-mapped

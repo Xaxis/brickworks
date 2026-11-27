@@ -191,6 +191,9 @@ async function tracedPart() {
   let readied = null;
   let tracedAt = 0;
   const counts = new Set();
+  // The grain the page measured behind the frames (state noise: StudioRender.last_noise), read
+  // without the page waiting on the card (photoreal29).
+  let measured = null;
   // What the dialog said while it worked: a first Best in a browser waits on
   // the tracer's script, its compile and the metering before a sample of the
   // picture, and it said "setting up the model" through all of them.
@@ -218,6 +221,7 @@ async function tracedPart() {
         await resetWaits(page);
       }
       counts.add(seen.samples);
+      if (seen.noise && Number.isFinite(seen.noise.left)) measured = seen.noise;
       if (shot < 2 && counts.size >= 2 + shot * 2) {
         await page.screenshot({ path: path.join(out, `refining_${shot}.png`), timeout: 120000 });
         shot += 1;
@@ -258,6 +262,8 @@ async function tracedPart() {
     words.includes("metering the light") && words.some((w) => SAMPLES.test(w)) && !staleWords);
   check(`while its trace is grainier, the dialog says it traces behind the picture it shows`,
     words.some((w) => /^Path tracing behind this picture: /.test(w)));
+  check(`the page measures the grain behind the frames (left ${measured ? measured.left.toFixed(3) : "none"} at ${measured ? measured.samples : 0} samples)`,
+    measured !== null && measured.left > 0 && measured.samples > 0);
   if (staleWords) console.log(`      (still "${staleWords}")`);
   check(`Finish now ends it at ${seen.samples} samples (pressed at ${enough} or more)`,
     Boolean(finished) && seen.working === "" && seen.samples >= enough && seen.samples < 256);

@@ -267,12 +267,13 @@ static func picture(numbers: PackedFloat32Array) -> PackedByteArray:
 ## spread between each pixel's two halves of its samples, carried through the
 ## denoise, relative to the light, over the model's plastic ("left"; "raw"
 ## before the denoise). Nothing of the picture is read back. {} when there is
-## no tracer or no picture yet.
-static func gauge(numbers: PackedFloat32Array) -> Dictionary:
+## no tracer or no picture yet. Not [param wait]: the last measure the card has
+## finished (at most a second old), the page never waiting on the card for it.
+static func gauge(numbers: PackedFloat32Array, wait: bool = true) -> Dictionary:
 	var tracer: JavaScriptObject = _tracer()
 	if tracer == null:
 		return {}
-	var said: Variant = JSON.parse_string(str(tracer.gauge(_b64(numbers.to_byte_array()))))
+	var said: Variant = JSON.parse_string(str(tracer.gauge(_b64(numbers.to_byte_array()), wait)))
 	return said if said is Dictionary else {}
 
 
