@@ -298,10 +298,13 @@ var final: Dictionary = {}
 ## back for them: of 44 browser-tab sessions (design317t), 30 ended at the
 ## save after the first look whatever it handed, a close look or the
 ## surface pass, and 24 of those at the save that said what the pass added.
-func reviewed() -> Variant:
+## [param by] whose the save is (Builder.BY), else whoever is [member
+## Builder.acting]: a feature's piece next_review lays is theirs.
+func reviewed(by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	# Whether the pass's result is said at this save (Assistant._creative_passed).
 	var closing: bool = not assistant._outside_creative.is_empty()
-	var more: Variant = await assistant.next_review()
+	var more: Variant = await assistant.next_review(actor)
 	if not final_due(closing):
 		return more
 	var look: Variant = await final_look()

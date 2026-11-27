@@ -589,6 +589,8 @@ func _none_why(lot: Lot) -> String:
 ## parts are the parts list's own, taken again before each swap: a swap
 ## inside a sub-model lays its copies again.
 func swap(rare: Array, finder: FindReplace) -> Dictionary:
+	# Whose its step is, carried past the waits for shapes (Builder.acting).
+	var by: String = Builder.acting
 	var builder: Builder = finder.builder
 	# A part in hand, back where it was first: it is then found and swapped
 	# with the rest of its lot, where a step laid over its lift lost it.
@@ -616,14 +618,14 @@ func swap(rare: Array, finder: FindReplace) -> Dictionary:
 			var other: String = Mirror.counterpart(library, lot.into_part)
 			if not other.is_empty():
 				await finder.shape(other)
-		var done: Dictionary = finder.replace(found, into)
+		var done: Dictionary = Builder.by(by, finder.replace.bind(found, into))
 		changed += int(done["changed"])
 		if int(done["changed"]) > 0:
 			lots += 1
 		if not str(done.get("stayed", "")).is_empty():
 			stayed.append("%s: %s" % [lot.name, str(done["stayed"])])
 	var words: String = swapped_words(lots, changed)
-	builder.fold_since(depth, words)
+	builder.fold_since(depth, words, by)
 	if builder.history_depth() == depth + 1:
 		builder.name_newest(words)
 	return {"lots": lots, "changed": changed, "stayed": stayed, "words": words,

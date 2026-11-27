@@ -160,7 +160,7 @@ func _lay(assistant: Assistant, world: BrickWorld, builder: Builder,
 	if world.brick_count() != 1:
 		return "the plate under it was not laid"
 	var said: Variant = await assistant._place_technique({"id": entry["id"],
-		"x": 4, "y": 1, "z": 4})
+		"x": 4, "y": 1, "z": 4}, "")
 	var text: String = str(said[0]["text"]) + str(said[1].get("text", "")) \
 		if said is Array else str(said)
 	if not text.contains("Done."):

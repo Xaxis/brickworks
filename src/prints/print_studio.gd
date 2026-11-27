@@ -261,6 +261,8 @@ func sticker_on(brick_id: int, side: String, span: bool, picture: Image,
 
 
 func _draw(picture: Image, area: String, title: String) -> String:
+	# Whose the print's step is (made, then _on_made), carried past the wait.
+	var by: String = Builder.acting
 	# On the web the part's shape may be fetched first.
 	var until: int = Time.get_ticks_msec() + 30000
 	while editor.fetching() and Time.get_ticks_msec() < until:
@@ -273,7 +275,7 @@ func _draw(picture: Image, area: String, title: String) -> String:
 	var heard: Array = [""]
 	var listen := func(words: String) -> void: heard[0] = words
 	said.connect(listen)
-	var why: String = editor.draw_and_save(picture, area, title)
+	var why: String = Builder.by(by, editor.draw_and_save.bind(picture, area, title))
 	said.disconnect(listen)
 	if not why.is_empty():
 		_replacing = 0
@@ -332,6 +334,8 @@ func _selected_alike() -> PackedInt64Array:
 ## colour where it stands, as one step of undo: Make, Printed versions…'s
 ## choice, and print_part's version=. What came of it.
 func swap_to(ids: PackedInt64Array, version: String) -> String:
+	# Whose its step is, carried past the wait for the shape (Builder.acting).
+	var by: String = Builder.acting
 	var info: PartLibrary.PartInfo = library.parts.get(version)
 	if info == null or info.is_redirect():
 		return "There is no part %s in the library." % version
@@ -360,7 +364,7 @@ func swap_to(ids: PackedInt64Array, version: String) -> String:
 	builder.selection.clear()
 	for brick_id: int in ids:
 		builder.selection[brick_id] = true
-	var done: Vector2i = builder.replace_selection(version, true)
+	var done: Vector2i = Builder.by(by, builder.replace_selection.bind(version, true))
 	var swapped: Array = builder.selection.keys() if done.x > 0 else []
 	# The person's own selection is theirs: a session's swap of other parts
 	# leaves it as it was, less any part swapped away.
@@ -392,6 +396,7 @@ static func _same_ids(a: Array, b: Array) -> bool:
 ## brick_id], its middle on that face's middle, as the sticker in hand put
 ## down on that face is. What came of it.
 func stick_part_on(brick_id: int, side: String, sticker_id: String, colour: int) -> String:
+	var by: String = Builder.acting
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null:
 		return "There is no part numbered %d." % brick_id
@@ -408,7 +413,8 @@ func stick_part_on(brick_id: int, side: String, sticker_id: String, colour: int)
 		return "The %s side of #%d has no flat face open for a sticker%s." % [side, brick_id,
 			" (#%d is in the way)" % face.bricks[0] if face != null else ""]
 	var film: Lbm.PartMesh = library.mesh_for(sticker_id)
-	var put: int = builder.put_part(sticker_id, colour, Stickers.laid_on(face, film.bounds))
+	var put: int = Builder.by(by, builder.put_part.bind(sticker_id, colour, Stickers.laid_on(face,
+		film.bounds)))
 	last_placed = put
 	sheet.refresh()
 	if put == 0:

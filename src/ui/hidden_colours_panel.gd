@@ -494,6 +494,8 @@ func controls_by_name() -> Dictionary:
 ## colour_hidden_parts, for a session: the plan said, with the inside
 ## pictured coloured; and with apply and agreed, done as one step.
 func for_session(input: Dictionary, _work: Working.Job = null) -> Variant:
+	# Whose its step is, carried past the working out (Builder.acting).
+	var by: String = Builder.acting
 	if world == null:
 		return "This app cannot do that from outside."
 	if world.brick_count() - scenery.size() <= 0:
@@ -522,7 +524,7 @@ func for_session(input: Dictionary, _work: Working.Job = null) -> Variant:
 		said += (" Not applied: %s Ask the person about that in so many words; "
 			% made.ask_first + "set_agreed=true once they say to recolour the set.")
 	if applying:
-		var changed: int = apply_plan(made)
+		var changed: int = Builder.by(by, apply_plan.bind(made))
 		return ("%s Done: %d parts coloured, one step to undo. The outside is unchanged. "
 			% [said, changed] + "The booklet shows each colour where its %s starts."
 			% ("section" if how == "sections" else "stage" if how == "stages" else "half"))

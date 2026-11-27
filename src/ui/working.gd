@@ -238,6 +238,11 @@ static var asked: int = 0
 ## whose cost is the making and not the command's.
 static func attend(name: String, doing: String, run: Callable, in_press: bool = false,
 		slow: bool = false, size: int = 0, first_use: bool = false) -> void:
+	# Whose its step is: whoever asked for it, carried to the frame it runs
+	# in when it is said first (Builder.acting). A Delete of 320 the person
+	# pressed while their Claude looked was the chat's once it waited a frame
+	# (savereview3 F1).
+	var by: String = Builder.acting
 	# Inside another command: that one is being timed and said.
 	if _depth > 0:
 		await run.call()
@@ -254,7 +259,7 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 	# pressed while this one waits on a frame is a command of its own.
 	var going := _Going.new()
 	_depth += 1
-	going.go(run)
+	Builder.by(by, func() -> void: going.go(run))
 	_depth -= 1
 	# Still going after it returned, and saying nothing: said, until it ends.
 	if not going.finished and said == null:

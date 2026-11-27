@@ -7876,9 +7876,11 @@ func _make_assistant() -> void:
 	# What the design said it stands on, laid when it stands.
 	_assistant_made.floor_chosen.connect(_on_floor_chosen)
 	_assistant_made.finished.connect(func(ok: bool, _summary: String) -> void:
-		if _plate_after_design and ok:
-			floor_part_of_model(true)
-		_plate_after_design = false
+		# Whoever's floor it was, whoever acts as the design ends: the
+		# person's own design in the panel, a chat's at work beside it.
+		if not _plate_after_design.is_empty() and ok:
+			Builder.by(str(_plate_after_design["by"]), floor_part_of_model.bind(true))
+		_plate_after_design = {}
 		# Framed again as it ends: the loop's own passes lay parts of their
 		# own after the design.
 		if ok and not _out_of_view and _frame_for_design():
@@ -10859,12 +10861,15 @@ func choose_floor(chosen: ModelFloor) -> void:
 ## The design's baseplate is made part of the model when the design is
 ## done: while it is being designed, the plate is the floor, and the
 ## pictures the designer judges by are of the model and not a green square.
-var _plate_after_design: bool = false
+## {} or, while it waits, {"by": whose the floor's choice was} (Builder.BY),
+## for its step to be theirs as the design ends.
+var _plate_after_design: Dictionary = {}
 
 
 ## What a design said it stands on (Assistant.floor_chosen): no floor for a
 ## vehicle, a baseplate in its ground's colour for a scene, made part of
-## the build. Said in the chat, and the person can change it.
+## the build. Said in the chat, and the person can change it. Its steps are
+## whoever's the design is: Assistant._apply keeps them inside Builder.by.
 func _on_floor_chosen(choice: Dictionary) -> void:
 	var chosen: ModelFloor = _store.model_floor.copy()
 	chosen.kind = str(choice.get("kind", ModelFloor.BASEPLATE))
@@ -10887,9 +10892,11 @@ func _on_floor_chosen(choice: Dictionary) -> void:
 		_floor.choose(chosen)
 		_on_model_edited()
 	if chosen.is_plate() and bool(choice.get("part", false)) and not was_own:
-		changed = changed or not _plate_after_design
+		changed = changed or _plate_after_design.is_empty()
 		if _assistant_made != null and _assistant_made.is_busy():
-			_plate_after_design = true
+			# Made part of the model as the design ends, frames on: as the
+			# floor's chooser's, read now, never whoever acts then.
+			_plate_after_design = {"by": Builder.acting}
 		else:
 			floor_part_of_model(true)
 	# Once, not at every revision of the design.
