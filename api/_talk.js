@@ -5,20 +5,32 @@
 // itself; web/talk.js then draws it again as the signed-in reader sees it
 // (their blocks, their own hidden posts) and does what they press.
 //
-//   GET  ?op=talk_page             /talk: the threads of every board, newest
-//                                  talk first (pinned first), the boards, a
-//                                  search, and the talk on models beside them;
-//                                  &board=B /talk/b/<board>; &q=Q a search;
-//                                  &before=ISO older threads
-//   GET  ?op=talk_page&thread=N    /talk/t/<n>: a thread, its posts, the
-//                                  models, steps, sets and challenges they
-//                                  link drawn as cards, and its schema.org
+//   GET  ?op=talk_page             /talk: the threads of every board, a page
+//                                  of 30 at a time, the boards, a search, and
+//                                  the talk on models beside them; &board=B
+//                                  /talk/b/<board>; &q=Q a search (each
+//                                  thread with the words found, marked);
+//                                  &sort=latest|new|top|unanswered|unread,
+//                                  &in=week|month|year (top's), &page=N
+//                                  (talk2.sql; without it talk.sql's one
+//                                  page, &before=ISO older threads)
+//   GET  ?op=talk_page&thread=N    /talk/t/<n>: a thread, 20 posts a page
+//                                  (&page=N, or &post=P: the page post P is
+//                                  on), each numbered, its people, its answer
+//                                  under the question, the models, steps,
+//                                  sets and challenges they link drawn as
+//                                  cards, and its schema.org
 //                                  DiscussionForumPosting
 //   GET  ?op=talk_page&new=1       /talk/new: start a thread (&board=B,
 //                                  &model=X: a Show and tell of model X)
-//   GET  ?op=talk&board=B&q=Q&before=ISO   the threads as JSON
-//   GET  ?op=talk_thread&id=N      a thread as the caller sees it, JSON; with
-//                                  &html=1 its posts drawn, for web/talk.js
+//   GET  ?op=talk&board=B&q=Q&sort=S&in=P&page=N   the threads as JSON,
+//                                  as the caller sees them (signed in: what
+//                                  is new for them, and their visit counted);
+//                                  &html=1 drawn, with the pager, for
+//                                  web/talk.js
+//   GET  ?op=talk_thread&id=N      a thread as the caller sees it, JSON
+//                                  (&page=N, &post=P); with &html=1 its
+//                                  posts drawn, for web/talk.js
 //   GET  ?op=talk_latest&n=4       the newest threads (&html=1 drawn), for
 //                                  the homepage's Latest talk (#talk-latest)
 //   GET  ?op=talk_rss[&board=B]    /talk.rss, /talk/b/<board>.rss: RSS 2.0
@@ -30,7 +42,15 @@
 //   POST ?op=talk_reply            (session) {thread, body, answers?, photo?}
 //   POST ?op=talk_change           (session) {post, what: edit|remove, body?}
 //   POST ?op=talk_follow           (session) {thread, on}
-//   POST ?op=talk_read             (session) {thread}: read up to now
+//   POST ?op=talk_read             (session) {thread, post?}: read up to
+//                                  now, or up to post (the last of the page
+//                                  they saw; talk2.sql), never back
+//   POST ?op=talk_view             {thread}: opened by a person, counted
+//                                  once a day each (a key made from them,
+//                                  never who they are; talk2.sql)
+//   POST ?op=talk_answer           (session) {thread, post}: the starter of a
+//                                  Help thread marks the reply that answered
+//                                  them (post null: none; talk2.sql)
 //   POST ?op=talk_photo_start      (session) {type, size}: where the photo is
 //                                  sent, as a build's photo is (api/_builds.js)
 //   POST ?op=report {post, reason, note?}  (api/people.js report, reportPost)
@@ -60,6 +80,8 @@ import { challengeCards } from "./_challenges.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
 import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, pageHeadHtml, say } from "./_card.js";
+import { pagerHtml, pagerLinks, pagesHtml } from "./_pager.js";
+import { originOf } from "./_oauth.js";
 import {
   ASK_EVERY_S, LIBRARY, NOT_YET as ASKS_NOT_YET, SET, SET_NOT_YET, askHtml, askOf, askPicture, askRefused, asksOn, asksReady,
   pinLineHtml, placesAsked, placesOnAsk, setAsksReady, setDrawing, withAsks,
@@ -69,6 +91,11 @@ export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
 export const MOST_CHARACTERS = 4000;
 export const MOST_TITLE = 120;
 const PER_PAGE = 30;
+export const POSTS_PER_PAGE = 20;
+/// A list's sorts (talk2.sql talk2_list): Unread is a signed-in reader's
+/// too. Top's periods; none is all time.
+export const SORTS = ["latest", "new", "top", "unanswered"];
+export const PERIODS = ["week", "month", "year"];
 const NOT_THERE = /: 404$/;
 const NOT_YET = "Talk is not open on Brickworks yet.";
 const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
@@ -79,6 +106,9 @@ const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 // schema.org's types and RSS's head: code, never words to translate.
 const PERSON = "Person";
 const COMMENT = "Comment";
+const QA_PAGE = "QAPage";
+const QUESTION = "Question";
+const ANSWER = "Answer";
 const RSS_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" '
   + 'xmlns:dc="http://purl.org/dc/elements/1.1/">';
 
@@ -102,6 +132,8 @@ export const WORDS = {
   blocked: [403, "You blocked somebody in this conversation, so you cannot post here."],
   blocked_by: [403, "You cannot post here."],
   not_yours: [403, "That post is somebody else's."],
+  not_help: [400, "Only a question in Help has an answer to mark."],
+  not_starter: [403, "Only whoever asked marks the answer."],
   again: [409, "You posted those words a moment ago."],
   limit: [429, "That is a lot of posts in a short time: try again in an hour."],
   yours: [400, "That post is yours: edit it or remove it instead."],
@@ -284,10 +316,34 @@ export function embedsIn(text, hosts = SITE_HOSTS) {
   return out;
 }
 
+/// [text]'s lines in blocks: [{quote, text}], each run of lines begun ">"
+/// one quote (its ">" and the one space after it taken off), the lines
+/// round a quote without the blank line that sets it apart. Pure.
+export function blocksOf(text) {
+  const blocks = [];
+  for (const line of String(text || "").split("\n")) {
+    const quote = /^\s*>/.test(line);
+    const words = quote ? line.replace(/^\s*> ?/, "") : line;
+    const last = blocks[blocks.length - 1];
+    if (last && last.quote === quote) last.text += `\n${words}`;
+    else blocks.push({ quote, text: words });
+  }
+  if (blocks.length === 1) return blocks;
+  return blocks.map((one) => ({ ...one, text: one.text.replace(/^\n+|\n+$/g, "") })).filter((one) => one.text.trim() !== "");
+}
+
 /// A post's words as HTML: escaped, its lines kept (the page's pre-wrap),
-/// each @handle it named ([mentions]) a link to them, each link of this
-/// site a link, any other link the words it is. Pure.
+/// each run of lines begun ">" a quote (Quote on a post writes one), each
+/// @handle it named ([mentions]) a link to them, each link of this site a
+/// link, any other link the words it is. Pure.
 export function bodyHtml(text, mentions = [], hosts = SITE_HOSTS) {
+  return blocksOf(text).map((one) => (one.quote
+    ? `<blockquote class="talk-quote">${inlineHtml(one.text, mentions, hosts)}</blockquote>`
+    : inlineHtml(one.text, mentions, hosts))).join("");
+}
+
+/// One block of a post's words as HTML (bodyHtml).
+function inlineHtml(text, mentions, hosts) {
   let out = "";
   for (const piece of piecesOf(text, hosts)) {
     if (piece.link && piece.link.href) {
@@ -307,6 +363,92 @@ export function bodyHtml(text, mentions = [], hosts = SITE_HOSTS) {
 }
 
 // ---------------------------------------------------------------------------
+// Pure: a list's page and a search's words.
+
+/// What a list's address asks (/talk?sort=top&in=month&page=3): {board,
+/// q, sort, period, page}, each one a list knows or its default.
+export function listAsked(query = {}) {
+  const board = query.board === undefined || query.board === "" ? null : String(query.board);
+  // A pasted word's zero-width joins and marks out, so "hin​ge" finds hinge.
+  const q = String(query.q || "").replace(/[​-‏⁠﻿]/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const given = String(query.sort || "");
+  const sort = SORTS.includes(given) || given === "unread" ? given : "latest";
+  const period = sort === "top" && PERIODS.includes(String(query.in || "")) ? String(query.in) : null;
+  const page = Math.min(100000, whole(query.page) || 1);
+  return { board, q, sort, period, page };
+}
+
+/// A list's path as asked (no language: talkShell adds it), the page and
+/// the sort said only when not the first and not Latest.
+export function listPath({ board = null, q = "", sort = "latest", period = null, page = 1, tests = false } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (sort && sort !== "latest") params.set("sort", sort);
+  if (sort === "top" && period) params.set("in", period);
+  if (page > 1) params.set("page", String(page));
+  if (tests) params.set("tests", "1");
+  const search = params.toString();
+  return `/talk${board ? `/b/${board}` : ""}${search ? `?${search}` : ""}`;
+}
+
+/// A thread's page's path: its own (threadPath), ?page=N past the first.
+export function threadPagePath(thread, page = 1, tests = false) {
+  const params = new URLSearchParams();
+  if (page > 1) params.set("page", String(page));
+  if (tests) params.set("tests", "1");
+  const search = params.toString();
+  return `${threadPath(thread)}${search ? `?${search}` : ""}`;
+}
+
+/// Post [id]'s own link in [thread]: its page found from it (?post=), the
+/// page scrolled to it. A link that stays right as the thread grows.
+export function postPath(thread, id, tests = false) {
+  return `${threadPath(thread)}?post=${Number(id) || 0}${tests ? "&tests=1" : ""}#post-${Number(id) || 0}`;
+}
+
+/// The words a search looks for, as talk_query reads them: lower case,
+/// letters and digits, at most eight. Pure.
+export function searchWords(q) {
+  return [...new Set(String(q || "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])].slice(0, 8);
+}
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/// Where [words] are in a text: each as the start of a word, as a search
+/// finds them (talk_query: "hing" finds "hinges").
+const wordsFound = (words) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${words.map(escapeRegExp).join("|")})[\\p{L}\\p{N}]*`, "giu");
+
+/// [text] escaped, each of [words] found in it marked. Pure.
+export function markedHtml(text, words = []) {
+  const plain = String(text || "");
+  if (!words.length) return escapeHtml(plain);
+  let out = "";
+  let at = 0;
+  for (const found of plain.matchAll(wordsFound(words))) {
+    out += `${escapeHtml(plain.slice(at, found.index))}<mark>${escapeHtml(found[0])}</mark>`;
+    at = found.index + found[0].length;
+  }
+  return out + escapeHtml(plain.slice(at));
+}
+
+/// [text] on one line, cut to about [size] characters round the first of
+/// [words] found, escaped and each found word marked, "…" where it was
+/// cut; its start where none is. Pure.
+export function excerptHtml(text, words = [], size = 180) {
+  const plain = String(text || "").replace(/\s+/g, " ").trim();
+  const first = words.length ? plain.search(wordsFound(words)) : -1;
+  let from = first > size / 3 ? first - Math.floor(size / 3) : 0;
+  if (from > 0) {
+    const space = plain.indexOf(" ", from);
+    if (space > -1 && space < first) from = space + 1;
+  }
+  let piece = plain.slice(from, from + size);
+  const cut = from + size < plain.length;
+  if (cut) piece = piece.replace(/\s+\S*$/, "");
+  return `${from > 0 ? "…" : ""}${markedHtml(piece, words)}${cut ? "…" : ""}`;
+}
+
+// ---------------------------------------------------------------------------
 // Pure: words and pieces of a page.
 
 /// A board's name and what it is for, in the page's language.
@@ -317,6 +459,23 @@ export function boardSaid(board) {
   if (board === "challenges") return { name: say("Challenges"), about: say("Each month’s challenge has its own thread: ask, show progress, cheer.") };
   if (board === "news") return { name: say("News"), about: say("What is new on Brickworks, from the team.") };
   return { name: say("Latest"), about: say("Every board, newest talk first.") };
+}
+
+/// A sort's name, as its tab says it.
+export function sortSaid(sort) {
+  if (sort === "new") return say("New threads");
+  if (sort === "top") return say("Top");
+  if (sort === "unanswered") return say("Unanswered");
+  if (sort === "unread") return say("Unread");
+  return say("Latest");
+}
+
+/// Top's period, as its pill says it; none is all time.
+export function periodSaid(period) {
+  if (period === "week") return say("This week");
+  if (period === "month") return say("This month");
+  if (period === "year") return say("This year");
+  return say("All time");
 }
 
 /// Each board's icon (web/icons.svg), on its tile and on a thread's row
@@ -434,6 +593,77 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
     + `<div class="row-act talk-row-end"><span class="talk-faces">${faces}</span><span class="talk-last">${lastLine}</span></div></li>`;
 }
 
+/// A count as a forum's columns show it: 1,234 up to ten thousand, then
+/// 12K (the page's language's own way of shortening it).
+export function countShort(n) {
+  const value = Number(n) || 0;
+  if (value < 10000) return number(value);
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+/// The picture of a thread's row: the model it is about, its challenge's,
+/// its photo, else the first model its first post links ([thread.linked],
+/// put on it by linkedModels). "" for none.
+const rowPicture = (thread) => modelPicture(thread.model) || modelPicture(thread.challenge?.card)
+  || (thread.photo && PHOTO.test(thread.photo.id || "") ? `/talk/p/${thread.photo.id}.card.jpg` : "")
+  || modelPicture(thread.linked);
+
+/// One thread in a list of Talk's (talk2, 2026-11-27), as a forum lays
+/// one out so a page of thirty reads at a glance: its picture or board's
+/// tile; its title (to the first post the reader has not read, when there
+/// is one), its marks (pinned, locked, answered, new, how many new) and
+/// one line of what it says, or for a search the words found in it,
+/// marked; who started it and when, its board where the list is every
+/// board's, and Reply (the composer in the row, feedinline); then in
+/// columns who is in it, replies, views and when the last post came and
+/// whose. On a phone the columns are one line under the words.
+export function threadLineHtml(thread, { now = Date.now(), board = null, words = [], tests = false } = {}) {
+  const at = langAt();
+  const path = `${at}${threadPath(thread)}`;
+  const firstNew = Number(thread.first_new) || 0;
+  const newPosts = Number(thread.new_posts) || 0;
+  const fresh = thread.fresh === true;
+  const href = firstNew ? `${at}${postPath(thread, firstNew, tests)}` : `${path}${tests ? "?tests=1" : ""}`;
+  const replies = Number(thread.replies) || 0;
+  const counted = thread.views !== undefined && thread.views !== null;
+  const last = replies && thread.last_by ? thread.last_by : null;
+  const marks = [
+    thread.pinned ? `<span class="pill">${asText(say("Pinned"))}</span>` : "",
+    thread.locked ? `<span class="pill">${asText(say("Locked"))}</span>` : "",
+    thread.answered ? `<span class="pill answered">${iconHtml("check")}${asText(say("Answered"))}</span>` : "",
+    fresh ? `<span class="pill new">${asText(say("New"))}</span>` : "",
+    newPosts && firstNew ? `<a class="pill new" href="${escapeHtml(href)}">${escapeHtml(newPosts === 1 ? say("1 new") : say("{n} new", { n: number(newPosts) }))}</a>` : "",
+  ].filter(Boolean).join("");
+  const picture = rowPicture(thread);
+  const hit = thread.hit && thread.hit.body ? thread.hit : null;
+  const said = hit ? excerptHtml(hit.body, words, 200) : thread.said ? excerptHtml(thread.said, words, 160) : "";
+  const faces = [thread.by?.handle || thread.by?.name ? avatarHtml(thread.by, { size: "small" }) : "",
+    last && (last.handle || last.name) && last.handle !== thread.by?.handle ? avatarHtml(last, { size: "small" }) : ""].join("");
+  // Reply, after who started it; on a phone at the end of the counts' line
+  // instead (talk.css), so neither line wraps. One shown at a time.
+  const replyLink = (where) => `<a class="talk-row-reply ${where}" href="${path}${tests ? "?tests=1" : ""}#reply" data-reply-thread="${Number(thread.id)}"`
+    + ` aria-expanded="false" aria-label="${asText(say("Reply to {name}", { name: thread.title }))}">${asText(say("Reply"))}</a>`;
+  const reply = thread.locked ? "" : `<span class="talk-row-reply-at"> · ${replyLink("in-meta")}</span>`;
+  const boardLink = board ? "" : `<a class="talk-row-board b-${thread.board}" href="${at}/talk/b/${thread.board}">${asText(boardSaid(thread.board).name)}</a> · `;
+  const unread = fresh || newPosts > 0;
+  return `<li class="list-row talk-row talk-line${unread ? " unread" : ""}${thread.pinned ? " pinned" : ""}${thread.answered ? " answered" : ""}${picture ? "" : " no-picture"}"`
+    + ` data-thread="${Number(thread.id)}" data-board="${thread.board}">`
+    + `<a class="row-pic talk-row-pic" href="${escapeHtml(href)}" tabindex="-1" aria-hidden="true">${picture
+      ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">`
+      : monthTileHtml(thread.challenge, now) || `<span class="talk-tile b-${thread.board}">${iconHtml(boardIcon(thread.board))}</span>`}</a>`
+    + `<div class="row-body talk-row-main"><h3 class="row-title talk-row-title"><a href="${escapeHtml(href)}">${markedHtml(thread.title, words)}</a>`
+    + `${marks ? ` <span class="talk-marks">${marks}</span>` : ""}</h3>`
+    + `${said ? `<p class="row-said talk-row-said">${hit && !hit.first ? `<span class="talk-hit-said">${asText(say("In a reply:"))}</span> ` : ""}${said}</p>` : ""}`
+    + `<p class="row-meta talk-row-meta"><span>${boardLink}${sayHtml("{who} started it", { who: whoHtml(thread.by) })}<span class="talk-row-when"> · ${timeHtml(thread.at, now)}</span>${reply}</span></p></div>`
+    + `<div class="row-act talk-row-end talk-stats"><span class="talk-faces">${faces}</span>`
+    + `<span class="talk-stat talk-replies" data-replies="${replies}"><b>${escapeHtml(countShort(replies))}</b> <small>${asText(replies === 1 ? say("reply") : say("replies"))}</small></span>`
+    + `${counted ? `<span class="talk-stat talk-views"><b>${escapeHtml(countShort(thread.views))}</b> <small>${asText(Number(thread.views) === 1 ? say("view") : say("views"))}</small></span>` : ""}`
+    + `<span class="talk-stat talk-activity">${timeHtml(thread.last_at || thread.at, now)}`
+    + ` <small>${last ? sayHtml("last from {who}", { who: escapeHtml(last.name || "") }) : asText(say("started"))}</small></span>`
+    + `${thread.locked ? "" : replyLink("in-stats")}</div></li>`;
+}
+
 /// The cards under a post, for what it links ([embeds], embedsIn), each
 /// as [found] has it: a model's or a step's with its picture and name, a
 /// set's and a challenge's by their names, a part by its number.
@@ -471,22 +701,54 @@ export function embedsHtml(embeds, found = {}) {
   return items.length ? `<ul class="talk-embeds">${items.join("")}</ul>` : "";
 }
 
+/// The answer a Help thread's starter marked, under the question (talk2):
+/// whose it is and its number, its first words, and a link to it in the
+/// thread, as a forum shows a solution where the question is.
+export function solutionHtml(answer, thread, { hosts = SITE_HOSTS, tests = false } = {}) {
+  if (!answer || !answer.id) return "";
+  const who = answer.handle ? { handle: answer.handle, name: answer.by || answer.handle } : null;
+  const n = Number(answer.n) || 0;
+  return `<aside class="talk-solution" aria-label="${asText(say("The answer"))}"><p class="talk-solution-head">${iconHtml("check")}`
+    + ` <b>${asText(say("Answered"))}</b> · ${sayHtml("by {who}", { who: whoHtml(who) })}${n ? ` · ${escapeHtml(say("post {n}", { n: number(n) }))}` : ""}</p>`
+    + `<div class="comment-body talk-solution-body">${bodyHtml(summary(answer.body || "", 400), answer.mentions || [], hosts)}</div>`
+    + `<p class="talk-solution-go"><a href="${langAt()}${escapeHtml(postPath(thread, answer.id, tests))}">${asText(say("See it in the thread"))}</a></p></aside>`;
+}
+
 /// One post: its writer's avatar and name (a link), Official on the
-/// house's, Started it on the starter's replies, when, the post it answers,
-/// its words, its photo, the cards of what it links, and what the reader
-/// may do, drawn hidden until web/talk.js wires each.
-export function postHtml(post, { posts = new Map(), found = {}, hosts = SITE_HOSTS, now = Date.now(), signedIn = false, locked = false } = {}) {
+/// house's, Started it on the starter's replies, when, its number in the
+/// thread (a link to it that stays right as the thread grows), the post it
+/// answers and its first words, its words (quotes set apart), its photo,
+/// the cards of what it links, the answer under the question, and what the
+/// reader may do (Reply, Quote, Copy link; Mark as the answer for whoever
+/// asked a Help question), drawn hidden until web/talk.js wires each.
+export function postHtml(post, { posts = new Map(), found = {}, hosts = SITE_HOSTS, now = Date.now(), signedIn = false, locked = false,
+  thread = null, answer = null, mayAnswer = false, tests = false } = {}) {
   const who = post.handle ? { handle: post.handle, name: post.by || post.handle } : null;
+  const id = Number(post.id);
+  const isAnswer = Boolean(answer && Number(answer.id) === id);
   const head = [whoHtml(who)];
   if (post.by_house) head.push(`<span class="pill designer">${asText(say("Official"))}</span>`);
   else if (post.by_starter && !post.first) head.push(`<span class="pill designer">${asText(say("Started the thread"))}</span>`);
-  head.push(`<a class="talk-when" href="#post-${Number(post.id)}">${timeHtml(post.at, now)}</a>`
+  if (isAnswer) head.push(`<span class="pill answered">${iconHtml("check")}${asText(say("Answer"))}</span>`);
+  head.push(`<a class="talk-when" href="#post-${id}">${timeHtml(post.at, now)}</a>`
     + `${post.edited_at ? ` · ${asText(say("edited"))}` : ""}`);
+  const n = Number(post.n) || 0;
+  const own = thread ? `${langAt()}${postPath(thread, id, tests)}` : `#post-${id}`;
+  const numberLink = n ? `<a class="talk-n" href="${escapeHtml(own)}" data-post-link title="${asText(say("A link to this post"))}"`
+    + ` aria-label="${asText(say("Post {n}: a link to it", { n: String(n) }))}">#${n}</a>` : "";
   const answered = post.answers ? posts.get(Number(post.answers)) : null;
   const photo = post.photo && PHOTO.test(post.photo.id || "") ? post.photo : null;
   const name = post.by || say("A builder");
   const acts = [];
-  if (!locked) acts.push(`<button type="button" class="link" data-act="reply" aria-label="${asText(say("Reply to {name}", { name }))}">${asText(say("Reply"))}</button>`);
+  if (!locked) {
+    acts.push(`<button type="button" class="link" data-act="reply" aria-label="${asText(say("Reply to {name}", { name }))}">${asText(say("Reply"))}</button>`);
+    acts.push(`<button type="button" class="link" data-act="quote" aria-label="${asText(say("Quote {name}", { name }))}">${asText(say("Quote"))}</button>`);
+  }
+  acts.push(`<button type="button" class="link" data-act="link">${asText(say("Copy link"))}</button>`);
+  if (mayAnswer && !post.first) {
+    acts.push(isAnswer ? `<button type="button" class="link" data-act="unmark-answer">${asText(say("Not the answer"))}</button>`
+      : `<button type="button" class="link" data-act="mark-answer">${asText(say("Mark as the answer"))}</button>`);
+  }
   if (post.mine) {
     if (!locked) acts.push(`<button type="button" class="link" data-act="edit">${asText(say("Edit"))}</button>`);
     acts.push(`<button type="button" class="link" data-act="remove">${asText(say("Remove"))}</button>`);
@@ -497,26 +759,36 @@ export function postHtml(post, { posts = new Map(), found = {}, hosts = SITE_HOS
   const hidden = post.hidden ? `<p class="note">${asText(post.hidden_by === "reports"
     ? say("Hidden while the site’s owner looks at what was reported: only you see it.")
     : say("Hidden by the site’s owner: only you see it."))}</p>` : "";
-  return `<li class="comment talk-post${post.by_starter ? " by-owner" : ""}${post.hidden ? " hidden-one" : ""}${post.pin ? " on-part" : ""}" id="post-${Number(post.id)}"`
-    + ` data-post="${Number(post.id)}"${post.handle ? ` data-handle="${escapeHtml(post.handle)}"` : ""} data-name="${escapeHtml(name)}"${post.mine ? " data-mine" : ""}>`
+  // The post it answers: its writer and first words when it is on this
+  // page, else a link to it wherever it is.
+  const answering = answered
+    ? `<p class="talk-answers"><a href="#post-${Number(answered.id)}">${asText(say("In reply to {name}", { name: answered.by || say("a builder") }))}</a>`
+      + `${answered.body ? ` <q>${escapeHtml(summary(String(answered.body).replace(/^\s*>.*$/gm, " "), 90))}</q>` : ""}</p>`
+    : post.answers && thread ? `<p class="talk-answers"><a href="${langAt()}${escapeHtml(postPath(thread, post.answers, tests))}">${asText(say("In reply to an earlier post"))}</a></p>` : "";
+  return `<li class="comment talk-post${post.by_starter ? " by-owner" : ""}${post.hidden ? " hidden-one" : ""}${post.pin ? " on-part" : ""}${isAnswer ? " is-answer" : ""}" id="post-${id}"`
+    + ` data-post="${id}"${n ? ` data-n="${n}"` : ""}${post.handle ? ` data-handle="${escapeHtml(post.handle)}"` : ""} data-name="${escapeHtml(name)}"${post.mine ? " data-mine" : ""}>`
     + avatarHtml({ handle: post.handle || "", name, picture: post.picture || "" })
-    + `<div class="comment-main"><p class="comment-head">${head.join(" ")}</p>`
-    + `${answered ? `<p class="talk-answers"><a href="#post-${Number(answered.id)}">${asText(say("Answering {name}", { name: answered.by || say("a builder") }))}</a></p>` : ""}`
+    + `<div class="comment-main"><p class="comment-head"><span class="talk-post-who">${head.join(" ")}</span>${numberLink}</p>`
+    + answering
     + pinLineHtml(post)
-    + `<p class="comment-body">${bodyHtml(post.body, post.mentions || [], hosts)}</p>`
+    + `<div class="comment-body">${bodyHtml(post.body, post.mentions || [], hosts)}</div>`
     + `${photo ? `<figure class="talk-photo"><a href="/talk/p/${photo.id}.jpg"><img src="/talk/p/${photo.id}.card.jpg" loading="lazy"`
       + `${photo.width && photo.height ? ` width="${Number(photo.width)}" height="${Number(photo.height)}"` : ""}`
       + ` alt="${asText(say("A photo {name} posted", { name }))}"></a></figure>` : ""}`
     + embedsHtml(post.embeds || [], found)
+    + (post.first && thread ? solutionHtml(answer, thread, { hosts, tests }) : "")
     + hidden
     + `<p class="comment-acts" data-acts hidden>${acts.join("")}</p></div></li>`;
 }
 
-/// The posts of a thread page ([page], talk_thread_page's), drawn.
-export function postsHtml(page, { found = {}, hosts = SITE_HOSTS, now = Date.now(), signedIn = false } = {}) {
+/// The posts of a thread page ([page], talk2_page's or talk_thread_page's),
+/// drawn; [mayAnswer] when the reader asked it (Mark as the answer).
+export function postsHtml(page, { found = {}, hosts = SITE_HOSTS, now = Date.now(), signedIn = false, mayAnswer = false, tests = false } = {}) {
   const posts = new Map((page.posts || []).map((one) => [Number(one.id), one]));
   const locked = page.thread?.locked === true;
-  return (page.posts || []).map((post) => postHtml(post, { posts, found, hosts, now, signedIn, locked })).join("");
+  const answer = page.answer && page.answer.id ? page.answer : null;
+  return (page.posts || []).map((post) => postHtml(post, { posts, found, hosts, now, signedIn, locked, thread: page.thread, answer,
+    mayAnswer: mayAnswer && page.thread?.board === "help", tests })).join("");
 }
 
 /// The talk under the gallery's models (talk_talking's rows): each its
@@ -543,32 +815,57 @@ export function talkingHtml(rows, models = [], now = Date.now()) {
     }).join("")}</ol>`;
 }
 
-/// The boards as a row of tiles (sitebold, 2026-11-23): Latest, then each
-/// board, each its icon, its name and its count of threads once there is
-/// one, the one shown marked; links, as tabs are.
-export function boardsHtml(board, counts = {}, tests = false) {
+/// The boards as tabs on the head's foot (talk2, 2026-11-27: sitebold's
+/// row of tiles was two rows of a phone's screen before any thread): Latest,
+/// then each board with its count of threads, the one shown marked. Each
+/// keeps the sort and its period; a search and a page are the board's own.
+export function boardTabsHtml({ board = null, counts = {}, sort = "latest", period = null, tests = false } = {}) {
   const at = langAt();
-  const query = tests ? "?tests=1" : "";
-  const tile = (id, href) => {
+  const tab = (id) => {
     const n = id ? Number(counts[id]) || 0 : 0;
-    return `<a class="talk-board-tile b-${id || "latest"}" href="${href}${query}"${board === id ? ' aria-current="page"' : ""}>`
-      + `<span class="talk-tile">${iconHtml(boardIcon(id))}</span><span class="talk-board-name">${asText(boardSaid(id).name)}</span>`
-      + `${n ? ` <span class="n">${escapeHtml(number(n))}</span>` : ""}</a>`;
+    return `<a class="b-${id || "latest"}" href="${at}${escapeHtml(listPath({ board: id, sort, period, tests }))}"${board === id ? ' aria-current="page"' : ""}>`
+      + `${asText(id ? boardSaid(id).name : say("All boards"))}${n ? ` <span class="n">${escapeHtml(number(n))}</span>` : ""}</a>`;
   };
-  return `<nav class="talk-boards" aria-label="${asText(say("Boards"))}">${tile(null, `${at}/talk`)}`
-    + `${BOARDS.map((id) => tile(id, `${at}/talk/b/${id}`)).join("")}</nav>`;
+  return `<nav class="tabs talk-boards" aria-label="${asText(say("Boards"))}">${tab(null)}${BOARDS.map(tab).join("")}</nav>`;
 }
 
-/// A thread's schema.org DiscussionForumPosting (Google's forum results):
-/// its headline, first post, writer, date, replies as comments, and the
-/// model it shows. Escaped for a <script> block.
+/// How the threads are sorted, as a row of pills over them: Latest, New
+/// threads, Top, Unanswered, and Unread (a signed-in reader's, drawn hidden
+/// for web/talk.js to show with its count); under Top, its period. Links,
+/// each keeping the board and the search.
+export function sortsHtml({ board = null, q = "", sort = "latest", period = null, tests = false } = {}) {
+  const at = langAt();
+  const pill = (one, attrs = "") => `<li${attrs}><a class="pill" href="${at}${escapeHtml(listPath({ board, q, sort: one, period: one === "top" ? period : null, tests }))}"`
+    + `${sort === one ? ' aria-current="true"' : ""}>${asText(sortSaid(one))}${one === "unread" ? ' <span class="n" data-unread-n></span>' : ""}</a></li>`;
+  const periods = sort === "top"
+    ? `<ul class="pills talk-periods" aria-label="${asText(say("Top threads of"))}">${[...PERIODS, null].map((one) => `<li><a class="pill" href="${at}${escapeHtml(listPath({ board, q, sort: "top", period: one, tests }))}"`
+      + `${period === one ? ' aria-current="true"' : ""}>${asText(periodSaid(one))}</a></li>`).join("")}</ul>` : "";
+  return `<div class="talk-tools"><nav class="talk-sorts" aria-label="${asText(say("Sort the threads"))}"><ul class="pills scroller">`
+    + `${SORTS.map((one) => pill(one)).join("")}${pill("unread", sort === "unread" ? " data-unread" : " data-unread hidden")}</ul></nav>${periods}</div>`;
+}
+
+/// A thread's schema.org data (Google's forum results): a Help question
+/// with a marked answer is a QAPage, its Question's accepted answer the one
+/// marked; any other thread a DiscussionForumPosting, its headline, first
+/// post, writer, date, how many replied, the replies on this page as
+/// comments, and the model it shows. Escaped for a <script> block.
 export function threadSchema(page, origin, url) {
   const thread = page.thread || {};
   const posts = page.posts || [];
-  const first = posts.find((one) => one.first) || null;
+  const first = page.first || posts.find((one) => one.first) || null;
   const person = (one) => ({ "@type": PERSON, name: one.by || say("A builder"),
     ...(one.handle ? { url: `${origin}/u/${encodeURIComponent(one.handle)}` } : {}) });
   const replies = posts.filter((one) => !one.first);
+  const counted = Number(page.total) > 0 ? Number(page.total) - 1 : replies.length;
+  if (thread.board === "help" && page.answer?.id && first) {
+    const answerOf = (one) => ({ "@type": ANSWER, text: one.body, datePublished: one.at, author: person(one),
+      url: `${origin}${postPath(thread, one.id)}`, ...(one.n ? { position: Number(one.n) } : {}) });
+    const question = { "@type": QUESTION, name: thread.title, text: first.body, datePublished: thread.at, author: person(first),
+      answerCount: counted, acceptedAnswer: answerOf(page.answer),
+      suggestedAnswer: replies.filter((one) => Number(one.id) !== Number(page.answer.id)).slice(0, 20).map(answerOf) };
+    return JSON.stringify({ "@context": "https://schema.org", "@type": QA_PAGE, "@id": url, url, mainEntity: question })
+      .replace(/</g, "\\u003c");
+  }
   const data = {
     "@context": "https://schema.org",
     "@type": "DiscussionForumPosting",
@@ -581,7 +878,7 @@ export function threadSchema(page, origin, url) {
     author: first ? person(first) : { "@type": PERSON, name: thread.by?.name || say("A builder") },
     isPartOf: { "@type": "CollectionPage", name: boardSaid(thread.board).name, url: `${origin}/talk/b/${thread.board}` },
     interactionStatistic: { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction",
-      userInteractionCount: replies.length },
+      userInteractionCount: counted },
     ...(first?.photo && PHOTO.test(first.photo.id || "") ? { image: `${origin}/talk/p/${first.photo.id}.jpg` } : {}),
     ...(thread.model?.id ? { sharedContent: { "@type": "WebPage", url: `${origin}/m/${thread.model.id}`, headline: thread.model.name } } : {}),
     comment: replies.slice(0, 100).map((one) => ({ "@type": COMMENT, url: `${url}#post-${Number(one.id)}`, text: one.body,
@@ -732,10 +1029,39 @@ function hostsOf(origin) {
   return hosts;
 }
 
-/// The thread page's data for [viewer]: talk_thread_page's, its posts'
-/// mentions, the faces and what they link; null when it is not there.
-async function threadFor(id, tests, viewer, origin) {
-  const page = await call("talk_thread_page", { p_thread: id, p_tests: tests, viewer }, () => ({ missing: true }));
+/// When a call last found talk2.sql not applied (a 404 from PostgREST is
+/// its function not there): asked again five minutes on, so a page turns to
+/// it soon after the file goes in. Until then the pages are talk.sql's:
+/// one page of threads, a thread whole.
+let talk2Missing = 0;
+
+/// A talk2.sql rpc, or null when the file is not applied (or it said null:
+/// the pages then ask talk.sql's own, which says the same of a thread that
+/// is not there, and is what a world without the file answers).
+async function call2(name, body) {
+  if (Date.now() - talk2Missing < 300000) return null;
+  const said = await call(name, body, () => ({ missing2: true }));
+  if (said && said.missing2) {
+    talk2Missing = Date.now();
+    return null;
+  }
+  return said;
+}
+
+/// The thread page's data for [viewer], page [page] of [per] posts or the
+/// page [post] is on: talk2_page's (talk_thread_page's whole thread until
+/// talk2.sql is applied, said as one page), its posts' mentions, the faces
+/// and what they link; null when it is not there.
+async function threadFor(id, tests, viewer, origin, { page: asked = 1, post = null, per = POSTS_PER_PAGE } = {}) {
+  let page = await call2("talk2_page", { p_thread: id, p_tests: tests, viewer, p_page: asked, p_per: per, p_post: post });
+  if (page === null) {
+    page = await call("talk_thread_page", { p_thread: id, p_tests: tests, viewer }, () => ({ missing: true }));
+    if (page && !page.missing) {
+      const posts = (page.posts || []).map((one, i) => ({ ...one, n: i + 1 }));
+      page = { ...page, posts, page: 1, pages: 1, per: Math.max(posts.length, 1), total: posts.length, legacy: true,
+        first: posts.find((one) => one.first) || null, last: posts.length ? { ...posts[posts.length - 1], page: 1 } : null };
+    }
+  }
   if (!page || page.missing) return page;
   // An ask's (talk_asks.sql): the step asked about, and each answer's part.
   await withAsks(page);
@@ -743,6 +1069,50 @@ async function threadFor(id, tests, viewer, origin) {
   const faced = await withFaces(page);
   const hosts = hostsOf(origin);
   return { page: faced, hosts, found: await foundFor(faced.posts || [], hosts, tests) };
+}
+
+/// [threads], each without a picture of its own given the first model its
+/// first post links (talk2_item's links) as [linked]: looked up once for
+/// the page, only models the gallery shows.
+async function linkedModels(threads, hosts) {
+  const wanted = new Map();
+  for (const one of threads || []) {
+    if (one.model?.id || one.photo?.id || one.challenge?.id) continue;
+    for (const url of Array.isArray(one.links) ? one.links : []) {
+      const link = linkOf(String(url).replace(/[.,;:!?)\]}]+$/, ""), hosts);
+      if (link && (link.kind === "model" || link.kind === "step")) {
+        wanted.set(Number(one.id), link.model);
+        break;
+      }
+    }
+  }
+  const ids = [...new Set(wanted.values())].filter((id) => MODEL.test(id)).slice(0, 40);
+  if (!ids.length) return threads;
+  const rows = await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&barred=is.false`
+    + "&select=id,has_image,has_thumb,updated_at").catch(() => []);
+  const found = new Map((Array.isArray(rows) ? rows : []).map((row) => [row.id, row]));
+  return threads.map((one) => (found.has(wanted.get(Number(one.id))) ? { ...one, linked: found.get(wanted.get(Number(one.id))) } : one));
+}
+
+/// A list's threads as [viewer] sees them, asked as listAsked says:
+/// talk2_list's page (signed in, their visit counted first, so "new since
+/// you were here" counts from the visit before), else talk.sql's one page
+/// ({legacy: true}). Faces, challenges' and linked models' pictures put on.
+async function listFor({ board, q, sort, period, page, tests, viewer, before = null, origin = "" }) {
+  if (viewer && page === 1) await call2("talk_visit", { account: viewer }).catch(() => null);
+  let listed = await call2("talk2_list", { p_board: board, p_tests: tests, viewer, p_sort: sort, p_page: page, p_per: PER_PAGE,
+    p_q: q || null, p_in: period });
+  let legacy = false;
+  if (listed === null) {
+    legacy = true;
+    listed = await call("talk_threads_of", { p_board: board, p_tests: tests, viewer, p_before: before, p_limit: PER_PAGE, p_q: q || null },
+      () => ({ missing: true }));
+    if (listed && !listed.missing) listed = { ...listed, before };
+  }
+  if (!listed || listed.missing) return { missing: true };
+  const [faced, cards] = await Promise.all([withFaces({ threads: listed.threads || [] }), challengeCardsIn(listed.threads, tests)]);
+  const threads = await linkedModels(withChallengeCards(faced.threads, cards), hostsOf(origin));
+  return { listed: { ...listed, threads }, legacy };
 }
 
 // ---------------------------------------------------------------------------
@@ -781,7 +1151,7 @@ function sendPage(response, status, body, tests) {
 }
 
 /// A page of Talk in [lang]: the site's header and footer, its head, [main].
-function talkShell(origin, { title, about, path, lang, words, robots = "", main, image = "", schema = "", rss = "" }) {
+function talkShell(origin, { title, about, path, lang, words, robots = "", main, image = "", schema = "", rss = "", links = "" }) {
   const { footer, head } = siteChrome(lang);
   // Talk marked in the header's links as the page it is in, as the
   // gallery's page marks Gallery (sitepolish: on Talk none was).
@@ -800,6 +1170,7 @@ function talkShell(origin, { title, about, path, lang, words, robots = "", main,
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(about)}">
 ${robots ? `<meta name="robots" content="${robots}">\n` : ""}<link rel="canonical" href="${escapeHtml(url)}">
+${links}
 ${alternates}
 ${rss ? `<link rel="alternate" type="application/rss+xml" title="${escapeHtml(rss.title)}" href="${escapeHtml(`${lang === "en" ? "" : `/${lang}`}${rss.href}`)}">\n` : ""}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
@@ -831,44 +1202,80 @@ ${footer}
 </html>`;
 }
 
-/// /talk and /talk/b/<board>: the threads, the boards, a search, and the
-/// talk on the models beside them.
-export function listPageHtml({ board, q, before, listed, counts, talking, models, tests, now = Date.now() }) {
+/// The threads of a list page, as the server's page and web/talk.js (op=talk
+/// &html=1, signed in) draw them alike: for a search how many threads say
+/// it and where; the columns' heads; the rows (threadLineHtml); and the
+/// site's pager (web/pager.js): which of how many are shown, Show more and
+/// a numbered link to every page, so a crawler and a reader with no script
+/// get every thread. [listed] talk2_list's; [legacy] talk.sql's alone (one
+/// page, then Older threads).
+export function threadsHtml({ board = null, q = "", sort = "latest", period = null, page = 1, listed = {}, tests = false,
+  signedIn = false, legacy = false, now = Date.now() }) {
+  const at = langAt();
+  const threads = listed.threads || [];
+  const words = searchWords(q);
+  const total = Number(listed.total) || 0;
+  const per = Number(listed.per) || PER_PAGE;
+  const href = (n) => `${at}${listPath({ board, q, sort, period, page: n, tests })}`;
+  const quoted = `“${escapeHtml(q)}”`;
+  const empty = q ? sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: quoted })
+    : legacy && listed.before ? asText(say("No older threads."))
+    : page > 1 && !legacy ? `${asText(say("There are no threads on this page."))} <a href="${href(1)}">${asText(say("Go to the first page"))}</a>`
+    : sort === "unread" ? asText(signedIn ? say("Nothing new since you were last here.") : say("Sign in to see the threads with something new for you."))
+    : sort === "unanswered" ? asText(say("Every thread here has a reply."))
+    : sort === "top" && period ? asText(say("No thread began in that time."))
+    : asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."));
+  const searched = q ? `<p class="talk-searched" role="status">${legacy ? sayHtml("Threads that say {words}", { words: quoted })
+    : total === 1 ? sayHtml("1 thread says {words}", { words: quoted }) : sayHtml("{n} threads say {words}", { n: escapeHtml(number(total)), words: quoted })}`
+    + `${board ? ` ${sayHtml("in {board}", { board: escapeHtml(boardSaid(board).name) })} · <a href="${at}${escapeHtml(listPath({ q, sort, period, tests }))}">${asText(say("Search every board"))}</a>` : ""}`
+    + ` · <a href="${at}${escapeHtml(listPath({ board, sort, period, tests }))}">${asText(say("Clear the search"))}</a></p>` : "";
+  const heads = `<div class="talk-heads" aria-hidden="true"><span>${asText(say("Thread"))}</span><span></span><span>${asText(say("Replies"))}</span>`
+    + `${legacy ? "" : `<span>${asText(say("Views"))}</span>`}<span>${asText(say("Activity"))}</span></div>`;
+  const rows = threads.length
+    ? `<div class="talk-table${legacy ? " legacy" : ""}">${heads}<ol class="list-rows talk-list talk-lines" id="talk-list">`
+      + `${threads.map((one) => threadLineHtml(one, { now, board, words, tests })).join("")}</ol></div>`
+    : `<p class="state talk-empty">${empty}</p>`;
+  if (legacy) {
+    const older = listed.more && threads.length
+      ? `<p class="pager"><a class="cta ghost pager-more" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
+        + `${q ? `&q=${encodeURIComponent(q)}` : ""}${tests ? "&tests=1" : ""}">${asText(say("Older threads"))}</a></p>` : "";
+    return `${searched}${rows}${older}`;
+  }
+  const pager = pagerHtml({ id: "talk-list", first: page, last: page, shown: threads.length, pages: Number(listed.pages) || 0,
+    total, size: per, noun: ["thread", "threads"], href });
+  return `${searched}${pager.earlier}${rows}${pager.after}`;
+}
+
+/// /talk and /talk/b/<board>: the boards as tabs, a search seen at once,
+/// how the threads are sorted, the threads a page at a time, and beside
+/// them the talk on the models and what each board is for.
+export function listPageHtml({ board = null, q = "", sort = "latest", period = null, page = 1, listed, counts, talking, models, tests,
+  legacy = false, now = Date.now() }) {
   const at = langAt();
   const said = boardSaid(board);
-  const query = tests ? "&tests=1" : "";
-  const threads = listed.threads || [];
-  const older = listed.more && threads.length
-    ? `<p class="pager"><a class="cta ghost pager-more" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
-      + `${q ? `&q=${encodeURIComponent(q)}` : ""}${query}">${asText(say("Older threads"))}</a></p>` : "";
-  const empty = q ? `<p class="state talk-empty">${sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: `“${escapeHtml(q)}”` })}</p>`
-    : before ? `<p class="state talk-empty">${asText(say("No older threads."))}</p>`
-    : `<p class="state talk-empty">${asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."))}</p>`;
   const start = `${at}/talk/new${board && board !== "news" ? `?board=${board}` : ""}`;
-  const acts = `<form class="talk-search" role="search" action="${at}/talk" method="get">`
-    + `<label class="search">${iconHtml("search")}<span class="visually-hidden">${asText(say("Search Talk"))}</span>`
-    + `<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(say("Search Talk"))}" enterkeyhint="search"></label>`
+  // The search keeps to the board it is on; its results say so, with a
+  // way to search every board.
+  const acts = `<form class="talk-search" role="search" action="${at}/talk${board ? `/b/${board}` : ""}" method="get">`
+    + `<label class="search">${iconHtml("search")}<span class="visually-hidden">${asText(board ? say("Search {board}", { board: said.name }) : say("Search Talk"))}</span>`
+    + `<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(board ? say("Search {board}", { board: said.name }) : say("Search Talk"))}" enterkeyhint="search"></label>`
     + `${tests ? '<input type="hidden" name="tests" value="1">' : ""}</form>`
     + `<a class="cta" href="${start}" data-start>${asText(say("Start a thread"))}</a>`;
-  // The boards are sitebold's tiles, a row of pictures too large for the
-  // head's line of tabs, so they open the page's body, over the threads.
-  return `${pageHeadHtml({ title: board ? said.name : say("Talk"), acts,
+  return `${pageHeadHtml({ title: board ? said.name : say("Talk"), acts, tabs: boardTabsHtml({ board, counts, sort, period, tests }),
     lede: board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders.") })}
-<div class="wrap page-body talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""}>
-${boardsHtml(board, counts, tests)}
+<div class="wrap page-body talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""} data-sort="${sort}"${period ? ` data-in="${period}"` : ""} data-page="${page}"${legacy ? " data-legacy" : ""}>
 <div class="list-layout">
 <section class="list-main talk-threads" aria-labelledby="talk-threads-title">
 <h2 class="visually-hidden" id="talk-threads-title">${asText(q ? say("Threads that say it") : say("Threads"))}</h2>
-${q ? `<p class="talk-searched">${sayHtml("Threads that say {words}", { words: `“${escapeHtml(q)}”` })} · <a href="${at}/talk${board ? `/b/${board}` : ""}${tests ? "?tests=1" : ""}">${asText(say("Clear the search"))}</a></p>` : ""}
-${threads.length ? `<ol class="list-rows talk-list" id="talk-list">${threads.map((one) => threadRowHtml(one, { now, board })).join("")}</ol>` : empty}
-${older}
+${legacy ? "" : sortsHtml({ board, q, sort, period, tests })}
+<div class="talk-found" data-talk-found>${threadsHtml({ board, q, sort, period, page, listed, tests, legacy, now })}</div>
 </section>
 <aside class="list-aside talk-aside">
 <section aria-labelledby="talk-on-models">
 <h2 id="talk-on-models">${asText(say("On the models"))}</h2>
 ${talkingHtml(talking, models, now)}
-<p class="note talk-links"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
 </section>
+${boardsListHtml(board, tests)}
 </aside>
 </div>
 </div>`;
@@ -877,11 +1284,11 @@ ${talkingHtml(talking, models, now)}
 /// Talk's boards, each with what it is for, then the guidelines and the
 /// feed of [board] (or of all of Talk): beside the threads, and beside a
 /// thread's posts, where the column was empty (sitepolish, 2026-11-23).
-function boardsListHtml(board) {
+function boardsListHtml(board, tests = false) {
   const at = langAt();
   return `<section aria-labelledby="talk-boards-title">
 <h2 id="talk-boards-title">${asText(say("The boards"))}</h2>
-<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}"${id === board ? ' aria-current="page"' : ""}><span class="talk-tile b-${id}">${iconHtml(boardIcon(id))}</span>${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
+<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}${tests ? "?tests=1" : ""}"${id === board ? ' aria-current="page"' : ""}><span class="talk-tile b-${id}">${iconHtml(boardIcon(id))}</span>${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
 <p class="note"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
 </section>`;
 }
@@ -899,38 +1306,82 @@ export function answersOnParts(page) {
 /// and the answers on parts, "<" written so no word closes the script.
 const askData = (page) => JSON.stringify({ ask: page.thread.ask, pins: answersOnParts(page) }).replace(/</g, "\\u003c");
 
+/// /talk/t/<n>: a thread a page of posts at a time (talk2, 2026-11-27).
+/// Its head across the page: where it is (Talk › its board), its whole
+/// title, its marks (answered, pinned, locked), who started it and when,
+/// how many replied, how many looked and when the last post came (a link
+/// to it), the people in it, Reply and Follow. Then the posts, each
+/// numbered, the answer under the question, the site's pager over and
+/// under them (which posts of how many, a numbered link to every page),
+/// the box to reply; and beside them where the reader is in the thread
+/// (the first post, the answer, the first they have not read, the last),
+/// the model it is about and the boards. On a phone the side follows.
 export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) {
   const at = langAt();
   const thread = page.thread;
   const said = boardSaid(thread.board);
-  const replies = (page.posts || []).filter((one) => !one.first).length;
+  const posts = page.posts || [];
+  const total = Number(page.total) || posts.length;
+  const replies = Math.max(0, total - 1);
+  const shownPage = Number(page.page) || 1;
+  const pages = Number(page.pages) || 1;
+  const per = Number(page.per) || POSTS_PER_PAGE;
+  const href = (n) => `${at}${threadPagePath(thread, n, tests)}`;
+  const views = Number(thread.views) || 0;
+  const last = page.last && page.last.id ? page.last : null;
+  const answer = page.answer && page.answer.id ? page.answer : null;
   const pills = [
+    thread.answered ? `<span class="pill answered">${iconHtml("check")}${asText(say("Answered"))}</span>` : "",
     thread.pinned ? `<span class="pill">${asText(say("Pinned"))}</span>` : "",
     thread.locked ? `<span class="pill">${asText(say("Locked"))}</span>` : "",
   ].filter(Boolean).join(" ");
-  const model = thread.model?.id ? `<a class="talk-model" href="${at}/m/${encodeURIComponent(thread.model.id)}">`
+  const facts = [
+    `${sayHtml("{who} started it", { who: whoHtml(thread.by) })} ${timeHtml(thread.at, now)}`,
+    replies ? `<span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : "",
+    thread.views !== undefined ? `<span class="talk-views">${escapeHtml(views === 1 ? say("1 view") : say("{n} views", { n: number(views) }))}</span>` : "",
+    last && replies ? `<a href="${at}${escapeHtml(postPath(thread, last.id, tests))}">${sayHtml("last post {when}", { when: timeHtml(last.at, now) })}</a>` : "",
+  ].filter(Boolean).join(" · ");
+  const people = (page.people || []).filter((one) => one && (one.handle || one.name));
+  const peopleN = Number(page.people_n) || people.length;
+  const faces = people.length > 1 ? `<p class="talk-people"><span class="talk-faces">${people.slice(0, 8).map((one) => avatarHtml(one, { size: "small" })).join("")}</span>`
+    + ` <span>${escapeHtml(peopleN === 1 ? say("1 person") : say("{n} people", { n: number(peopleN) }))}</span></p>` : "";
+  const model = thread.model?.id ? `<section class="talk-model-card" aria-label="${asText(say("The model"))}"><a class="talk-model" href="${at}/m/${encodeURIComponent(thread.model.id)}">`
     + `${modelPicture(thread.model) ? `<img src="${escapeHtml(modelPicture(thread.model))}" alt="" width="160" height="120">` : ""}`
-    + `<span><small>${asText(say("The model"))}</small><b>${escapeHtml(thread.model.name || "")}</b></span></a>` : "";
-  const challenge = thread.challenge?.id ? `<span class="talk-challenge"><a class="cta" href="${at}/challenge?id=${Number(thread.challenge.id)}${thread.challenge.test ? "&tests=1" : ""}">`
+    + `<span><small>${asText(say("The model"))}</small><b>${escapeHtml(thread.model.name || "")}</b></span></a></section>` : "";
+  const challenge = thread.challenge?.id ? `<span class="talk-challenge"><a class="cta ghost" href="${at}/challenge?id=${Number(thread.challenge.id)}${thread.challenge.test ? "&tests=1" : ""}">`
     + `${asText(say("See the challenge, enter and vote"))}</a></span>` : "";
-  // An object's page (pagekit, site.css .obj-layout): the posts, the box to
-  // reply and the boards, and beside them the aside, the thread's head (its
-  // board, title, who started it, when and how many replied), Reply, the
-  // challenge and Follow, and the model it is about. On a phone the aside
-  // is the page's head.
-  return `<div class="wrap talk-page obj-page" data-talk="thread" data-thread="${Number(thread.id)}" data-board="${thread.board}"${thread.locked ? " data-locked" : ""}${tests ? " data-tests" : ""}>
-<div class="obj-layout talk-thread-layout">
-<aside class="obj-aside talk-thread-head" aria-label="${asText(say("About this thread"))}">
+  const pager = pagerHtml({ id: "talk-posts", first: shownPage, last: shownPage, shown: posts.length, pages, total, size: per,
+    noun: ["post", "posts"], href });
+  // Where the reader is: the first post, the answer, the first they have
+  // not read (web/talk.js, signed in) and the last.
+  const first = page.first && page.first.id ? page.first : posts.find((one) => one.first) || null;
+  const from = (shownPage - 1) * per + 1;
+  const jumps = [
+    first ? `<li><a href="${at}${escapeHtml(postPath(thread, first.id, tests))}">${asText(thread.board === "help" ? say("The question") : say("The first post"))}</a></li>` : "",
+    answer ? `<li data-jump-answer><a href="${at}${escapeHtml(postPath(thread, answer.id, tests))}">${iconHtml("check")}${asText(say("The answer"))}</a></li>` : "",
+    '<li data-first-new hidden><a href="#"></a></li>',
+    last && last.n > 1 ? `<li><a href="${at}${escapeHtml(postPath(thread, last.id, tests))}">${sayHtml("The last post, {when}", { when: timeHtml(last.at, now) })}</a></li>` : "",
+  ].join("");
+  const where = `<section class="talk-where" aria-labelledby="talk-where-title"><h2 id="talk-where-title">${asText(say("In this thread"))}</h2>`
+    + `<p class="talk-where-count">${escapeHtml(total > posts.length ? say("Posts {from} to {to} of {n}", { from: number(from), to: number(from + posts.length - 1), n: number(total) })
+      : total === 1 ? say("1 post") : say("{n} posts", { n: number(total) }))}</p>`
+    + `<ul class="talk-jumps">${jumps}</ul>${pages > 1 ? pagesHtml({ first: shownPage, last: shownPage, pages, href }) : ""}</section>`;
+  return `<div class="wrap page-body talk-page talk-thread" data-talk="thread" data-thread="${Number(thread.id)}" data-board="${thread.board}"`
+    + ` data-page="${shownPage}" data-pages="${pages}" data-per="${per}"${thread.locked ? " data-locked" : ""}${tests ? " data-tests" : ""}>
+<header class="talk-thread-head">
 <p class="talk-crumbs"><a href="${at}/talk${tests ? "?tests=1" : ""}">${asText(say("Talk"))}</a> › <a href="${at}/talk/b/${thread.board}${tests ? "?tests=1" : ""}">${asText(said.name)}</a></p>
-<h1 class="obj-title"${String(thread.title || "").length > 60 ? ` title="${escapeHtml(thread.title)}"` : ""}>${escapeHtml(thread.title)}</h1>
-<p class="talk-row-meta">${pills ? `${pills} ` : ""}${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}${replies ? ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : ""}</p>
-<div class="actions talk-thread-acts">${thread.locked ? "" : `<a class="cta" href="#reply">${asText(say("Reply"))}</a>`}${challenge}<button class="cta ghost" type="button" data-talk-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
-<span class="note talk-follow-said" data-talk-follow-said hidden></span></div>
-${model}
-</aside>
-<div class="obj-main talk-thread-main">
+<h1 class="talk-thread-title">${escapeHtml(thread.title)}</h1>
+<p class="talk-thread-meta">${pills ? `${pills} ` : ""}${facts}</p>
+<div class="talk-thread-bar">${faces}<div class="actions talk-thread-acts">${thread.locked ? "" : `<a class="cta" href="#reply">${asText(say("Reply"))}</a>`}${challenge}<button class="cta ghost" type="button" data-talk-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
+<span class="note talk-follow-said" data-talk-follow-said hidden></span></div></div>
+<p class="talk-new-since" data-new-since hidden></p>
+</header>
+<div class="list-layout talk-thread-layout">
+<div class="list-main talk-thread-main">
 ${askHtml(thread.ask)}${thread.ask?.model || thread.ask?.set ? `<script type="application/json" id="talk-ask-data">${askData(page)}</script>` : ""}
-<ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now })}</ol>
+${pager.earlier}
+<ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now, tests })}</ol>
+${pager.after}
 <p class="note" data-blocked-some hidden>${asText(say("Some posts here are by people you blocked, so they are not shown."))}</p>
 <section class="talk-reply" id="reply" aria-labelledby="talk-reply-title">
 <h2 id="talk-reply-title">${asText(say("Reply"))}</h2>
@@ -948,10 +1399,12 @@ ${thread.ask?.model || thread.ask?.set ? `<p class="talk-answering talk-on-part-
 <div class="talk-signin" data-signin><p>${asText(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."))}</p>
 <button class="cta" type="button" data-act="sign-in" hidden>${asText(say("Sign in to reply"))}</button></div>`}
 </section>
-<div class="talk-aside talk-thread-boards">
-${boardsListHtml(thread.board)}
 </div>
-</div>
+<aside class="list-aside talk-aside talk-thread-side">
+${where}
+${model}
+${boardsListHtml(thread.board, tests)}
+</aside>
 </div>
 </div>`;
 }
@@ -1020,7 +1473,7 @@ export async function talkPage(request, response, { origin }) {
   }
   const thread = whole(query.thread);
   if (query.thread !== undefined) {
-    const got = thread ? await threadFor(thread, tests, null, origin) : null;
+    const got = thread ? await threadFor(thread, tests, null, origin, { page: whole(query.page) || 1, post: whole(query.post) }) : null;
     if (got && got.missing) return sendPage(response, 503, draw(() => talkShell(origin, { title: say("Talk · Brickworks"), about: NOT_YET,
       path: "/talk", lang, words, robots: "noindex", main: `<div class="wrap gone"><h1>${asText(say(NOT_YET))}</h1></div>` })), tests);
     if (!got) {
@@ -1029,73 +1482,101 @@ export async function talkPage(request, response, { origin }) {
         main: missingHtml(lang) })), tests);
     }
     const { page, found, hosts } = got;
-    const path = threadPath(page.thread);
-    const first = (page.posts || []).find((one) => one.first);
+    // The page's own address: the thread's, ?page=N past the first (a
+    // post's link, ?post=P, is the page it is on).
+    const shownPage = Number(page.page) || 1;
+    const pages = Number(page.pages) || 1;
+    const path = threadPagePath(page.thread, shownPage);
+    const first = page.first || (page.posts || []).find((one) => one.first);
     const image = first?.photo && PHOTO.test(first.photo.id || "") ? `${origin}/talk/p/${first.photo.id}.jpg`
       : page.thread.model?.id ? `${origin}${modelPicture(page.thread.model) || "/share.png"}`
       : askPicture(page.thread.ask) ? `${origin}${askPicture(page.thread.ask)}` : "";
     return sendPage(response, 200, draw(() => talkShell(origin, {
-      title: say("{title} · Brickworks Talk", { title: page.thread.title }),
+      title: say("{title} · Brickworks Talk", { title: shownPage > 1
+        ? `${page.thread.title} · ${say("page {n}", { n: number(shownPage) })}` : page.thread.title }),
       about: summary(first?.body || page.thread.title, 200), path, lang, words, image,
       robots: tests || page.thread.hidden ? "noindex" : "",
+      links: pagerLinks({ at: shownPage, more: shownPage < pages, href: (n) => `${at}${threadPagePath(page.thread, n, tests)}` }),
       schema: threadSchema(page, origin, `${origin}${at}${path}`),
       rss: { title: say("Brickworks Talk: {board}", { board: boardSaid(page.thread.board).name }), href: `/talk/b/${page.thread.board}.rss` },
       main: threadPageHtml({ page, found, hosts, tests, now }) })), tests);
   }
-  const board = query.board === undefined || query.board === "" ? null : String(query.board);
+  const asked = listAsked(query);
+  const { board, q, sort, period, page } = asked;
   if (board !== null && !BOARDS.includes(board)) {
     return sendPage(response, 404, draw(() => talkShell(origin, { title: say("Talk · Brickworks"), about: say("Talk, the forum of Brickworks’ builders."),
       path: "/talk", lang, words, robots: "noindex", main: missingHtml(lang) })), tests);
   }
-  const q = String(query.q || "").replace(/\s+/g, " ").trim().slice(0, 200);
   const before = Date.parse(String(query.before || "")) ? new Date(Date.parse(String(query.before))).toISOString() : null;
   await houseWrites(tests);
-  const [listed, counts, talking, models] = await Promise.all([
-    call("talk_threads_of", { p_board: board, p_tests: tests, viewer: null, p_before: before, p_limit: PER_PAGE, p_q: q || null },
-      () => ({ missing: true })),
+  const [got, counts, talking, models] = await Promise.all([
+    listFor({ ...asked, tests, viewer: null, before, origin }),
     call("talk_board_counts", { p_tests: tests }, () => ({})).catch(() => ({})),
     call("talk_talking", { p_tests: tests, viewer: null, p_limit: 8 }, () => []).catch(() => []),
     db(`shared_models?listed=is.true&published=is.true&barred=is.false&test=is.${tests}&order=listed_at.desc&limit=4`
       + "&select=id,name,author,modelled_by,has_image,has_thumb,updated_at").catch(() => []),
   ]);
-  if (listed && listed.missing) {
+  if (got.missing) {
     return sendPage(response, 503, draw(() => talkShell(origin, { title: say("Talk · Brickworks"), about: NOT_YET, path: "/talk", lang, words,
       robots: "noindex", main: `<div class="wrap gone"><h1>${asText(say(NOT_YET))}</h1></div>` })), tests);
   }
-  const [faced, cards] = await Promise.all([withFaces({ listed, talking }), challengeCardsIn(listed.threads, tests)]);
-  faced.listed = { ...faced.listed, threads: withChallengeCards(faced.listed.threads, cards) };
+  const facedTalking = await withFaces({ talking: Array.isArray(talking) ? talking : [] });
   const said = boardSaid(board);
-  const path = board ? `/talk/b/${board}` : "/talk";
+  const pages = Number(got.listed.pages) || 1;
+  // Each page of a board is its own address and indexed (Latest's alone):
+  // a sort, a period or a search is a view of them, never indexed.
+  const path = listPath({ board, q, sort, period, page });
+  const plain = sort === "latest" && !q && !period && !before;
   return sendPage(response, 200, draw(() => talkShell(origin, {
-    title: board ? say("{board} · Brickworks Talk", { board: said.name }) : say("Talk · the Brickworks builders’ forum"),
+    title: `${board ? say("{board} · Brickworks Talk", { board: said.name }) : say("Talk · the Brickworks builders’ forum")}${page > 1 ? ` · ${say("page {n}", { n: number(page) })}` : ""}`,
     about: board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders."),
-    path, lang, words, robots: tests || q || before ? "noindex" : "",
-    rss: { title: board ? say("Brickworks Talk: {board}", { board: said.name }) : say("Brickworks Talk"), href: `${path}.rss` },
-    main: listPageHtml({ board, q, before, listed: faced.listed, counts, talking: Array.isArray(faced.talking) ? faced.talking : [],
-      models: Array.isArray(models) ? models : [], tests, now }) })), tests);
+    path, lang, words, robots: tests || !plain || page > pages ? "noindex" : "",
+    links: got.legacy ? "" : pagerLinks({ at: page, more: page < pages, href: (n) => `${at}${listPath({ board, q, sort, period, page: n, tests })}` }),
+    rss: { title: board ? say("Brickworks Talk: {board}", { board: said.name }) : say("Brickworks Talk"), href: `${board ? `/talk/b/${board}` : "/talk"}.rss` },
+    main: listPageHtml({ board, q, sort, period, page, listed: got.listed, counts, talking: facedTalking.talking,
+      models: Array.isArray(models) ? models : [], tests, legacy: got.legacy, now }) })), tests);
 }
 
 // ---------------------------------------------------------------------------
 // The answers in JSON.
 
-/// GET ?op=talk: the threads as JSON, as the caller sees them.
+/// GET ?op=talk: the threads as JSON, as the caller sees them (listAsked's
+/// board, q, sort, in and page). Signed in, their visit is counted first
+/// and each thread says what is new for them; with html=1 the threads are
+/// drawn as the page draws them (threadsHtml), with how many are unread
+/// for the Unread tab, for web/talk.js.
 export async function talkList(request, response) {
   const query = request.query || {};
   const tests = testsAsked(query);
   const viewer = await reader(request);
   response.setHeader("Cache-Control", viewer || tests ? "private, no-store" : SHARED_CACHE);
-  const board = query.board === undefined || query.board === "" ? null : String(query.board);
-  if (board !== null && !BOARDS.includes(board)) throw new Unacceptable(`board is one of ${BOARDS.join(", ")}`);
-  const q = String(query.q || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const asked = listAsked(query);
+  if (asked.board !== null && !BOARDS.includes(asked.board)) throw new Unacceptable(`board is one of ${BOARDS.join(", ")}`);
   const before = Date.parse(String(query.before || "")) ? new Date(Date.parse(String(query.before))).toISOString() : null;
   await houseWrites(tests);
-  const listed = await call("talk_threads_of", { p_board: board, p_tests: tests, viewer, p_before: before, p_limit: PER_PAGE,
-    p_q: q || null }, notYet);
-  return response.status(200).json(await withFaces({ board, q, threads: listed.threads || [], more: listed.more === true }));
+  const got = await listFor({ ...asked, tests, viewer, before, origin: originOf(request) });
+  if (got.missing) notYet();
+  const { listed, legacy } = got;
+  const unread = viewer && !legacy
+    ? Number((await call2("talk2_list", { p_board: asked.board, p_tests: tests, viewer, p_sort: "unread", p_page: 1, p_per: 1 })
+      .catch(() => null))?.total) || 0 : 0;
+  const answer = { ...asked, threads: listed.threads || [], total: Number(listed.total) || 0, pages: Number(listed.pages) || 0,
+    per: Number(listed.per) || PER_PAGE, more: legacy ? listed.more === true : Number(listed.page) < Number(listed.pages),
+    legacy, unread, signed_in: Boolean(viewer) };
+  if (String(query.html || "") === "1") {
+    const lang = langOf(query);
+    answer.html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => threadsHtml({ ...asked, listed, tests,
+      signedIn: Boolean(viewer), legacy }));
+    answer.rows = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => (listed.threads || [])
+      .map((one) => threadLineHtml(one, { board: asked.board, words: searchWords(asked.q), tests })).join(""));
+  }
+  return response.status(200).json(answer);
 }
 
-/// GET ?op=talk_thread&id=N: the thread as the caller sees it; with html=1
-/// its posts drawn in the language asked, for web/talk.js.
+/// GET ?op=talk_thread&id=N: the thread as the caller sees it, page
+/// &page=N (or the one post &post=P is on) of its posts; with html=1 its
+/// posts drawn in the language asked, with where the page is in the
+/// thread, the reader's first unread post and the answer, for web/talk.js.
 export async function talkThread(request, response, { origin }) {
   const query = request.query || {};
   const tests = testsAsked(query);
@@ -1103,7 +1584,7 @@ export async function talkThread(request, response, { origin }) {
   response.setHeader("Cache-Control", "private, no-store");
   const id = whole(query.id);
   if (!id) throw new Unacceptable("name a thread: ?id=<number>");
-  const got = await threadFor(id, tests, viewer, origin);
+  const got = await threadFor(id, tests, viewer, origin, { page: whole(query.page) || 1, post: whole(query.post) });
   if (got && got.missing) notYet();
   if (!got) throw refused("no_thread");
   const { page, found, hosts } = got;
@@ -1112,15 +1593,21 @@ export async function talkThread(request, response, { origin }) {
   const standing = you.standing ? WORDS[you.standing]?.[1] || "" : "";
   you.may_write = Boolean(viewer) && !you.trouble && !you.standing && you.pool !== false && !page.thread.locked;
   you.why_not = trouble || standing || (you.pool === false ? WORDS.no_thread[1] : "");
+  you.may_answer = you.may_answer === true && Boolean(viewer);
+  const where = { page: Number(page.page) || 1, pages: Number(page.pages) || 1, per: Number(page.per) || POSTS_PER_PAGE,
+    total: Number(page.total) || (page.posts || []).length, first_new: page.first_new || null, read_at: page.read_at || null,
+    answer: page.answer?.id ? { id: page.answer.id, n: page.answer.n, page: page.answer.page } : null,
+    last: page.last?.id ? { id: page.last.id, n: page.last.n, page: page.last.page } : null, legacy: page.legacy === true };
   if (String(query.html || "") === "1") {
     const lang = langOf(query);
-    const html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => postsHtml(page, { found, hosts, signedIn: Boolean(viewer) }));
+    const html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => postsHtml(page, { found, hosts, signedIn: Boolean(viewer),
+      mayAnswer: you.may_answer, tests }));
     // The words of the caller's own posts as they typed them, for Edit.
     const mine = (page.posts || []).filter((one) => one.mine).map((one) => ({ id: one.id, body: one.body }));
     return response.status(200).json({ thread: page.thread, html, count: (page.posts || []).length, blocked_some: page.blocked_some === true,
-      you, mine, pins: answersOnParts(page) });
+      you, mine, pins: answersOnParts(page), ...where, posts_on_page: (page.posts || []).map((one) => Number(one.id)) });
   }
-  return response.status(200).json({ thread: page.thread, posts: page.posts || [], blocked_some: page.blocked_some === true, you });
+  return response.status(200).json({ thread: page.thread, posts: page.posts || [], blocked_some: page.blocked_some === true, you, ...where });
 }
 
 /// The newest post of [thread] that is not its first, as the home's feed
@@ -1534,10 +2021,50 @@ export async function talkFollow(request, response) {
 export async function talkRead(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const who = await account(request);
+  const body = bodyOf(request);
+  const thread = whole(body.thread);
+  if (!thread) throw new Unacceptable("name the thread: thread, a number");
+  // Up to a post (the last of a page that is not the thread's last): read
+  // that far and never back (talk2.sql). Else up to now, as talk.sql reads.
+  const post = body.post === undefined || body.post === null || body.post === "" ? null : whole(body.post);
+  if (body.post && !post) throw new Unacceptable("post is a post's number");
+  const said = post ? (await call2("talk_read_to", { account: who, p_thread: thread, p_post: post })
+      || await call("talk_read", { account: who, p_thread: thread }, () => ({ read: false })))
+    : await call("talk_read", { account: who, p_thread: thread }, () => ({ read: false }));
+  return response.status(200).json({ thread, read: said?.read === true });
+}
+
+/// Who opens a thread, as talk_view counts them: the server's key for the
+/// person today (api/_directory.js visitorKey: the day, the address and the
+/// browser, never kept as they are). A crawler or a link's preview is not
+/// a person.
+const NOT_A_PERSON = /bot|crawl|spider|slurp|facebookexternalhit|embedly|preview|whatsapp|discord|slack/i;
+
+/// POST ?op=talk_view {thread}: the thread opened by a person, counted
+/// once a day each. {views, counted}.
+export async function talkView(request, response) {
+  response.setHeader("Cache-Control", "no-store");
   const thread = whole(bodyOf(request).thread);
   if (!thread) throw new Unacceptable("name the thread: thread, a number");
-  const said = await call("talk_read", { account: who, p_thread: thread }, () => ({ read: false }));
-  return response.status(200).json({ thread, read: said?.read === true });
+  if (NOT_A_PERSON.test(String(request.headers?.["user-agent"] || ""))) return response.status(200).json({ thread, counted: false });
+  const said = await call2("talk_view", { p_thread: thread, p_viewer: visitorKey(request, "talk_view") }).catch(() => null);
+  return response.status(200).json({ thread, views: Number(said?.views) || 0, counted: said?.counted === true });
+}
+
+/// POST ?op=talk_answer {thread, post}: the starter of a Help thread marks
+/// the reply that answered them; post null, none. {thread, answer}.
+export async function talkAnswer(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const who = await account(request);
+  const body = bodyOf(request);
+  const thread = whole(body.thread);
+  if (!thread) throw new Unacceptable("name the thread: thread, a number");
+  const post = body.post === undefined || body.post === null || body.post === "" ? null : whole(body.post);
+  if (body.post && !post) throw new Unacceptable("post is a post's number");
+  const said = await call2("talk_answer", { account: who, p_thread: thread, p_post: post });
+  if (said === null) notYet();
+  if (said?.refused) throw refused(said.refused);
+  return response.status(200).json({ thread, answer: said?.answer ?? null });
 }
 
 /// POST ?op=report {post, reason, note?}: a post reported, signed in or

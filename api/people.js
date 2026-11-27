@@ -209,6 +209,10 @@
 //                                 edited or removed, a thread followed or
 //                                 read, a photo sent (api/_talk.js); a post
 //                                 is reported with ?op=report {post}
+//   POST ?op=talk_answer          (session) a Help thread's starter marks the
+//                                 reply that answered them (talk2.sql)
+//   POST ?op=talk_view            a thread opened by a person, counted once a
+//                                 day each (talk2.sql)
 //
 // Challenges (2026-10-19, supabase/challenges.sql): one at a time, set by the
 // site's owner on /admin, with rules the database checks on the stored
@@ -327,8 +331,8 @@ import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRules, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 import { promptOfAnswer } from "./_prompts.js";
 import {
-  reportPost, talkAsk, talkAsks, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead,
-  talkReply, talkRss, talkSetAsk, talkSetAsks, talkStart, talkThread,
+  reportPost, talkAnswer, talkAsk, talkAsks, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart,
+  talkRead, talkReply, talkRss, talkSetAsk, talkSetAsks, talkStart, talkThread, talkView,
 } from "./_talk.js";
 import { pushChoose, pushSend, pushState } from "./_push.js";
 
@@ -2267,6 +2271,8 @@ async function handler(request, response) {
       if (op === "talk_change") return await talkChange(request, response, { origin: originOf(request) });
       if (op === "talk_follow") return await talkFollow(request, response);
       if (op === "talk_read") return await talkRead(request, response);
+      if (op === "talk_answer") return await talkAnswer(request, response);
+      if (op === "talk_view") return await talkView(request, response);
       if (op === "talk_photo_start") return await talkPhotoStart(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });

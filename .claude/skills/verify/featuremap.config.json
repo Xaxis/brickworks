@@ -3995,20 +3995,6 @@
       "area": "building"
     },
     {
-      "kind": "cli",
-      "label": "submenus probe",
-      "entry": "src/dev/submenu_probe.gd",
-      "reach": "tools/probe.sh submenu_probe -- --saves=50   (every submenu of File, Edit and View: open within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and slanted into it, a rest-then-next move opens the next; SUBMENU lines)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "submenus in a browser",
-      "entry": "tools/web/submenu_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/submenu_flow.mjs --url=<preview>/app --saves=50 --out=DIR [--only=Import,Open recent] [--bar-ms=N]   (with .env sourced; preview_checks submenu: time to drawn by screencast, longest task, straight and slanted paths, Open recent opens a model; results.txt)",
-      "area": "building"
-    },
-    {
       "kind": "lib",
       "label": "a design drawn as any provider writes it",
       "entry": "src/ai/stream.gd",
@@ -6459,6 +6445,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "talk's pages unread and answers",
+      "entry": "supabase/talk2.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=<db env> tools/apply_sql.mjs supabase/talk2.sql --dry --try=tools/talk2_try.sql --table=talk_threads   (after talk.sql; talk2_list, talk2_page, talk_visit, talk_read_to, talk_view, talk_answer; until applied api/_talk.js falls back to talk.sql's one page; python3 tools/minitest.py tests/test_talk2.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "talk pages and sorts",
+      "entry": "web/pager.js",
+      "reach": "https://brickworks.diy/talk/b/help?sort=top&in=month&page=2 (?sort=latest|new|top|unanswered|unread, ?in=week|month|year, ?page=N, ?q=; a thread ?page=N or ?post=ID)   (api/_talk.js listPageHtml, threadPageHtml; GET /api/people?op=talk&html=1&page=N, ?op=talk_thread&id=N&page=N&html=1)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "talk unread for members",
+      "entry": "web/talk.js",
+      "reach": "https://brickworks.diy/talk signed in (Unread pill and its count, a dot and n new on a row, its title to the first not read; in a thread the Not read yet line and The first you have not read)   (POST /api/people?op=talk_read {thread, post}; talk2.sql talk_visit, talk_read_to)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "talk answered questions",
+      "entry": "api/_talk.js",
+      "reach": "https://brickworks.diy/talk/t/<n>/<title> in Help: Mark as the answer (the asker's), the answer under the question, Answered on the board, QAPage JSON-LD   (POST /api/people?op=talk_answer {thread, post|null}; POST ?op=talk_view {thread})",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "talk2 browser flow",
+      "entry": "tools/web/talk2_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/flow.env tools/web/talk2_flow.mjs --url=http://127.0.0.1:PORT --out=DIR over relay_server.mjs PORT --hold=talk --talk-crowd (tests/fixtures/talk/crowd.mjs: Help's 500 threads, a thread of 200 posts; MASTER_EMAIL a throwaway at resend.dev); ends \"talk2: all ok\"",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "the talk stand-in",
       "entry": "tools/web/talk_stand_in.mjs",
@@ -7486,6 +7507,20 @@
       "entry": "src/render/page_tracer.gd",
       "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "submenus probe",
+      "entry": "src/dev/submenu_probe.gd",
+      "reach": "tools/probe.sh submenu_probe -- --saves=50   (every submenu of File, Edit and View: open within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and slanted into it, a rest-then-next move opens the next; SUBMENU lines)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "submenus in a browser",
+      "entry": "tools/web/submenu_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/submenu_flow.mjs --url=<preview>/app --saves=50 --out=DIR [--only=Import,Open recent] [--bar-ms=N]   (with .env sourced; preview_checks submenu: time to drawn by screencast, longest task, straight and slanted paths, Open recent opens a model; results.txt)",
+      "area": "building"
     },
     {
       "kind": "ui",

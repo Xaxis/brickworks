@@ -103,13 +103,15 @@ export async function talkWorld() {
   await db.q(file("supabase/talk_asks.sql"));
   // And on a set's page (hubask): its versions' builders told.
   await db.q(file("supabase/set_asks.sql"));
+  // Round two (talk2): pages, what is new, views and answers.
+  await db.q(file("supabase/talk2.sql"));
   await db.q("set check_function_bodies = on");
   const pool = [];
   for (let at = 0; at < 4; at += 1) pool.push(await db.connect());
   let next = 0;
   db.call = async (name, args = {}) => {
     const names = Object.keys(args || {});
-    if (!/^[a-z_]+$/.test(name) || names.some((key) => !/^[a-z_]+$/.test(key))) throw new Error(`rpc ${name}`);
+    if (!/^[a-z][a-z0-9_]*$/.test(name) || names.some((key) => !/^[a-z_]+$/.test(key))) throw new Error(`rpc ${name}`);
     // An object, or an array of objects (an ask's parts), is jsonb as
     // PostgREST sends it; an array of numbers a Postgres array.
     const values = names.map((key) => (args[key] !== null && typeof args[key] === "object"

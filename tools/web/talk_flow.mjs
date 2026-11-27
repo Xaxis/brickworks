@@ -14,7 +14,7 @@
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=$SCRATCH/flow.env tools/web/talk_flow.mjs --url=<preview> --out=DIR
 //
-//   1. The boards, signed out: Latest and the five boards as tabs, the
+//   1. The boards, signed out: All boards and the five boards as tabs, the
 //      house's first threads in them (never empty), what is said under the
 //      models beside them; a thread's reply box there all the same, its
 //      Ctrl+Enter asking to sign in and keeping the words; and a row's Reply
@@ -202,7 +202,7 @@ try {
   await landing.context().close();
   const visitor = await open("/talk?tests=1");
   const tabs = await textOf(visitor, "nav.talk-boards a");
-  check(`six tabs, Latest and the five boards: ${tabs.join(" | ")}`, tabs.length === 6 && /Latest/.test(tabs[0]) && tabs.some((one) => /Show and tell/.test(one)));
+  check(`six tabs, All boards and the five boards: ${tabs.join(" | ")}`, tabs.length === 6 && /All boards/.test(tabs[0]) && tabs.some((one) => /Show and tell/.test(one)));
   const rows = await textOf(visitor, "#talk-list .talk-row");
   check(`never empty: ${rows.length} threads on Latest, the house's among them`, rows.length >= 4 && rows.some((one) => /Brickworks started it/.test(one)));
   check("what builders say under the models is beside them", (await textOf(visitor, ".talk-aside h2")).some((one) => /On the models/.test(one)));
@@ -420,7 +420,7 @@ try {
   } else {
     const challenges = await open(`/talk/b/challenges${month.test ? "?tests=1" : ""}`);
     const rows = await challenges.evaluate(() => [...document.querySelectorAll("#talk-list .talk-row")].map((row) => ({
-      title: row.querySelector(".talk-row-title")?.textContent.replace(/\s+/g, " ").trim() || "",
+      title: row.querySelector(".talk-row-title a")?.textContent.replace(/\s+/g, " ").trim() || "",
       said: row.textContent.replace(/\s+/g, " ").trim(), href: row.querySelector(".talk-row-title a")?.getAttribute("href") || "" })));
     const its = rows.find((one) => one.title === month.title && /Brickworks started it/.test(one.said));
     check(`"${month.title}" (${month.test ? "the checks' pool" : "the real one"}) has its thread in Challenges, by Brickworks: `

@@ -17,6 +17,7 @@ import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { ask, tell as tellOver } from "/kit.js";
 import { start3d } from "/start3d.js";
+import { pager } from "/pager.js";
 
 const root = document.querySelector("[data-talk]");
 const TESTS = new URLSearchParams(location.search).get("tests") === "1";
@@ -190,40 +191,291 @@ function startAsk() {
   root.querySelectorAll("[data-ask-part]").forEach((chip) => chip.addEventListener("click", () => question3d.view.open("mouse")));
 }
 
-/// The posts as the signed-in reader sees them, and what they may do.
-async function load() {
-  const got = await call(asked(`op=talk_thread&id=${thread}&html=1`)).catch(() => null);
-  if (!got || got.status !== 200) return null;
+// Where the reader is in the thread (api/_talk.js talkThread): its pages,
+// how many posts, and the first they had not read when they came, kept
+// from the first answer (reading moves it on).
+const where = { page: Number(root?.dataset.page) || 1, pages: Number(root?.dataset.pages) || 1, per: Number(root?.dataset.per) || 20,
+  total: 0, firstNew: null, heard: false };
+// The pages of posts (web/pager.js): read from the server's own pages for a
+// reader signed out, as the signed-in reader sees them once they are.
+let paged = null;
+let lastBody = null;
+
+/// Page [n]'s address: the thread's, ?page=N past the first; a post's
+/// (?post=) is dropped once the pages are the reader's.
+function pageHref(n) {
+  const at = new URL(location.href);
+  at.searchParams.delete("post");
+  if (n > 1) at.searchParams.set("page", String(n));
+  else at.searchParams.delete("page");
+  return at.pathname + at.search;
+}
+
+/// A post's own address, wherever in the thread it is.
+const postHref = (id) => `${location.pathname}?post=${Number(id)}${TESTS ? "&tests=1" : ""}#post-${Number(id)}`;
+
+/// The elements of server-drawn [html] (escaped there: api/_talk.js).
+function fromHtml(html) {
+  const holder = document.createElement("template");
+  holder.innerHTML = html || "";
+  return [...holder.content.children];
+}
+
+/// Page [n] of the posts as the signed-in reader sees them.
+async function loadPage(n) {
+  const got = await call(asked(`op=talk_thread&id=${thread}&page=${n}&html=1`));
+  if (got.status !== 200) throw new Error(String(got.status));
+  const body = got.body;
+  for (const one of body.mine || []) mine.set(Number(one.id), String(one.body));
+  where.pages = Number(body.pages) || 1;
+  where.per = Number(body.per) || where.per;
+  where.total = Number(body.total) || 0;
+  if (!where.heard) {
+    where.heard = true;
+    where.firstNew = body.first_new?.id ? body.first_new : null;
+  }
+  lastBody = body;
+  return { items: fromHtml(body.html), pages: where.pages, total: where.total, more: Number(body.page) < where.pages, data: body };
+}
+
+/// What is shown said beside it: which posts of how many.
+function whereSaid() {
   const list = $("#talk-posts");
-  list.innerHTML = got.body.html;
-  mine = new Map((got.body.mine || []).map((one) => [Number(one.id), String(one.body)]));
-  $("[data-blocked-some]").hidden = got.body.blocked_some !== true;
-  wireActs();
+  const count = $(".talk-where-count");
+  if (!list || !count || !paged) return;
+  const shown = list.querySelectorAll(":scope > li[data-post]").length;
+  const from = (Math.max(1, paged.state.first) - 1) * where.per + 1;
+  const total = Number(paged.state.total) > 0 ? Number(paged.state.total) : where.total;
+  if (total > shown && shown) count.textContent = say("Posts {from} to {to} of {n}", { from: number(from), to: number(from + shown - 1), n: number(total) });
+}
+
+/// The first post the reader had not read: a line over it, a way to it
+/// from the top and beside the posts, and how many came since.
+function newSaid() {
+  const line = $("[data-new-since]");
+  const jump = $("[data-first-new]");
+  const first = where.firstNew;
+  for (const one of root.querySelectorAll(".talk-post.first-new")) one.classList.remove("first-new");
+  if (!first) {
+    if (line) line.hidden = true;
+    if (jump) jump.hidden = true;
+    return;
+  }
+  const post = document.getElementById(`post-${Number(first.id)}`);
+  if (post) {
+    post.classList.add("first-new");
+    post.dataset.newSaid = say("Not read yet");
+  }
+  const href = post ? `#post-${Number(first.id)}` : postHref(first.id);
+  const count = Math.max(1, where.total - Number(first.n || where.total) + 1);
+  if (line) {
+    line.replaceChildren();
+    line.append(count === 1 ? say("1 post you have not read.") : say("{n} posts you have not read.", { n: number(count) }), " ");
+    const go = document.createElement("a");
+    go.href = href;
+    go.textContent = say("Go to the first");
+    line.append(go);
+    line.hidden = false;
+  }
+  if (jump) {
+    const go = $("a", jump);
+    go.href = href;
+    go.textContent = say("The first you have not read");
+    jump.hidden = false;
+  }
+}
+
+/// Read as far as the posts shown: the whole thread when its last page is
+/// shown, else up to the last post shown (never back: talk2.sql).
+function readTo() {
+  const posts = root.querySelectorAll("#talk-posts > li[data-post]");
+  const last = posts[posts.length - 1];
+  if (!last || !paged) return;
+  const atEnd = paged.state.last >= where.pages;
+  call(asked("op=talk_read"), { method: "POST", body: atEnd ? { thread } : { thread, post: Number(last.dataset.post) } }).catch(() => null);
+}
+
+/// Pages of posts as [signed] in or out: the pager made again for them.
+function pagesFor(signed) {
+  const list = $("#talk-posts");
+  if (!list) return null;
+  paged?.stop();
+  paged = pager({ list, load: signed ? loadPage : null, href: pageHref, key: (item) => item.dataset?.post || "",
+    drawn: () => {
+      wireActs();
+      whereSaid();
+      if (signed) {
+        newSaid();
+        readTo();
+      }
+    } });
+  paged.signed = signed;
+  return paged;
+}
+
+/// The pages shown drawn again as the signed-in reader sees them (their
+/// blocks, their own hidden posts, Edit and Remove on theirs), and what
+/// they may do; the answer's body, or null.
+async function load() {
+  if (!signedIn()) return null;
+  if (!paged?.signed) pagesFor(true);
+  if (!paged) return null;
+  lastBody = null;
+  const n = paged.state.last || where.page;
+  await paged.start(n, { from: paged.state.first || n, restore: false });
+  const body = lastBody;
+  if (!body) return null;
+  $("[data-blocked-some]").hidden = body.blocked_some !== true;
   const follow = $("[data-talk-follow]");
   if (follow) {
     follow.hidden = false;
-    follow.setAttribute("aria-pressed", String(got.body.thread?.following === true));
-    follow.textContent = got.body.thread?.following ? say("Following") : say("Follow");
+    follow.setAttribute("aria-pressed", String(body.thread?.following === true));
+    follow.textContent = body.thread?.following ? say("Following") : say("Follow");
   }
   const form = $("[data-reply-form]");
   const place = $("[data-signin]");
-  if (form) form.hidden = got.body.you?.may_write !== true;
+  if (form) form.hidden = body.you?.may_write !== true;
   // An ask's answers on parts as this reader sees them, and whether they
   // may answer on one (Answer on this part in the 3D view's menu).
   if (askStart) {
-    question3d.pins = got.body.pins || [];
-    question3d.mayPin = got.body.you?.may_write === true;
+    question3d.pins = body.pins || [];
+    question3d.mayPin = body.you?.may_write === true;
     globalThis.brickworksAsk.pins = question3d.pins.length;
     question3d.view?.pinsChanged();
   }
   if (place) {
-    place.hidden = got.body.you?.may_write === true;
+    place.hidden = body.you?.may_write === true;
     const words = $("p", place);
-    if (words) words.textContent = told(got.body.you?.why_not, words.textContent);
+    if (words) words.textContent = told(body.you?.why_not, words.textContent);
     const button = $("[data-act='sign-in']", place);
     if (button) button.hidden = true;
   }
-  return got.body;
+  return body;
+}
+
+/// The thread marked answered or not over the posts, and the way to its
+/// answer beside them, as the answer now is ([id], or none).
+function answeredSaid(id) {
+  const meta = $(".talk-thread-meta");
+  const pill = $(".talk-thread-meta .pill.answered");
+  $(".talk-jumps [data-jump-answer]")?.remove();
+  if (!id) {
+    pill?.remove();
+    return;
+  }
+  const mark = $("#talk-posts .is-answer .pill.answered");
+  if (!mark) return;
+  if (!pill && meta) {
+    const made = mark.cloneNode(true);
+    made.lastChild.textContent = say("Answered");
+    meta.prepend(made, " ");
+  }
+  const jumps = $(".talk-jumps");
+  if (jumps) {
+    const item = document.createElement("li");
+    item.dataset.jumpAnswer = "";
+    const go = document.createElement("a");
+    go.href = document.getElementById(`post-${Number(id)}`) ? `#post-${Number(id)}` : postHref(id);
+    go.append(mark.querySelector(".icon")?.cloneNode(true) || "", say("The answer"));
+    item.append(go);
+    jumps.firstElementChild ? jumps.firstElementChild.after(item) : jumps.append(item);
+  }
+}
+
+/// [post] (the reader's reply in their box): its words quoted, "> " a line,
+/// as much as was chosen of it, else all it says but what it quoted.
+function quote(post) {
+  const form = $("[data-reply-form]");
+  const field = form && $("textarea", form);
+  if (!form || form.hidden || !field) return false;
+  const body = $(".comment-body", post);
+  const chosen = getSelection();
+  let words = chosen && chosen.rangeCount && body?.contains(chosen.getRangeAt(0).commonAncestorContainer) ? chosen.toString() : "";
+  if (!words.trim()) {
+    const id = Number(post.dataset.post);
+    if (mine.has(id)) words = mine.get(id).replace(/^\s*>.*$/gm, "");
+    else if (body) {
+      const copy = body.cloneNode(true);
+      copy.querySelectorAll(".talk-quote").forEach((one) => one.remove());
+      words = copy.textContent;
+    }
+  }
+  words = words.replace(/\n{3,}/g, "\n\n").trim();
+  if ([...words].length > 400) words = `${[...words].slice(0, 400).join("").replace(/\s+\S*$/, "")}…`;
+  if (!words) return false;
+  const quoted = words.split("\n").map((line) => `> ${line}`.trimEnd()).join("\n");
+  const before = field.value.trimEnd();
+  field.value = `${before ? `${before}\n\n` : ""}${quoted}\n\n`;
+  field.dispatchEvent(new Event("input"));
+  answer(post);
+  field.setSelectionRange(field.value.length, field.value.length);
+  return true;
+}
+
+/// What a reader typed in a thread's reply box, kept in this tab under
+/// [key] while they go to another page of the thread and back (each page a
+/// link of its own since talk2), and let go once it is posted or emptied.
+function keptDraft(field, key) {
+  try {
+    const kept = sessionStorage.getItem(key);
+    if (kept && !field.value) {
+      field.value = kept;
+      field.dispatchEvent(new Event("input"));
+    }
+  } catch {
+    // No storage in this tab: nothing kept.
+  }
+  field.addEventListener("input", () => {
+    try {
+      if (field.value.trim()) sessionStorage.setItem(key, field.value);
+      else sessionStorage.removeItem(key);
+    } catch {
+      // As above.
+    }
+  });
+}
+
+/// [post]'s own address copied, said on [button] a moment.
+async function copyLink(post, button) {
+  const link = $("a[data-post-link]", post);
+  const url = new URL(link?.getAttribute("href") || postHref(post.dataset.post), location.href).href;
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(url);
+    copied = true;
+  } catch {
+    copied = false;
+  }
+  // Not copied (no clipboard here): the address bar says it instead.
+  if (!copied) history.replaceState(history.state, "", url);
+  const was = button.dataset.was || button.textContent;
+  button.dataset.was = was;
+  button.textContent = copied ? say("Link copied") : say("Its link is in the address bar");
+  setTimeout(() => { button.textContent = was; }, 2500);
+}
+
+/// The asker's mark on [post], or off it ([on] false).
+async function markAnswer(post, on) {
+  const done = await call(asked("op=talk_answer"), { method: "POST", body: { thread, post: on ? Number(post.dataset.post) : null } });
+  if (done.status !== 200) {
+    return tellOver({ title: say("The answer was not marked"), body: told(done.body?.error, say("That did not work just now. Try again in a minute.")) });
+  }
+  await load();
+  answeredSaid(done.body.answer || null);
+  document.getElementById(`post-${Number(post.dataset.post)}`)?.querySelector("[data-act$='answer']")?.focus();
+}
+
+/// Once a visit, a person's opening of the thread counted (talk2.sql
+/// talk_view: once a day each, and never a crawler's).
+function counted() {
+  const key = `brickworks.talk.viewed.${thread}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // No storage: counted all the same, the server keeping it to once a day.
+  }
+  call(asked("op=talk_view"), { method: "POST", body: { thread } }).catch(() => null);
 }
 
 /// Each post's acts shown, now that they do something.
@@ -295,7 +547,8 @@ function edit(post) {
 
 async function remove(post) {
   const id = Number(post.dataset.post);
-  const first = post === $("#talk-posts > li");
+  // The thread's first post, on whatever page this is.
+  const first = post.dataset.n ? post.dataset.n === "1" : post === $("#talk-posts > li");
   if (!(await ask({ title: say("Remove your post?"), body: first ? say("It starts the thread, so the whole thread goes with it.") : "",
     yes: say("Remove"), no: say("Cancel"), danger: true }))) return;
   const done = await call(asked("op=talk_change"), { method: "POST", body: { post: id, what: "remove" } });
@@ -314,11 +567,34 @@ function threadPage() {
   const list = $("#talk-posts");
   wireActs();
   startAsk();
+  counted();
   list.addEventListener("click", async (event) => {
+    // A post's number: its own address, here without leaving the page.
+    const own = event.target.closest?.("a[data-post-link]");
+    if (own && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) {
+      const post = own.closest("li[data-post]");
+      event.preventDefault();
+      history.replaceState(history.state, "", new URL(own.getAttribute("href"), location.href).href);
+      for (const one of list.querySelectorAll(":scope > li.asked")) one.classList.remove("asked");
+      post?.classList.add("asked");
+      post?.scrollIntoView({ block: "start" });
+      return;
+    }
     const button = event.target.closest("button[data-act]");
     const post = button?.closest("li[data-post]");
     if (!button || !post) return;
     const act = button.dataset.act;
+    if (act === "link") return copyLink(post, button);
+    if (act === "mark-answer" || act === "unmark-answer") {
+      button.disabled = true;
+      await markAnswer(post, act === "mark-answer");
+      button.disabled = false;
+      return;
+    }
+    if (act === "quote") {
+      // The box is everybody's, signed in or not (Post asks then).
+      if (quote(post)) return;
+    }
     // An answer's part, in the 3D view: opened, turned to it and lit.
     if (act === "show-part" && question3d.view) {
       question3d.view.showPin(Number(button.dataset.pin), event.detail === 0 ? "key" : "mouse");
@@ -362,6 +638,7 @@ function threadPage() {
     });
     $("[data-act='off-part']", form)?.addEventListener("click", () => onPart(null));
     const field = $("textarea", form);
+    keptDraft(field, `talk-draft:${thread}`);
     wireComposer(form, {
       field,
       said: $("[data-said]", form),
@@ -391,7 +668,15 @@ function threadPage() {
         $("[data-photo-chosen]", form).hidden = true;
         onPart(null);
         await load();
-        document.getElementById(`post-${Number(made.post?.id)}`)?.scrollIntoView({ block: "center" });
+        // On a later page than these (a long thread read from its start):
+        // that page, at the reply.
+        const id = Number(made.post?.id);
+        const shown = document.getElementById(`post-${id}`);
+        if (!shown && id) {
+          location.assign(postHref(id));
+          return;
+        }
+        shown?.scrollIntoView({ block: "center" });
         tell(form, made.mentions?.length ? say("Posted. {names} will hear of it.", { names: made.mentions.map((one) => `@${one.handle}`).join(", ") })
           : say("Posted."));
       },
@@ -415,6 +700,7 @@ function threadPage() {
     said.textContent = done.body.following ? say("You will hear of each new post here.") : say("You will not hear of new posts here.");
   });
   if (!signedIn()) {
+    pagesFor(false);
     // The box is everybody's: Post signs them in first (wireComposer).
     if (form) {
       form.hidden = false;
@@ -425,8 +711,14 @@ function threadPage() {
     }
     return;
   }
-  load().then((body) => {
-    if (body) call(asked("op=talk_read"), { method: "POST", body: { thread } }).catch(() => null);
+  // Signed in: the pages shown drawn again as they see them (and read as
+  // far as they are: readTo), and the post an address names in view.
+  load().then(() => {
+    const named = /^#post-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
+    if (named) {
+      named.classList.add("asked");
+      named.scrollIntoView({ block: "start" });
+    }
   });
 }
 
@@ -442,8 +734,13 @@ function newPage() {
   $("[data-signin]").hidden = true;
   form.hidden = false;
   photoPicked(form);
-  form.querySelectorAll("[data-most]").forEach(measured);
   const model = $("[data-model]", form)?.dataset.model || "";
+  // A thread half written is kept in the tab as a reply is (keptDraft), so
+  // a look at another thread on the way does not lose it: one about a
+  // model kept for that model only, never written into another's.
+  const drafts = ["title", "body"].map((name) => [form.elements[name], `talk-draft:new:${model}:${name}`]).filter(([field]) => field);
+  for (const [field, key] of drafts) keptDraft(field, key);
+  form.querySelectorAll("[data-most]").forEach(measured);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (overInForm(form)) return;
@@ -464,6 +761,11 @@ function newPage() {
         return;
       }
       if (done.status !== 201) return tell(form, told(done.body?.error, say("That did not go just now. Try again in a minute.")));
+      try {
+        for (const [, key] of drafts) sessionStorage.removeItem(key);
+      } catch {
+        // No storage: nothing was kept.
+      }
       location.href = `${langAt()}${done.body.path}${TESTS ? "?tests=1" : ""}`;
     } finally {
       send.disabled = false;
@@ -472,9 +774,58 @@ function newPage() {
 }
 
 // ---------------------------------------------------------------------------
-// A list: Reply in a row, and the way to start a thread keeps a test's pool.
+// A list: its pages (web/pager.js), drawn again for a signed-in reader with
+// what is new to them (unread rows, "3 new" to the first unread post, the
+// Unread tab and its count); Reply in a row; a test's pool kept in links.
 
-function listPage() {
+/// A check's pool kept in every link to Talk under [scope].
+function keepTests(scope) {
+  if (!TESTS) return;
+  for (const link of scope.querySelectorAll("a[href*='/talk']")) {
+    const url = new URL(link.href, location.href);
+    if (url.origin === location.origin && !url.searchParams.has("tests")) {
+      url.searchParams.set("tests", "1");
+      link.href = `${url.pathname}${url.search}${url.hash}`;
+    }
+  }
+}
+
+/// The Unread tab shown with how many threads are new to the reader.
+function unreadSaid(n) {
+  const tab = $("[data-unread]");
+  if (!tab) return;
+  tab.hidden = !(n > 0 || root.dataset.sort === "unread");
+  const count = $("[data-unread-n]", tab);
+  if (count) count.textContent = n > 0 ? number(n) : "";
+}
+
+/// The list drawn again as [html] says (a signed-in reader's), each row
+/// somebody is already using kept as it is: its reply box open, what they
+/// typed, the caret. Such a row only takes the new one's marks (unread, n
+/// new, its title's link). A reader who presses Reply before the redraw
+/// lands lost the box and what they had typed (talk_flow 8b).
+function redrawn(found, html) {
+  const made = document.createElement("template");
+  made.innerHTML = html;
+  const focused = document.activeElement;
+  const caret = focused instanceof HTMLTextAreaElement || focused instanceof HTMLInputElement
+    ? [focused.selectionStart, focused.selectionEnd] : null;
+  for (const fresh of made.content.querySelectorAll(".talk-row[data-thread]")) {
+    const old = found.querySelector(`.talk-row[data-thread="${Number(fresh.dataset.thread)}"]`);
+    if (!old || !(old.querySelector(".said-room, form.composer") || old.contains(focused))) continue;
+    old.className = fresh.className;
+    const title = fresh.querySelector(".talk-row-title");
+    if (title) old.querySelector(".talk-row-title")?.replaceWith(title);
+    fresh.replaceWith(old);
+  }
+  found.replaceChildren(...made.content.childNodes);
+  if (focused && found.contains(focused) && document.activeElement !== focused) {
+    focused.focus({ preventScroll: true });
+    if (caret && caret[0] !== null) focused.setSelectionRange(caret[0], caret[1]);
+  }
+}
+
+async function listPage() {
   // Reply in a row: the composer opened under it, the reply shown there
   // once posted; the thread's own page for a new tab or window.
   root.addEventListener("click", (event) => {
@@ -484,14 +835,40 @@ function listPage() {
     event.preventDefault();
     replyInCard(row, Number(pressed.dataset.replyThread), { opener: pressed, tests: TESTS ? "&tests=1" : "", lang: CODE });
   });
-  if (!TESTS) return;
-  for (const link of root.querySelectorAll("a[href*='/talk']")) {
-    const url = new URL(link.href, location.href);
-    if (url.origin === location.origin && !url.searchParams.has("tests")) {
-      url.searchParams.set("tests", "1");
-      link.href = `${url.pathname}${url.search}${url.hash}`;
-    }
+  keepTests(root);
+  if (root.dataset.legacy !== undefined) return;
+  const found = $("[data-talk-found]");
+  const asking = (n) => {
+    const at = new URLSearchParams(location.search);
+    const kept = new URLSearchParams();
+    if (root.dataset.board) kept.set("board", root.dataset.board);
+    for (const name of ["q", "sort", "in"]) if (at.get(name)) kept.set(name, at.get(name));
+    kept.set("page", String(n));
+    kept.set("html", "1");
+    return asked(`op=talk&${kept}`);
+  };
+  const key = (item) => item.dataset?.thread || "";
+  const drawn = ({ items }) => items.forEach(keepTests);
+  if (!signedIn()) {
+    const list = $("#talk-list");
+    if (list) pager({ list, key, drawn });
+    return;
   }
+  // Signed in: this page as they see it, then its pages theirs too.
+  const n = Number(root.dataset.page) || 1;
+  const got = await call(asking(n)).catch(() => null);
+  if (!got || got.status !== 200 || !found) return;
+  redrawn(found, got.body.html);
+  keepTests(found);
+  unreadSaid(Number(got.body.unread) || 0);
+  const list = $("#talk-list");
+  if (!list) return;
+  pager({ list, key, drawn, load: async (page) => {
+    const more = await call(asking(page));
+    if (more.status !== 200) throw new Error(String(more.status));
+    unreadSaid(Number(more.body.unread) || 0);
+    return { items: fromHtml(more.body.rows), pages: Number(more.body.pages) || 0, total: Number(more.body.total), more: more.body.more === true };
+  } });
 }
 
 if (root?.dataset.talk === "thread") threadPage();
