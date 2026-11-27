@@ -505,6 +505,15 @@ func _doing(what: String) -> void:
 	_step = what if _step.is_empty() else _step + ", " + what
 
 
+## A step of a traced Best that a person waits through in a browser
+## (photoreal28): the first one there fetches the tracer and compiles it for
+## the card, half a minute or more. The dialog says so, at [param at], where
+## it said "setting up the model" the whole time.
+func _waited_on(what: String, at: float) -> void:
+	_doing(what)
+	progress.emit(at, what)
+
+
 ## Keep the last path-traced picture's light before its exposure and tone
 ## curve (PathTracer.mean_image) in [member last_mean], with the exposure it
 ## was drawn at in [member last_drawn_at]: the photo bench's colour measure.
@@ -2767,7 +2776,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# In a browser (photoreal28) the page's tracer is fetched and its shaders
 	# compiled for this card the first time Best wants them; _picture draws
 	# frames instead when it cannot.
-	if OS.has_feature("web") and not await PageTracer.ready(_tracer.version_name(), _doing):
+	if OS.has_feature("web") and not await PageTracer.ready(_tracer.version_name(),
+			_waited_on.bind(from)):
 		return null
 	if _cancelled:
 		return null
@@ -2809,6 +2819,10 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_balance = Color(1, 1, 1)
 	_card_colour = Color(1, 1, 1)
 	var linear_saturation: float = 1.0
+	# Metered below unless in the Dark light: in a browser on a slow card,
+	# seconds more before the first sample of the picture.
+	if photo or settings.lighting != "dark":
+		_waited_on("metering the light", from)
 	if photo:
 		tonemapper = 4
 		white = 1.0

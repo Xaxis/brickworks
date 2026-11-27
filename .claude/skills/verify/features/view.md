@@ -3570,8 +3570,15 @@ picture the assistant is shown.
   `import()` from `Origin.build()`), its shaders compiled beside the page; a
   pass is given only once the last one's fence has signalled, sized by the
   card's timer query to 12 ms (where the browser does not time the card,
-  Firefox and Safari, grown while the page's frames come within 22 ms and
-  shrunk past 34), so the tab keeps drawing. A shader has no calls: the
+  Firefox and Safari, the page's own frame is timed over 3 frames given no
+  pass, and the band grows while frames come within 6 ms or 35% of it and
+  shrinks past 18 ms or 100% more: a fixed 22/34 ms starved it where the
+  studio's own frames are slow, 25 s a sample on SwiftShader), so the tab
+  keeps drawing. While a first Best waits on the tracer's script, its
+  compile and the metering, the dialog says so ("fetching the path tracer",
+  "readying the path tracer for this graphics card", "metering the light",
+  `StudioRender._waited_on`), not "setting up the model"; page_tracer_flow
+  fails if it still says that once samples come in. A shader has no calls: the
   walk and the closest hit are copied in wherever they are called, and they
   made the first compile take about a minute. So a shadow ray's walk through
   clear parts asks for the bare hit (`RT_BARE`, the port's own), and

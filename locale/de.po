@@ -5960,6 +5960,15 @@ msgstr "Modell wird vorbereitet"
 msgid "fetching the photographed light"
 msgstr "fotografiertes Licht wird geladen"
 
+msgid "fetching the path tracer"
+msgstr "Pathtracer wird geladen"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "Pathtracer wird für diese Grafikkarte vorbereitet"
+
+msgid "metering the light"
+msgstr "Licht wird gemessen"
+
 msgid "the contact shadow"
 msgstr "der Kontaktschatten"
 

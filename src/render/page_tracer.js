@@ -19,8 +19,12 @@
 // elsewhere (Firefox, Safari) by the gap between the page's frames: the
 // browser holds the next frame until the card has drawn this one, pass and
 // all, so a pass is always done by the next frame however long it takes,
-// and only the frames' gap says it took too long. It grows while frames come
-// within FRAME_GROW_MS and shrinks once they are later than FRAME_SHRINK_MS.
+// and only the frames' gap says it took too long. The page's own frame is
+// timed first, over OWN_FRAMES frames given no pass. The band grows while the
+// frames come within FRAME_GROW_MS of it and shrinks once they are later than
+// FRAME_SHRINK_MS past it, or that share of it on a page whose frames are
+// slow already. A fixed gap starved it there: frames of the studio at 25 a
+// second, or on SwiftShader, were always "late", and a sample took 25 s.
 //
 // The pure parts (the trees and the textures' packing) take no WebGL, so the
 // bench (tools/web/tracer_bench.mjs) builds the very same data under Node.
@@ -31,9 +35,14 @@ const SHADERS = null; // tracer_port.py puts the shaders here
 export const WIDE = 2048;
 // What a pass may take of the card in a frame, where it can be timed.
 const BUDGET_MS = 12;
-// Where it cannot: the frames' gaps it grows within and shrinks past.
-const FRAME_GROW_MS = 22;
-const FRAME_SHRINK_MS = 34;
+// Where it cannot: how much later than the page's own the frames may come for
+// it to grow (ms, or that share of the page's frame if more), and past which
+// it shrinks; and how many frames time the page's own.
+const FRAME_GROW_MS = 6;
+const FRAME_GROW_SHARE = 0.35;
+const FRAME_SHRINK_MS = 18;
+const FRAME_SHRINK_SHARE = 1.0;
+const OWN_FRAMES = 3;
 // The most samples one pass gives every pixel (PathTracer.MOST_PER_PASS).
 const MOST_PER_PASS = 32;
 
@@ -405,6 +414,8 @@ export class Tracer {
 		this.perPass = 1;
 		this.fence = null;
 		this.waits = 0;
+		this.ownGaps = [];
+		this.ownGap = 0;
 		this.passes = 0;
 		this.passMs = [];
 		this.problem = "";
@@ -671,6 +682,8 @@ export class Tracer {
 		this.samples = 0;
 		this.row = 0;
 		this.askedAt = 0;
+		this.ownGaps = [];
+		this.ownGap = 0;
 		this.finishFence();
 		return true;
 	}
@@ -748,6 +761,14 @@ export class Tracer {
 		const now = performance.now();
 		this.frameGap = this.askedAt ? now - this.askedAt : 0;
 		this.askedAt = now;
+		// Where the card's time cannot be read, the page's own frame first, with
+		// nothing of the tracer's in it: the frames after are paced against it.
+		if (!this.timer && this.samples === 0 && this.row === 0 && !this.fence
+			&& this.ownGaps.length < OWN_FRAMES) {
+			if (this.frameGap > 0) this.ownGaps.push(this.frameGap);
+			if (this.ownGaps.length < OWN_FRAMES) return this.samples;
+			this.ownGap = [...this.ownGaps].sort((a, b) => a - b)[Math.floor(OWN_FRAMES / 2)];
+		}
 		if (this.fence) {
 			if (gl.getSyncParameter(this.fence, gl.SYNC_STATUS) !== gl.SIGNALED) {
 				this.waits++;
@@ -806,10 +827,13 @@ export class Tracer {
 			}
 		}
 		if (!timed) {
-			const gap = this.frameGap || 0;
-			if (this.waits >= 2 || gap > FRAME_SHRINK_MS) {
-				work *= gap > 2 * FRAME_SHRINK_MS ? 0.4 : 0.7;
-			} else if (this.waits === 0 && gap > 0 && gap <= FRAME_GROW_MS) {
+			const own = this.ownGap || 1000 / 60;
+			const late = (this.frameGap || 0) - own;
+			const shrinkPast = Math.max(FRAME_SHRINK_MS, FRAME_SHRINK_SHARE * own);
+			if (this.waits >= 2 || late > shrinkPast) {
+				work *= late > 2 * shrinkPast ? 0.4 : 0.7;
+			} else if (this.waits === 0 && this.frameGap > 0
+				&& late <= Math.max(FRAME_GROW_MS, FRAME_GROW_SHARE * own)) {
 				work *= 1.25;
 			}
 		}

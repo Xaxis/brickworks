@@ -178,10 +178,19 @@ try {
   let readied = null;
   let tracedAt = 0;
   const counts = new Set();
+  // What the dialog said while it worked: a first Best in a browser waits on
+  // the tracer's script, its compile and the metering before a sample of the
+  // picture, and it said "setting up the model" through all of them.
+  const said = new Set();
+  let staleWords = "";
   let finished = false;
   let shot = 0;
   for (let n = 0; n < 20 * 120; n++) {
     seen = await state(page);
+    if (seen.working === "picture" && seen.words) said.add(seen.words);
+    if (seen.working === "picture" && seen.samples > 0 && /^setting up/.test(seen.words || "")) {
+      staleWords = `${seen.words} at ${seen.samples} samples`;
+    }
     if (seen.working === "picture" && seen.traced && seen.samples > 0) {
       if (!readied) {
         // The shaders compiled and the first samples in: the wait for a frame
@@ -216,6 +225,10 @@ try {
   facts.traced = { seconds, status: seen.status, readied, tracing, counts: [...counts], samples: seen.samples };
   check(`Best is path traced here (the page says traced: ${seen.traced})`, seen.traced === true);
   check(`its samples climb while the dialog shows it (${[...counts].slice(0, 12).join(", ")})`, counts.size >= 2);
+  const words = [...said];
+  check(`the dialog says what it waits on, then counts the picture's samples (${words.slice(0, 8).join(" / ")})`,
+    words.includes("metering the light") && words.some((w) => /^\d+ of \d+ samples$/.test(w)) && !staleWords);
+  if (staleWords) console.log(`      (still "${staleWords}")`);
   check(`Finish now ends it at ${seen.samples} samples (pressed at ${enough} or more)`,
     Boolean(finished) && seen.working === "" && seen.samples >= enough && seen.samples < 256);
   const shown = file ? await measure(page, file) : null;

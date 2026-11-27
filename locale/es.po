@@ -5960,6 +5960,15 @@ msgstr "preparando el modelo"
 msgid "fetching the photographed light"
 msgstr "cargando la luz fotografiada"
 
+msgid "fetching the path tracer"
+msgstr "cargando el trazador de rutas"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "preparando el trazador de rutas para esta tarjeta gráfica"
+
+msgid "metering the light"
+msgstr "midiendo la luz"
+
 msgid "the contact shadow"
 msgstr "la sombra de contacto"
 
