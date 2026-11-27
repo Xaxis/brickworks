@@ -124,9 +124,20 @@ func _model(name: String, path: String) -> void:
 		return
 	_dump(name, "removed")
 
-	var lifted: Transform3D = _world.get_brick(tops[1]).transform.translated(Vector3(0.0, -24.0, 0.0))
-	var moved: int = _builder.move_bricks({tops[1]: lifted})
-	print("    #%d lifted a brick's height: %d moved" % [tops[1], moved])
+	# Moved where it has room: a brick's height up, or further, or off to
+	# the side (a part's origin highest is not always a part with nothing
+	# over it, and one that would run into something stays).
+	var moved: int = 0
+	var by: Vector3 = Vector3.ZERO
+	for offset: Vector3 in [Vector3(0.0, -24.0, 0.0), Vector3(0.0, -240.0, 0.0),
+			Vector3(400.0, 0.0, 0.0), Vector3(0.0, 0.0, 400.0)]:
+		var to: Transform3D = _world.get_brick(tops[1]).transform.translated(offset)
+		moved = _builder.move_bricks({tops[1]: to})
+		by = offset
+		if moved > 0:
+			break
+	print("    #%d moved by %s: %d moved" % [tops[1], by, moved])
+	_check("%s: #%d moved" % [name, tops[1]], moved == 1)
 	if not await _until_weighed(name, "moved"):
 		return
 	_dump(name, "moved")
