@@ -3563,9 +3563,11 @@ picture the assistant is shown.
   closest hit a function, the storage buffers data textures, traceRayEXT a
   walk of page_tracer.js's own trees: one per shape, binned SAH, and one over
   the instances). `PathTracer.available()` on the web is
-  `PageTracer.usable()`: WebGL2 with EXT_color_buffer_float on a graphics card
-  (a software renderer, SwiftShader or llvmpipe, keeps Best frames averaged
-  unless the address says `?tracer=on`; `?tracer=off` keeps it so anywhere).
+  `PageTracer.usable()`: WebGL2 with EXT_color_buffer_float and
+  KHR_parallel_shader_compile on a graphics card (without the last, the page
+  could only wait out the half-minute compile frozen; a software renderer,
+  SwiftShader or llvmpipe, keeps Best frames averaged too; both unless the
+  address says `?tracer=on`; `?tracer=off` keeps it so anywhere).
   tracer.js is fetched only when a path-traced Best starts (`PageTracer.ready`,
   `import()` from `Origin.build()`), its shaders compiled beside the page; a
   pass is given only once the last one's fence has signalled, sized by the

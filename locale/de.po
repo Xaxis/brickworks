@@ -5854,6 +5854,9 @@ msgstr "Dieser Browser zeichnet ohne Grafikkarte, zu langsam für Pathtracing, d
 msgid "Path tracing is turned off for this page, so Best is frames averaged."
 msgstr "Pathtracing ist für diese Seite ausgeschaltet, daher werden für Beste Bilder gemittelt."
 
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Dieser Browser würde die Seite anhalten, während er das Pathtracing vorbereitet, daher werden für Beste Bilder gemittelt."
+
 msgid "This browser's graphics cannot path trace, so Best is frames averaged."
 msgstr "Die Grafik dieses Browsers kann kein Pathtracing, daher werden für Beste Bilder gemittelt."
 
@@ -5961,10 +5964,10 @@ msgid "fetching the photographed light"
 msgstr "fotografiertes Licht wird geladen"
 
 msgid "fetching the path tracer"
-msgstr "Pathtracer wird geladen"
+msgstr "Pathtracing wird geladen"
 
 msgid "readying the path tracer for this graphics card"
-msgstr "Pathtracer wird für diese Grafikkarte vorbereitet"
+msgstr "Pathtracing wird für diese Grafikkarte vorbereitet"
 
 msgid "metering the light"
 msgstr "Licht wird gemessen"

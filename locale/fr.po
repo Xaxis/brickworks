@@ -5854,6 +5854,9 @@ msgstr "Ce navigateur dessine sans carte graphique, trop lentement pour le path 
 msgid "Path tracing is turned off for this page, so Best is frames averaged."
 msgstr "Le path tracing est désactivé pour cette page : Meilleure fait donc la moyenne d'images."
 
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Ce navigateur figerait la page pendant la préparation du path tracing : Meilleure fait donc la moyenne d'images."
+
 msgid "This browser's graphics cannot path trace, so Best is frames averaged."
 msgstr "Les graphismes de ce navigateur ne permettent pas le path tracing : Meilleure fait donc la moyenne d'images."
 
@@ -5961,10 +5964,10 @@ msgid "fetching the photographed light"
 msgstr "chargement de la lumière photographiée"
 
 msgid "fetching the path tracer"
-msgstr "chargement du traceur de chemins"
+msgstr "chargement du path tracing"
 
 msgid "readying the path tracer for this graphics card"
-msgstr "préparation du traceur de chemins pour cette carte graphique"
+msgstr "préparation du path tracing pour cette carte graphique"
 
 msgid "metering the light"
 msgstr "mesure de la lumière"

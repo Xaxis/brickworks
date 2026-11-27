@@ -17,7 +17,8 @@
 extends RefCounted
 
 ## What this browser was found to do: "" not yet asked, "yes", "software",
-## "off" (the address said), "no WebGL2", "no float targets".
+## "off" (the address said), "no WebGL2", "no float targets", "no parallel
+## compile" (no KHR_parallel_shader_compile: the compile would hold the page).
 static var _can: String = ""
 ## Why the tracer stopped in this tab, "" while it has not: Best is frames
 ## averaged from then on.
@@ -32,11 +33,13 @@ const CAN := """(function () {
 		var gl = canvas.getContext('webgl2');
 		if (!gl) { return 'no WebGL2'; }
 		var floats = !!gl.getExtension('EXT_color_buffer_float');
+		var parallel = !!gl.getExtension('KHR_parallel_shader_compile');
 		var info = gl.getExtension('WEBGL_debug_renderer_info');
 		var name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
 		var lose = gl.getExtension('WEBGL_lose_context');
 		if (lose) { lose.loseContext(); }
 		if (!floats) { return 'no float targets'; }
+		if (!parallel && asked !== 'on') { return 'no parallel compile'; }
 		if (/swiftshader|llvmpipe|software|basic render/i.test(name) && asked !== 'on') { return 'software'; }
 		return 'yes';
 	} catch (e) {
@@ -70,6 +73,12 @@ static func why_not() -> String:
 				+ "so Best is frames averaged.")
 		"off":
 			return "Path tracing is turned off for this page, so Best is frames averaged."
+		"no parallel compile":
+			# Without KHR_parallel_shader_compile the page can only ask whether
+			# the tracer compiled by waiting for it: half a minute or more of a
+			# tab that does not answer, the first time.
+			return ("This browser would freeze the page while it readies path tracing, "
+				+ "so Best is frames averaged.")
 		"yes":
 			return ""
 	return "This browser's graphics cannot path trace, so Best is frames averaged."

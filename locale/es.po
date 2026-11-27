@@ -5854,6 +5854,9 @@ msgstr "Este navegador dibuja sin tarjeta gráfica, demasiado despacio para el t
 msgid "Path tracing is turned off for this page, so Best is frames averaged."
 msgstr "El trazado de rutas está desactivado en esta página, así que Máxima promedia fotogramas."
 
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Este navegador congelaría la página mientras prepara el trazado de rutas, así que Máxima promedia fotogramas."
+
 msgid "This browser's graphics cannot path trace, so Best is frames averaged."
 msgstr "Los gráficos de este navegador no pueden hacer trazado de rutas, así que Máxima promedia fotogramas."
 
@@ -5961,10 +5964,10 @@ msgid "fetching the photographed light"
 msgstr "cargando la luz fotografiada"
 
 msgid "fetching the path tracer"
-msgstr "cargando el trazador de rutas"
+msgstr "cargando el trazado de rutas"
 
 msgid "readying the path tracer for this graphics card"
-msgstr "preparando el trazador de rutas para esta tarjeta gráfica"
+msgstr "preparando el trazado de rutas para esta tarjeta gráfica"
 
 msgid "metering the light"
 msgstr "midiendo la luz"
