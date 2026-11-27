@@ -1185,12 +1185,14 @@ func _set_working(on: bool) -> void:
 func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	if world == null:
 		return "This app cannot simulate from outside."
+	# Whose a program's step is, carried past the reading (Builder.acting).
+	var by: String = Builder.acting
 	var job: Working.Job = Working.begin("Reading the mechanism…")
 	await job.shown()
 	var simulation: Simulation = await read_mechanism()
 	if input.has("program"):
 		job.end()
-		return await _program_for_session(simulation, str(input["program"]))
+		return await Builder.by_wait(by, _program_for_session.bind(simulation, str(input["program"])))
 	var power_asked: String = str(input.get("power", "")).strip_edges().to_lower()
 	var wired: Wiring = session_wiring(power_asked, simulation)
 	var chosen: Dictionary = _session_driver(simulation, str(input.get("driver", "")))

@@ -857,6 +857,9 @@ godot --headless --path . --script src/dev/mcp_probe.gd   # the app's half, queu
 godot --headless --path . --script src/dev/mcp_sync_probe.gd       # the list, the guide, the menus in step
 godot --headless --path . --script src/dev/read_only_probe.gd      # a tool that looks changes nothing
 godot --headless --path . --script src/dev/claude_undo_probe.gd    # what a session changes is one undo step
+tools/probe.sh savereview3_attack_probe                             # whose a step is: the person's Delete, paint, Ctrl+Z, Ctrl+Y by real keys while a chat's call works stay theirs (D1-D4, E1, E2)
+tools/probe.sh savereview3b_attack_probe                            # K1-K6: a Delete or paint said first and landed a frame later is its maker's; a chat's fold never lifts its paint over the person's; T: a 6,000-part step kept in about a millisecond
+tools/probe.sh savereview2_attack_probe                             # U1-U5: a chat's undo takes only its own steps, never the person's laid between, nor one redone
 godot --headless --path . --script src/dev/clearundo_probe.gd    # each step that lays the floor again undone whole: count, plates, parts, Save's bytes
 tools/probe.sh first_design_undo_probe                              # a first design's floor and parts one step, undone and redone whole
 tools/probe.sh first_session_probe                                  # the first design on the example is a model of its own

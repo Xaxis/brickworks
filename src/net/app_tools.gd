@@ -40,6 +40,10 @@ var chat: String = ""
 ## by CommandSocket beside [member chat]. A collection's lots are marked by
 ## it, so two such sessions' lots stay apart (mbreview finding 8).
 var connection: String = ""
+## Whose the steps of the call running are (CommandSocket.actor_of), or "":
+## set by CommandSocket beside [member chat]. What the call keeps after a
+## wait it keeps as this one's (Builder.by); its undo takes back only these.
+var actor: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
 ## The window's hand tools, for a session (HandTools, APP_UX3).
@@ -1637,12 +1641,14 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			# edit_model's change is: f1's session raised an arm on its ball
 			# and then asked view_board to show the person.
 			if not (input.get("picture") is bool and bool(input["picture"])):
-				return _hinge_said(hinge, await grabbing.for_session(input))
+				return _hinge_said(hinge, str(await _mine_wait(func() -> Variant:
+					return await grabbing.for_session(input))))
 			var world: BrickWorld = app.get("_world")
 			var was: Dictionary = {}
 			for brick: BrickWorld.Brick in world.bricks():
 				was[brick.id] = brick.transform
-			var moved_said: String = _hinge_said(hinge, await grabbing.for_session(input))
+			var moved_said: String = _hinge_said(hinge, str(await _mine_wait(func() -> Variant:
+				return await grabbing.for_session(input))))
 			var moved := PackedInt64Array()
 			for brick: BrickWorld.Brick in world.bricks():
 				if not was.has(brick.id) or not (was[brick.id] as Transform3D).is_equal_approx(brick.transform):
@@ -2121,7 +2127,7 @@ func _set_floor(input: Dictionary) -> String:
 ## Whatever went into the history since it was [param depth] deep, as one
 ## undo step: one call, one undo.
 func _one_undo_since(depth: int) -> void:
-	(app.get("_builder") as Builder).fold_since(depth)
+	(app.get("_builder") as Builder).fold_since(depth, "", _actor())
 
 
 # -- the build steps ------------------------------------------------------------
@@ -2166,6 +2172,14 @@ func _edit_steps(input: Dictionary) -> String:
 		job.end()
 	else:
 		steps = Instructions.plan(world, library, store.scenery, {}, true)
+	# The change it makes, once the plan has waited frames for it, is the
+	# session's still (_mine_wait).
+	return str(await _mine_wait(_edit_steps_on.bind(input, op, photo, steps, shell)))
+
+
+## edit_steps's op on [param steps], as the model's plan stands now.
+func _edit_steps_on(input: Dictionary, op: String, photo: bool, steps: Array[Instructions.Step],
+		shell: Shell) -> String:
 	if steps.is_empty():
 		return "There is nothing built to have steps."
 	match op:
@@ -2367,7 +2381,7 @@ func _page_setup(input: Dictionary) -> String:
 		fields["cover_picture_data"] = cover[1]
 	elif str(input.get("cover_picture", "")).to_lower() in ["model", "none", "off", "false"]:
 		fields["cover_picture"] = ""
-	return _sentence(shell.page_setup(fields))
+	return _sentence(str(_mine(shell.page_setup.bind(fields))))
 
 
 ## The picture [param input]'s [param field]_data or [param field]_url
@@ -2429,15 +2443,18 @@ func _edit_booklet(input: Dictionary) -> String:
 	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) \
 			+ int(input.has("guide")) > 1:
 		return "One at a time: place=, text=, arrow= or guide=, each its own undo step."
+	# What follows is kept after lock= or freeze= may have waited for its
+	# page's layout: the session's still (_mine).
 	if input.has("guide"):
-		return _lay_guide(input["guide"], at)
+		return str(_mine(_lay_guide.bind(input["guide"], at)))
 	if input.has("place") or input.has("text") or input.has("arrow"):
 		return await _edit_page(input, at)
 	if bool(input.get("follow", false)):
 		return await _follow_page(at)
 	var fields: Dictionary = {}
 	if input.has("highlight"):
-		var on: String = shell.change_look("highlight", at, {"highlight": bool(input["highlight"])})
+		var on: String = _mine(shell.change_look.bind("highlight", at,
+			{"highlight": bool(input["highlight"])}))
 		if input.size() <= 2:
 			return on
 	if input.has("turn") or input.has("tilt"):
@@ -2478,7 +2495,7 @@ func _edit_booklet(input: Dictionary) -> String:
 		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout=, "
 			+ "per_page=, pull=, colours=, colours_all=, actual_size=, preview=, lock= or freeze=. "
 			+ "booklet_layout says how each step is printed now.")
-	var said: String = shell.change_look("set", at, fields)
+	var said: String = _mine(shell.change_look.bind("set", at, fields))
 	var now: String = ""
 	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
 		var again: Instructions.Step = _step_numbered(Instructions.plan(world, library,
@@ -2668,8 +2685,15 @@ static func _guides_said(guides: Dictionary) -> String:
 ## page editor's drags and Add words do: one undo. Each kept with the room
 ## the step has on its page now, as the page editor keeps it.
 func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
-	var shell: Shell = app.get("_shell")
 	var entry: Booklet.Entry = await _laid_entry(at)
+	# Kept once the page is laid out, frames on: the session's still.
+	return str(_mine(_edit_page_on.bind(input, at, entry)))
+
+
+## [method _edit_page]'s change to step [param at]'s page, laid out as
+## [param entry].
+func _edit_page_on(input: Dictionary, at: Instructions.Step, entry: Booklet.Entry) -> String:
+	var shell: Shell = app.get("_shell")
 	if at.in_callout() and (entry == null or entry.panel.size.x <= 0.0):
 		return ("Step %d's callout is built in a box on step %d's page: lay out that page, "
 			+ "or callout=false gives the callout pages of its own.") % [at.number, at.number]
@@ -2779,8 +2803,8 @@ func _follow_page(at: Instructions.Step) -> String:
 		if (later["laid"] as Array).is_empty():
 			return "No page after page %d has %d steps." % [pages[index].number,
 				pages[index].entries.size()]
-		var said: String = (app.get("_shell") as Shell).place_pages(later["placed"],
-			"page %d's layout on %d later pages" % [pages[index].number, (later["laid"] as Array).size()])
+		var said: String = _mine((app.get("_shell") as Shell).place_pages.bind(later["placed"],
+			"page %d's layout on %d later pages" % [pages[index].number, (later["laid"] as Array).size()]))
 		if not (later["locked"] as Array).is_empty():
 			said += "; locked pages %s passed by" % ", ".join(PackedStringArray(
 				(later["locked"] as Array).map(func(page: int) -> String: return str(page))))
@@ -2847,8 +2871,8 @@ func _hold_page(input: Dictionary, at: Instructions.Step) -> String:
 		var index: int = int(entry.get_meta("step", -1))
 		if index >= 0 and index < plan.size():
 			placed.append([plan[index], pair[1], BookletLooks.said_rect(entry.panel)])
-	return (app.get("_shell") as Shell).change_look("page_lock" if lock else "page_freeze", at,
-		{"steps": page.entries.size(), "placed": placed}) + " (page %d)." % page.number
+	return str(_mine((app.get("_shell") as Shell).change_look.bind("page_lock" if lock else "page_freeze",
+		at, {"steps": page.entries.size(), "placed": placed}))) + " (page %d)." % page.number
 
 
 ## Whether an arrow's tip ([param points] x2, y2) is on what step [param
@@ -3323,8 +3347,8 @@ func _lay_flex(input: Dictionary) -> String:
 			return ("reversed= turns a cable's plug half round (pf_cable, 9v_wire); a %s has no plug "
 				+ "to turn: leave it out.") % kind.replace("_", " ")
 		facing = -1
-	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
-		str(input.get("part", "")), facing)
+	var laid: Flex.Laid = await _mine_wait(func() -> Variant: return await flex.lay(kind, anchors,
+		sprockets, colour, item, str(input.get("part", "")), facing))
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
@@ -3490,7 +3514,7 @@ func _pose(input: Dictionary) -> String:
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
 	var world: BrickWorld = app.get("_world")
 	var before: Vector3 = _middle_of(world, joint.ids)
-	var reached: float = panel.set_angle(joint.path, wanted)
+	var reached: float = _mine(panel.set_angle.bind(joint.path, wanted))
 	if not panel.poser.refused.is_empty():
 		return "%s. Nothing was changed." % panel.poser.refused
 	# Which way it went, in the plates look_at_model counts: a turn goes by
@@ -3586,7 +3610,8 @@ func _pose_drag(grabbing: GrabDrag, drag: Array, input: Dictionary) -> String:
 			+ "where it was built, turned by the right hand about its line.") % [_drag_joint_words(grabbing,
 				drag), roundi(now)]
 	var wanted: float = clampf(float(input["degrees"]), -180.0, 180.0)
-	var said: String = await grabbing.for_session({"part": part, "degrees": wanted - now})
+	var said: String = await _mine_wait(func() -> Variant:
+		return await grabbing.for_session({"part": part, "degrees": wanted - now}))
 	return "%s, to %d° from where it was built:\n%s%s" % [part, roundi(wanted), said,
 		await _pose_holds()]
 
@@ -3614,13 +3639,13 @@ static func _drag_sides(drag: Array) -> Array:
 func _with_lock(panel: PosePanel, sides: Array, input: Dictionary, pose: Callable) -> String:
 	var lines := PackedStringArray()
 	if input.has("lock") and not bool(input["lock"]):
-		lines.append(panel.set_lock(sides[0], sides[1], false))
+		lines.append(_mine(panel.set_lock.bind(sides[0], sides[1], false)))
 	if input.has("degrees") or not input.has("lock"):
-		lines.append(await pose.call())
+		lines.append(await _mine_wait(pose))
 	if input.has("lock") and bool(input["lock"]):
 		var refused: bool = lines.size() > 0 and lines[lines.size() - 1].contains(Motions.UNLOCK_WORDS)
 		if not refused:
-			lines.append(panel.set_lock(sides[0], sides[1], true))
+			lines.append(_mine(panel.set_lock.bind(sides[0], sides[1], true)))
 			# What a turn of it now does, tried on a drag's grab, nothing moved.
 			var turned: Variant = (app.get("_grab_drag") as GrabDrag).held_of(Array(sides[1]).slice(0, 1)) \
 				if (sides[1] as Array).size() == 2 else null
@@ -4992,42 +5017,52 @@ func _undo(input: Dictionary) -> String:
 	var others: String = ""
 	var persons: String = ""
 	var store: ModelStore = app.get("_store")
+	var me: String = _actor()
 	for _n: int in count:
 		# The newest step recorded: what the person holds in hand is theirs,
 		# and stays there (Builder.undo; figreview3 F5).
 		var words: String = builder.redo_words() if again else (
 			builder.history_words(1, false)[0] if builder.history_depth() > 0 else "")
+		var whose: String = Builder.whose(builder._redo.back() if again else builder.last_step()) \
+			if not words.is_empty() else ""
 		# Past every change, the open they followed (ModelStore.reopen).
 		if words.is_empty() and (not again or builder._redo.is_empty()):
 			words = store.reopen_words(again)
+			whose = store.reopen_whose(again)
 		if words.is_empty():
 			break
-		# Another Claude chat's change, in a tab two chats work in: not this
-		# chat's to take back (CommandSocket.CHAT_KEY). Nor the person's own,
-		# a step no chat made: a session told "undo puts it back" took the 2x4
-		# brick the person had placed since (savereview F5). Their Undo is theirs.
-		var by: String = str(builder.last_step().get("by", "")) \
-			if not again and builder.history_depth() > 0 else chat
-		if not chat.is_empty() and by.is_empty():
+		# Only this session's own (Builder.BY), undone or redone: never the
+		# person's, a step no session kept, nor another chat's in a tab two
+		# chats work in (CommandSocket.CHAT_KEY). A session told "undo puts it
+		# back" took the 2x4 brick the person had placed since (savereview
+		# F5), and one with no chat, or one redoing, took theirs whatever it
+		# was (savereview2 U3, U4). Their Undo is theirs.
+		if whose.is_empty():
 			persons = words
 			break
-		if not chat.is_empty() and by != chat:
+		if whose != me:
 			others = words
 			break
 		await verbs.press("redo" if again else "undo", false)
 		done.append(words)
 	if not persons.is_empty():
-		return ("%sThe next change back, %s, is the person's own, made in the tab, so it was "
-			+ "left: they take it back with Undo in the tab. Ask them before changing their work.") % [
-				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", persons]
+		return ("%sThe next change %s, %s, is the person's own, made in the tab, so it was "
+			+ "left: they %s with %s in the tab. Ask them before changing their work.") % [
+				("%s %s. " % ["Redid" if again else "Undid", "; ".join(done)]) if not done.is_empty()
+					else "Nothing was %s. " % ("redone" if again else "undone"),
+				"to redo" if again else "back", persons, "redo it" if again else "take it back",
+				"Redo" if again else "Undo"]
 	if not others.is_empty():
 		# A resumed chat is a new one to the relay (api/mcp.js, "Two chats, two
 		# tabs"): nothing Claude Code sends says it is the same chat.
-		return ("%sThe next change back, %s, was made by another Claude chat working in this "
-			+ "tab, so it was left. Ask the person before changing that chat's work. If it was "
+		return ("%sThe next change %s, %s, was made by another Claude chat or session working in "
+			+ "this tab, so it was left. Ask the person before changing that chat's work. If it was "
 			+ "this chat's own, from before the chat was resumed, Brickworks counts it as another "
-			+ "chat's: the person can take it back with Undo in the tab.") % [
-				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
+			+ "chat's: the person can %s with %s in the tab.") % [
+				("%s %s. " % ["Redid" if again else "Undid", "; ".join(done)]) if not done.is_empty()
+					else "Nothing was %s. " % ("redone" if again else "undone"),
+				"to redo" if again else "back", others, "redo it" if again else "take it back",
+				"Redo" if again else "Undo"]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")
 	var next: String = builder.history_words(1, false)[0] if builder.history_depth() > 0 \
@@ -5061,7 +5096,10 @@ func _open(input: Dictionary) -> String:
 		if not kept.is_empty() and not kept.begins_with("Saved "):
 			return kept
 	var before: int = store.world.generation()
+	var over: Dictionary = store.opened_over.back() if not store.opened_over.is_empty() else {}
 	var said: String = await _open_now(input)
+	# The session's own open, for its undo to take back and no other's.
+	store.opened_by(_actor(), over)
 	# Opened: what its file names by a moved or alias number, or has no file
 	# for, said; and with replace_moved, the moved and alias ones replaced.
 	if store.world.generation() == before or not store.not_opened.is_empty():
@@ -5127,7 +5165,7 @@ func _moved_said(store: ModelStore, replace: bool) -> String:
 			+ "together…). Its moved and alias parts: %s.") % _some(renumbered)
 	if replace and not renumbered.is_empty():
 		var bar: ModelBar = app.get("_bar")
-		var done: String = bar.replace_moved(store.moved.keys())
+		var done: String = _mine(bar.replace_moved.bind(store.moved.keys()))
 		if done.begins_with("Could not"):
 			return " " + done
 		said = (" Replaced, in every sub-model, as one step (undo puts back the file as it was): "
@@ -5503,7 +5541,8 @@ func _open_into(input: Dictionary) -> String:
 		return ("There is no room for %s %s. x= and z= put its low corner somewhere clear; the "
 			+ "model is as it was.") % [held["name"], "there" if input.has("x") or input.has("z")
 				else "beside the model"]
-	var first: int = builder.place()
+	# Put down once the file has been read or fetched: the session's still.
+	var first: int = _mine(builder.place)
 	if first == 0:
 		builder.cancel_carry()
 		return "Could not put %s down. The model is as it was." % held["name"]
@@ -6102,6 +6141,26 @@ func _collection_who() -> String:
 ## session's own connection when it names none.
 func _collection_chat() -> String:
 	return chat if not chat.is_empty() else connection
+
+
+## Whose this call's steps are (Builder.BY): as the socket set it, else as
+## its chat and session say.
+func _actor() -> String:
+	return actor if not actor.is_empty() else CommandSocket.actor_of(chat, connection)
+
+
+## [param act] run as this call's (Builder.by): a step a tool keeps once it
+## has waited is the session's, not whoever acted while it waited. Only the
+## first stretch of a call, up to its first wait, runs as the session's on
+## its own (CommandSocket._by).
+func _mine(act: Callable) -> Variant:
+	return Builder.by(_actor(), act)
+
+
+## [method _mine] for a tool that waits ([param act] a coroutine): it reads
+## Builder.acting as it begins and carries it to the step it keeps later.
+func _mine_wait(act: Callable) -> Variant:
+	return await Builder.by_wait(_actor(), act)
 
 
 ## Whether [param lot] is one [param who]'s chat [param chat] added.
@@ -7713,7 +7772,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 	var refused: String = dialog.choose(input)
 	if not refused.is_empty():
 		return refused.left(1).to_upper() + refused.substr(1) + "."
-	await dialog.brickify(work)
+	await _mine_wait(dialog.brickify.bind(work))
 	var said: String = dialog.outcome()
 	said = said.left(1).to_upper() + said.substr(1) + "."
 	if dialog.landed():
@@ -7887,12 +7946,12 @@ func _print_part(input: Dictionary) -> String:
 	if input.has("version") or input.has("sticker_part"):
 		var done: String
 		if input.has("version"):
-			done = await studio.swap_to(PackedInt64Array([brick.id]),
-				str(input["version"]).strip_edges().to_lower())
+			done = await _mine_wait(func() -> Variant: return await studio.swap_to(
+				PackedInt64Array([brick.id]), str(input["version"]).strip_edges().to_lower()))
 		else:
-			done = await studio.stick_part_on(brick.id, str(input.get("side", "+z")),
-				str(input["sticker_part"]).strip_edges().to_lower(),
-				int(input.get("colour", Stickers.FILM)))
+			done = await _mine_wait(func() -> Variant: return await studio.stick_part_on(brick.id,
+				str(input.get("side", "+z")), str(input["sticker_part"]).strip_edges().to_lower(),
+				int(input.get("colour", Stickers.FILM))))
 		_one_undo_since(depth)
 		var put: BrickWorld.Brick = (app.get("_world") as BrickWorld).get_brick(studio.last_placed)
 		return done if put == null or not (done.begins_with("Swapped") or done.begins_with("Stuck")) \
@@ -7946,11 +8005,13 @@ func _print_part(input: Dictionary) -> String:
 	var title: String = str(input.get("name", "My Sticker" if sticker else "My Print")) \
 		.strip_edges().left(60)
 	var said: String
+	# Drawn once the picture has come, frames on: the session's still.
 	if sticker:
-		said = await studio.sticker_on(brick.id, str(input.get("side", "+z")),
-			bool(input.get("span", true)), picture, title)
+		said = await _mine_wait(func() -> Variant: return await studio.sticker_on(brick.id,
+			str(input.get("side", "+z")), bool(input.get("span", true)), picture, title))
 	else:
-		said = await studio.print_on(brick.id, picture, str(input.get("area", "")), title)
+		said = await _mine_wait(func() -> Variant: return await studio.print_on(brick.id, picture,
+			str(input.get("area", "")), title))
 	_one_undo_since(depth)
 	var placed: BrickWorld.Brick = (app.get("_world") as BrickWorld).get_brick(studio.last_placed)
 	if placed == null:
@@ -8548,7 +8609,7 @@ func _rare_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) 
 		said.append("Nothing changed (preview): replace_parts rare=true swaps those that keep "
 			+ "the look, lots= [...] only those named.")
 		return "\n".join(said)
-	var done: Dictionary = await swapper.call("swap", lots, finder)
+	var done: Dictionary = await _mine_wait(swapper.call.bind("swap", lots, finder))
 	var put_back: bool = int(done.get("put_back", 0)) + put_back_first > 0
 	if put_back:
 		said.append(HAND_WORDS)
@@ -8707,7 +8768,7 @@ func _own_swap(input: Dictionary, finder: RefCounted, put_back_first: int = 0) -
 		said.append("Nothing changed (preview): replace_parts mine=true swaps those that keep "
 			+ "the look, lots= [...] only those named.")
 		return "\n".join(said)
-	var done: Dictionary = await swapper.call("swap", lots, finder)
+	var done: Dictionary = await _mine_wait(swapper.call.bind("swap", lots, finder))
 	var put_back: bool = int(done.get("put_back", 0)) + put_back_first > 0
 	if put_back:
 		said.append(HAND_WORDS)
@@ -8966,7 +9027,8 @@ func _replace_parts(input: Dictionary) -> String:
 		return listed + puts + ("\n" + ahead if not ahead.is_empty() else "") \
 			+ ("\nNothing changed (preview)." if changes else "\nGive replace= to change them.")
 	var ahead: String = await finder.call("ahead", found, put)
-	var done: Dictionary = finder.call("replace", found, put)
+	# Replaced once the new part's shape is here: the session's still.
+	var done: Dictionary = _mine(finder.call.bind("replace", found, put))
 	var said: String = listed + puts + ("\n" + ahead if not ahead.is_empty() else "") \
 		+ ("\nThe part in the person's hand went back where it was first, as Escape puts it."
 			if put_back > 0 else "")

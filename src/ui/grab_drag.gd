@@ -977,6 +977,9 @@ func _exit_tree() -> void:
 ## here. Worked out here, the Ducati's chassis turned 40° held the window
 ## 16-20 s, its inner joints settling (technic lever, jobs70, 2026-10-21).
 func for_session(input: Dictionary) -> String:
+	# Whose its step is, carried to the frames it is kept in: the session's
+	# that asked (Builder.acting as it begins), never whoever acts meanwhile.
+	var by: String = Builder.acting
 	var asked: String = str(input.get("part", "")).strip_edges()
 	var ids: Array = _named_parts(asked)
 	if ids.is_empty():
@@ -985,7 +988,7 @@ func for_session(input: Dictionary) -> String:
 	if not is_ready():
 		await _ready_for_session()
 	if input.has("to"):
-		return _chain_for_session(int(ids[0]), input["to"])
+		return Builder.by(by, _chain_for_session.bind(int(ids[0]), input["to"]))
 	# The parts' exact shapes read first, as for a reading on a worker: off
 	# the main thread one not read yet is taken for one with joints
 	# (Bodies._unknown_shape). On a worker but in a browser, as there.
@@ -999,7 +1002,7 @@ func for_session(input: Dictionary) -> String:
 		await WorkerTasks.awaited(func() -> Variant: return Exact.shapes_for(library, shaped),
 			"read the parts' shapes", library)
 	_session_moving = true
-	var said: String = await _move_for_session(ids, input)
+	var said: String = await _move_for_session(ids, input, by)
 	_session_moving = false
 	return said
 
@@ -1062,7 +1065,7 @@ func _lock_on(ids: Array) -> String:
 	return "" if lock == null else " %s." % Motions.lock_words(lock, world, library, builder)
 
 
-func _move_for_session(ids: Array, input: Dictionary) -> String:
+func _move_for_session(ids: Array, input: Dictionary, by: String) -> String:
 	var held: Grab = await _worked(func() -> Variant: return _taken(ids), "take hold of a part")
 	var first: int = ids[0]
 	var state: String = held.state
@@ -1160,8 +1163,12 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 		swung = await _worked(func() -> Variant: return held.settle(), "settle a part")
 	var depth: int = builder.history_depth()
 	var own: String = _own_copies(held)
-	var moved: int = held.commit(held.step_words(), await _cells_for(held))
-	builder.fold_since(depth)
+	var step_words: String = held.step_words()
+	var cells: Dictionary = await _cells_for(held)
+	var moved: int = Builder.by(by, func() -> int:
+		var kept: int = held.commit(step_words, cells)
+		builder.fold_since(depth)
+		return kept)
 	if moved == 0:
 		lines.append("It did not move: %s" % (("%s holds it, pulled to its full length." % held.stretch_words)
 			if stopped and not held.stretch_words.is_empty() else _in_the_way(held)
@@ -1205,7 +1212,7 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 			var from: Dictionary = _standing_now()
 			var timing: Dictionary = Topple.timed(fell["steps"], Swing.lump(world, library, from.keys()))
 			fall_seconds = float(timing["seconds"])
-			_lay_fallen(from, fell["turn"], depth, "then it %s" % fell["words"])
+			Builder.by(by, _lay_fallen.bind(from, fell["turn"], depth, "then it %s" % fell["words"]))
 			lines.append("Then it %s: its centre of mass was %s studs past its %s edge, and it turned "
 				% [fell["words"], Balance.studs(-after.margin), after.edge]
 				+ "about that edge until the floor stopped it, falling for %s s." % Balance.tidy(fall_seconds))
@@ -1222,8 +1229,9 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 						landed.swing_pose()
 						return null, "swing a part to rest as it lands")
 					last_swing = landed.swing
-					landed.commit("swung %s as it landed" % landed.said)
-					builder.fold_since(depth)
+					Builder.by(by, func() -> void:
+						landed.commit("swung %s as it landed" % landed.said)
+						builder.fold_since(depth))
 					lines.append("As it landed, %s %s, and came to rest hanging within its friction of "
 						% [landed.said, landed.swing.words()] + "straight down.")
 		else:

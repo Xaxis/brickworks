@@ -232,8 +232,13 @@ func own_undo(again: bool = false) -> void:
 ## A button on the edit bar, by name: the same thing its key does.
 ## [param person] false for a session's undo or redo (AppTools): the person's
 ## hand is theirs, and a session's undo takes back the newest step recorded,
-## leaving in hand what they lifted (Builder.undo).
+## leaving in hand what they lifted (Builder.undo). Whose its step is, is
+## whoever pressed (Builder.acting as it begins), carried to the frame it
+## lands in when a big change says so first: a Delete of 320 a session asked
+## for was the person's once it waited a frame, and the person's was a
+## chat's (savereview3 F1).
 func press(name: String, person: bool = true) -> void:
+	var by: String = Builder.acting
 	if together != null and together.live and (name == "undo" or name == "redo"):
 		var words: String = together.undo(name == "redo")
 		if not words.is_empty():
@@ -317,7 +322,7 @@ func press(name: String, person: bool = true) -> void:
 		"delete":
 			var job: Working.Job = await _say_first(builder.selection.size(),
 				"Taking off %s parts…")
-			var gone: int = builder.remove_selection()
+			var gone: int = Builder.by(by, builder.remove_selection)
 			if gone > 0:
 				edited.call()
 				say.call("removed %s" % _parts(gone))

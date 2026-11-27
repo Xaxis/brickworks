@@ -879,14 +879,18 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			await _until_whole()
 			var before: Dictionary = _before_change(name)
 			var held: Dictionary = _held()
+			var actor: String = actor_of(chat, connection)
 			_at_work += 1
 			assistant.chat = chat
 			assistant.who = who
-			var said: Variant = await _run_own(name, input)
+			assistant.call_by = actor
+			var said: Variant = await _by(actor, func() -> Variant:
+				return await _run_own(name, input))
 			assistant.chat = ""
 			assistant.who = CLAUDE
+			assistant.call_by = ""
 			_at_work -= 1
-			var followed: Array = _one_step(name, before, chat, who)
+			var followed: Array = _one_step(name, before, actor, who)
 			# Said of the model as the copies that followed it left it, as
 			# _run's answers are: a review lays a piece with edit_model.
 			assistant.chat = chat
@@ -947,24 +951,30 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	var before: Dictionary = _before_change(name)
 	var held: Dictionary = _held()
 	var answer: Variant
+	var actor: String = actor_of(chat, connection)
 	_at_work += 1
 	assistant.chat = chat
 	assistant.who = who
+	assistant.call_by = actor
 	if _the_app_tools().has(name):
-		_the_app_tools().chat = chat
-		_the_app_tools().connection = connection
-		answer = await _the_app_tools().run(name, input, work)
-		_the_app_tools().chat = ""
-		_the_app_tools().connection = ""
+		var tools: AppTools = _the_app_tools()
+		tools.chat = chat
+		tools.connection = connection
+		tools.actor = actor
+		answer = await _by(actor, func() -> Variant: return await tools.run(name, input, work))
+		tools.chat = ""
+		tools.connection = ""
+		tools.actor = ""
 	else:
-		answer = await assistant.use_tool(name, input)
+		answer = await _by(actor, func() -> Variant: return await assistant.use_tool(name, input))
 		# The parts its findings name, pictured (SeeTools, APP_UX5 seeing2).
 		if name == "check_design":
 			answer = await _the_app_tools().findings_pictured(answer, input)
 	assistant.chat = ""
 	assistant.who = CLAUDE
+	assistant.call_by = ""
 	_at_work -= 1
-	var followed: Array = _one_step(name, before, chat, who)
+	var followed: Array = _one_step(name, before, actor, who)
 	# Counted and judged as the copies that followed it left the model; its
 	# sizes as told to the chat that asked.
 	assistant.chat = chat
@@ -1016,66 +1026,91 @@ func _hand_and_view_back(held: Dictionary) -> void:
 const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
 
 
-## The model as it stood before a call, for its change to be one step of
-## the history; {} for a call that only looks, and for a clear, which keeps
-## its own (Main.clear_model).
+## The history as it stood before a call, for its own steps to be one step,
+## and of a call that may change the model the model too, for what it
+## changes with no step of its own to be one; {} for an undo, an open and a
+## clear, which keep their own (Main.clear_model). Whose a step is was never
+## the hints' to say: each step says it ([constant Builder.BY]). A tool said
+## to leave the model as it was took no record, so what it kept stayed the
+## person's (render_motion, simulate_mechanism); its steps are its own now,
+## and only what it changed with no step goes unmeasured.
 func _before_change(name: String) -> Dictionary:
 	if assistant == null or assistant.builder == null or assistant.world == null \
-			or leaves_the_model(name) or name in NOT_A_STEP or name == "clear_model":
+			or name in NOT_A_STEP or name == "clear_model":
 		return {}
 	var builder: Builder = assistant.builder
 	var last: Dictionary = builder.last_step()
-	return {"depth": builder.history_depth(), "last": last,
-		"size": (last.get("steps", []) as Array).size(),
-		"was": SelectionScope.snapshot(assistant.world, assistant.scenery),
+	var before: Dictionary = {"last": last, "size": (last.get("steps", []) as Array).size(),
 		"kept": builder.steps_now()[0], "generation": assistant.world.generation()}
+	if not leaves_the_model(name):
+		before["was"] = SelectionScope.snapshot(assistant.world, assistant.scenery)
+	return before
 
 
 ## Whatever a call from outside changed, as one step of the history, named
-## as [param who]'s: Claude's, or the model's on the person's key. An edit_model from a session went into no history at all, so
-## the person's Undo after it took back their own last part and left
-## Claude's edit standing. A call that keeps its own history (the window's
-## commands, an edit about a selection) has its steps folded into one, with
-## whatever it changed that they do not name; any other has the difference
-## made one step. Returns what followed it ([method _copies_follow]).
-func _one_step(name: String, before: Dictionary, chat: String = "", who: String = CLAUDE) -> Array:
+## as [param who]'s: Claude's, or the model's on the person's key, and kept as
+## [param actor]'s ([method actor_of]). An edit_model from a session went into
+## no history at all, so the person's Undo after it took back their own last
+## part and left Claude's edit standing. A call that keeps its own history
+## (the window's commands, an edit about a selection) has its own steps
+## folded into one, with whatever it changed that no step names; any other
+## has the difference made one step. A step anyone else kept meanwhile, the
+## person's own above all, stays theirs and where it was kept: the call's
+## own on each side of it are a step each side (Builder.fold_since). Returns
+## what followed it ([method _copies_follow]).
+func _one_step(name: String, before: Dictionary, actor: String, who: String = CLAUDE) -> Array:
 	if before.is_empty():
 		return [0, 0]
 	var builder: Builder = assistant.builder
-	if builder.history_depth() > int(before["depth"]):
+	var kept: Array = before["kept"]
+	var history: Array = builder.steps_now()[0]
+	# Where the history parts from the one the call found: the person's own
+	# Undo while it worked takes it below the depth the call began at, and a
+	# step kept since is under it.
+	var from: int = 0
+	while from < mini(kept.size(), history.size()) and is_same(kept[from], history[from]):
+		from += 1
+	var own: int = -1
+	for k: int in range(from, history.size()):
+		if Builder.whose(history[k]) == actor:
+			own = k
+			break
+	var last: Dictionary = builder.last_step()
+	# Nothing kept or taken back since, and the newest step grown: what
+	# followed it was folded into it (Assemblies.after_edit), named there.
+	var untouched: bool = from == kept.size() and from == history.size()
+	if untouched and not last.is_empty() and is_same(last, before["last"]) \
+			and (last.get("steps", []) as Array).size() != int(before["size"]):
+		return [0, 0]
+	if before.has("was"):
 		# A session's first design lays its parts with no step and then keeps
 		# the floor it chose as one: only the floor's was folded, so undoing
 		# everything after two small designs left 55 and 8 parts on the bare
-		# baseplate. Named by the call's own steps only, not by the redo they
+		# baseplate. Named by the steps kept since only, not by the redo they
 		# cleared, which names a design laid again part for part. Kept below
-		# them, as it came first: redone after the floor, the floor was laid
-		# round nothing, and a baseplate part of the build came back scenery.
-		ClaudeStep.record(builder, assistant.world, assistant.scenery, {"was": before["was"],
-			"steps": [before["kept"], builder.steps_now()[1]],
-			"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
-			int(before["depth"]))
-		builder.fold_since(int(before["depth"]))
-		var followed: Array = _copies_follow()
-		if followed.size() > 2:
-			return followed
-		_mark(builder, chat)
-		_laid(builder.last_step())
-		_looks_follow()
-		return followed
-	var last: Dictionary = builder.last_step()
-	if not last.is_empty() and is_same(last, before["last"]) \
-			and (last.get("steps", []) as Array).size() != int(before["size"]):
+		# the call's own, as it came first: redone after the floor, the floor
+		# was laid round nothing, and a baseplate part of the build came back
+		# scenery. No part a step kept since names is in it, so it stands
+		# apart from the person's steps on either side.
+		Builder.by(actor, func() -> bool:
+			return ClaudeStep.record(builder, assistant.world, assistant.scenery,
+				{"was": before["was"], "steps": [kept, builder.steps_now()[1]],
+				"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
+				own))
+	builder.fold_since(from, "", actor)
+	var now: Array = builder.steps_now()[0]
+	var made: bool = false
+	for k: int in range(from, now.size()):
+		made = made or Builder.whose(now[k]) == actor
+	if not made or Builder.whose(builder.last_step()) != actor:
+		# Nothing of the call's, or a step of someone else's is newer than the
+		# call's: the copies of a sub-model followed each of the call's steps as
+		# it was kept (Main._on_model_edited), and a step can follow only while
+		# it is the newest.
 		return [0, 0]
-	var steps: Array = SelectionScope.steps_back(before["was"], assistant.world,
-		assistant.scenery)
-	if steps.is_empty():
-		return [0, 0]
-	builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
-		SelectionScope.words_for(steps)])
 	var followed: Array = _copies_follow()
 	if followed.size() > 2:
 		return followed
-	_mark(builder, chat)
 	_laid(builder.last_step())
 	_looks_follow()
 	return followed
@@ -1162,10 +1197,24 @@ static func chat_of(params: Dictionary) -> String:
 	return str(((meta as Dictionary)[CHAT_KEY] as Dictionary).get("chat", ""))
 
 
-static func _mark(builder: Builder, chat: String) -> void:
-	var last: Dictionary = builder.last_step()
-	if not chat.is_empty() and not last.is_empty():
-		last["by"] = chat
+## Whose the steps a call keeps are (Builder.BY): its chat, else the
+## session it came on (the desktop port's, by its session; the line
+## protocol's, by its connection), else a session's that names neither (the
+## designer on the person's key, DesignerLoop). Never "", which is the
+## person's: a session's undo with no chat took the person's own step
+## (savereview2 U3).
+const NO_SESSION := "session"
+
+
+static func actor_of(chat: String, connection: String) -> String:
+	if not chat.is_empty():
+		return chat
+	return connection if not connection.is_empty() else NO_SESSION
+
+
+## [param act] run as [param actor]'s (Builder.by_wait), awaited.
+static func _by(actor: String, act: Callable) -> Variant:
+	return await Builder.by_wait(actor, act)
 
 
 ## Wait until no other tool is running, then take the app.
@@ -1377,10 +1426,9 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			# person's model, cleared by a session, was gone for good.
 			var taken: int = assistant.world.brick_count() - assistant.scenery.size() \
 				if assistant != null and assistant.world != null else 0
+			# Its step the session's, as it is kept ([method _by] in _call).
 			app.clear_model(true, "%s's clear model (%d taken off)" % [
 				assistant.who if assistant != null else CLAUDE, taken])
-			if assistant != null:
-				_mark(assistant.builder, assistant.chat)
 			return "The baseplate is bare. undo puts it back."
 		"save_model":
 			# A name in the app's own models, never a path. It wrote

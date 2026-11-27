@@ -1679,6 +1679,23 @@ func reopen_words(again: bool = false) -> String:
 	return "opened “%s” in place of “%s”" % ([other, title] if again else [title, other])
 
 
+## Whose the open Undo (or Redo, [param again]) would take back (or do
+## again) is: the session's that opened (Builder.BY, [method opened_by]), ""
+## the person's.
+func reopen_whose(again: bool = false) -> String:
+	if not can_reopen(again):
+		return ""
+	return Builder.whose((undone_over if again else opened_over).back())
+
+
+## The newest open made by the session [param actor] (AppTools._open), for
+## its undo to be the session's: an open is the person's unless the code
+## that made it says.
+func opened_by(actor: String, since: Dictionary) -> void:
+	if not opened_over.is_empty() and not is_same(opened_over.back(), since):
+		opened_over.back()[Builder.BY] = actor
+
+
 ## Undo the latest open, or with [param again] redo the latest undone: the
 ## model it took off put back as it stood, under its name, and the one on
 ## the baseplate kept in turn for the other. How many parts landed; -1 when
@@ -1694,8 +1711,13 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 		not_opened = "its copy could not be read"
 		return -1
 	_reopening = "redo" if again else "undo"
+	# What this takes off is set aside for the other, as the open's maker's.
+	var other: Array[Dictionary] = opened_over if again else undone_over
+	var newest: Dictionary = other.back() if not other.is_empty() else {}
 	var result: Dictionary = await open_text_fetched(text, str(entry["path"]).get_file(), null, job)
 	_reopening = ""
+	if not other.is_empty() and not is_same(other.back(), newest):
+		Builder.carry_whose(entry, other.back())
 	if not str(result["error"]).is_empty():
 		return -1
 	stack.erase(entry)

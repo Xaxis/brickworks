@@ -4665,6 +4665,11 @@ var chat: String = ""
 ## Who made the call that is running, by name, for the history's step:
 ## Claude, or the model on the person's key (CommandSocket.who_of).
 var who: String = "Claude"
+## Whose the steps of the call that is running are (Builder.acting, as
+## CommandSocket.actor_of names a session), or "" for the person's own:
+## set by CommandSocket around each call, so a step this designer keeps
+## after the call has waited is still the session's (Builder.by).
+var call_by: String = ""
 
 
 ## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
@@ -19028,7 +19033,8 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 		if not named.is_empty() and named != "Model":
 			titled.emit(named)
 		if not model.stands_on.is_empty():
-			floor_chosen.emit(model.stands_on)
+			# The floor's step is the call's, after its checks have waited.
+			Builder.by(call_by, floor_chosen.emit.bind(model.stands_on))
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
@@ -23893,7 +23899,7 @@ func _gather_focus_step(was: Dictionary) -> String:
 			% [who, SelectionScope.words_for(focus.own_steps)]
 	else:
 		focus.own_steps = own
-		builder.record(steps, "%s's change to the selection (%s)" % [who, words])
+		Builder.by(call_by, builder.record.bind(steps, "%s's change to the selection (%s)" % [who, words]))
 		focus.step = builder.last_step()
 	if ClaudeStep.lays({"steps": steps}):
 		laid_parts.emit()
