@@ -6,7 +6,7 @@ rules:
   - With several tabs open, a chat's first change waits until it chooses one: select_tab, or target on a call.
   - A client waits about three minutes for an answer; renders, booklets, Studio files and recordings answer with a job number, and any call still going after 20 s becomes one.
   - A tab that has not answered for 45 s while in view is busy: a call waits up to 30 s for it and the chat keeps the tab. Closed is a page that said it has gone, or three minutes of silence.
-  - An assistant's undo stops at a step another chat made, and at one the person made.
+  - An assistant's undo stops at a step another chat made, and at one the person made while it was not working.
   - The person allows each AI app once. Disconnect ends it: in the app's Account it ends every AI app's connection, in the site's Settings one at a time.
 title: The connector
 nav: The connector
@@ -53,7 +53,7 @@ Each tab has a short name while your AI can reach it, on the toolbar: `Tab k7qd`
 - **A chat that has not chosen asks first.** With one tab open, a new chat works there. With several, its first change does nothing until it chooses a tab, by its name or its model's (*work in the castle tab*).
 - **A chat stays in its tab** until it chooses another. Clicking into another tab to watch changes nothing.
 - **Two chats in one tab?** Account has **Keep this one** beside each; the other is asked to choose another tab.
-- **Undo keeps to its own chat.** An AI's `undo` stops at a step another chat made, and at one you made yourself. Your own **Undo** takes back any step.
+- **Undo keeps to its own chat.** An AI's `undo` stops at a step another chat made, and at one you made yourself while it was not working. Your own **Undo** takes back any step.
 
 ![Account's Your AI: Claude connected since 4 Oct and last used 1 Nov, this tab's name k7qd to say to Claude, no chat working in it yet, New chat for this tab, Open in Claude and Disconnect Claude.](/docs/img/connector-account.webp "Account: your AI apps, this tab's name and a new chat for it.")
 
