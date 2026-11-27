@@ -1993,7 +1993,15 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 		unbonded.snot = false
 		var other: Dictionary = build(mesh, unbonded, checker, progress, false)
 		if other.has("model"):
-			var bonded: bool = float(other["report"]["coverage"]) <= float(report["coverage"])
+			# Laid again to win back what the first left out: where the second
+			# leaves out every region the first did, it won none of it back, and
+			# the first is kept unless it fills half a point more. The temple at
+			# 48 studs loses the moon on its stick either way, and its turned
+			# sides were thrown away for a quarter of a point elsewhere.
+			var first: float = float(report["coverage"])
+			var second: float = float(other["report"]["coverage"])
+			var bonded: bool = second <= first or second <= first + 0.005 \
+				and not _wins_back(report["lost"]["regions"], other["report"]["lost"]["regions"])
 			var kept: Dictionary = out if bonded else other
 			var spent: Dictionary = other["ms"] if bonded else times
 			for step: String in ["measure", "lay", "check"]:
@@ -2005,6 +2013,21 @@ static func build(mesh: MeshFile, options: Options, checker: Assistant,
 	if suggest and float(report["coverage"]) < 0.75:
 		out["studs"] = _keeps_at(mesh, options, checker, progress)
 	return out
+
+
+## Whether a build that leaves out [param after] wins back any region of
+## [param before] (each [method _lost]'s): one whose box meets none of
+## [param after]'s.
+static func _wins_back(before: Array, after: Array) -> bool:
+	for a: Dictionary in before:
+		var met: bool = false
+		for b: Dictionary in after:
+			var low: Vector3i = (a["low"] as Vector3i).max(b["low"])
+			var high: Vector3i = (a["high"] as Vector3i).min(b["high"])
+			met = met or (low.x <= high.x and low.y <= high.y and low.z <= high.z)
+		if not met:
+			return true
+	return false
 
 
 ## The plates of each part on either side of a stud joint past its working
