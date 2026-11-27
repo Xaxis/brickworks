@@ -47,9 +47,9 @@ const BESIDE_SIZE := 12
 ## tall as that: a foot one line for one row and two for the next moved
 ## the box's edge as the keys went down the rows.
 const FOOT_LINES := 2
-## The middle column (a row's menu, or why it is greyed) at most this share
-## of a row: the name has the rest of what the key leaves.
-const BESIDE_SHARE := 0.42
+## The middle column (a row's menu, or why it is greyed) keeps at least this
+## share of a row when the names want more than the key leaves them.
+const MIDDLE_LEAST := 0.28
 ## The commands run from here that are kept, the latest first.
 const RECENT_KEPT := 8
 ## Between a menu and its submenu, as the docs write it (Keymap's).
@@ -136,8 +136,11 @@ func _ready() -> void:
 	for state: String in ["hovered", "hovered_dimmed", "cursor", "cursor_unfocused"]:
 		_list.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	# Every row as tall as the next: what is beside a name is smaller than
-	# it, and the spacing is the row's.
-	_list.add_theme_constant_override("v_separation", 12)
+	# it, and the spacing is the row's (the engine puts it above and below).
+	_list.add_theme_constant_override("v_separation", 7)
+	# A row's words in a tooltip sat over the rows under it: the foot says
+	# the lit row's, and a part's whole name.
+	_list.auto_tooltip = false
 	_list.add_theme_constant_override("inner_item_margin_left", 8)
 	_list.add_theme_constant_override("inner_item_margin_right", 8)
 	_list.add_theme_constant_override("draw_guides", 0)
@@ -469,10 +472,18 @@ func _lay_out() -> void:
 	var line: float = _foot.get_theme_font("font").get_height(_foot.get_theme_font_size("font_size"))
 	_foot.custom_minimum_size.y = ceilf(line * FOOT_LINES
 		+ _foot.get_theme_constant("line_spacing") * (FOOT_LINES - 1))
-	var top: TreeItem = _list.get_root()
 	var rows: int = clampi(_names.size(), 1, _rows_room())
-	_list.custom_minimum_size.y = ceilf(_list_top(top) * 2.0 + _row_height(top) * rows)
+	_list.custom_minimum_size.y = _list_height(rows)
 	reset_size()
+
+
+## The list's height for [param rows] rows, no scroll bar while they are
+## all it holds: its panel's edges, the rows, and one spacing the engine
+## counts for the hidden root. Without that spacing one row as tall as the
+## list had a scroll bar beside it.
+func _list_height(rows: int) -> float:
+	return ceilf(_list.get_theme_stylebox("panel").get_minimum_size().y
+		+ _row_height(_list.get_root()) * rows + _list.get_theme_constant("v_separation"))
 
 
 var _laying: bool = false
@@ -491,32 +502,42 @@ func _beside_size() -> int:
 	return maxi(1, roundi(_list.get_theme_font_size("font_size") * float(BESIDE_SIZE) / NAME_SIZE))
 
 
-## The key column as wide as the widest key, the middle one as its widest
-## words up to its share; the name has the rest. Names were cut at half
-## the row while "Part 96488" beside them had a third to itself.
+## The key column as wide as the widest key; the names as wide as the
+## widest of them, if the middle column keeps its least share; the middle
+## one the rest, up to its widest words. Names were cut at half the row
+## while "Part 96488" beside them had a third to itself, and then while a
+## greyed row's reason far down the list kept the middle column wide.
 func _fit_columns(beside: int) -> void:
 	var font: Font = _list.get_theme_font("font")
+	var name_size: int = _list.get_theme_font_size("font_size")
 	var pad: float = _list.get_theme_constant("inner_item_margin_left") \
 		+ _list.get_theme_constant("inner_item_margin_right") + _list.get_theme_constant("h_separation")
 	var widest: Array[float] = [0.0, 0.0, 0.0]
 	for item: TreeItem in _list.get_root().get_children():
-		for column: int in [1, 2]:
+		for column: int in 3:
 			var words: String = item.get_text(column)
 			if not words.is_empty():
 				widest[column] = maxf(widest[column], font.get_string_size(_list.atr(words),
-					HORIZONTAL_ALIGNMENT_LEFT, -1, beside).x + pad)
-	var across: float = _wide - _chrome().x
-	_list.set_column_custom_minimum_width(2, ceili(widest[2]))
-	_list.set_column_custom_minimum_width(1, ceili(minf(widest[1], across * BESIDE_SHARE)))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, name_size if column == 0 else beside).x + pad)
+	# The rows' width: the box's, less its edges, the list's own, and a
+	# scroll bar's when the rows are more than the room shows.
+	var across: float = _wide - _chrome().x - _list.get_theme_stylebox("panel").get_minimum_size().x
+	if _names.size() > _rows_room():
+		for bar: Node in _list.get_children(true):
+			if bar is VScrollBar:
+				across -= (bar as VScrollBar).get_combined_minimum_size().x
+	var keys: float = widest[2]
+	var middle: float = minf(widest[1], maxf(across - keys - widest[0], across * MIDDLE_LEAST))
+	_list.set_column_custom_minimum_width(2, ceili(keys))
+	_list.set_column_custom_minimum_width(1, ceili(maxf(middle, 0.0)))
 
 
 ## How many rows the room under the box's top holds, up to ROWS_SHOWN.
 func _rows_room() -> int:
 	if not is_inside_tree() or _list.get_root() == null:
 		return ROWS_SHOWN
-	var top: TreeItem = _list.get_root()
-	var room: float = _room().end.y - MARGIN - float(_at.y) - _height_but_list() - _list_top(top) * 2.0
-	return clampi(floori(room / maxf(_row_height(top), 1.0)), 1, ROWS_SHOWN)
+	var room: float = _room().end.y - MARGIN - float(_at.y) - _height_but_list() - _list_height(0)
+	return clampi(floori(room / maxf(_row_height(_list.get_root()), 1.0)), 1, ROWS_SHOWN)
 
 
 ## The box's height but its list's: its margins, the field, the foot.
@@ -551,7 +572,7 @@ func _light(row: int, scroll: bool = true) -> void:
 	var named: String = _names[_lit]
 	if named.begins_with(PART):
 		# Its whole name here, where a name cut short in its row is read.
-		_foot.text = "%s: takes it into hand, to put down with a click." % item.get_text(0)
+		_foot.text = "%s. %s" % [item.get_text(0), atr("Takes it into hand, to put down with a click.")]
 		return
 	var said: String = shell.command(named).tip
 	var why: String = shell.why_not(named)
@@ -592,14 +613,7 @@ func _row_height(top: TreeItem) -> float:
 	if top.get_child_count() > 0:
 		return _list.get_item_area_rect(top.get_child(0)).size.y
 	return _list.get_theme_font("font").get_height(_list.get_theme_font_size("font_size")) \
-		+ _list.get_theme_constant("v_separation")
-
-
-## Above the first row, inside the list; as much is left under the last.
-func _list_top(top: TreeItem) -> float:
-	if top.get_child_count() > 0:
-		return maxf(_list.get_item_area_rect(top.get_child(0)).position.y, 0.0)
-	return 0.0
+		+ 2.0 * _list.get_theme_constant("v_separation")
 
 
 ## Every command's home in the menus, the first that lists it: the menu

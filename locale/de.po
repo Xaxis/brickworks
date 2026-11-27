@@ -18421,3 +18421,6 @@ msgstr "nicht geleert: ein anderes Modell wurde geöffnet"
 
 msgid "Stopped: another model was opened, and nothing more was built"
 msgstr "Angehalten: ein anderes Modell wurde geöffnet, und es wurde nichts mehr gebaut"
+
+msgid "Takes it into hand, to put down with a click."
+msgstr "Nimmt es in die Hand, mit einem Klick abzulegen."

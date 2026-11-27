@@ -4173,7 +4173,7 @@
       "kind": "cli",
       "label": "palette in a browser",
       "entry": "tools/web/palette_flow.mjs",
-      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/, ren, Return opens Render; Mirror greyed says why; Escape)",
+      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/ opens it in the window under the toolbar, first and later opens; the pointer lights the third row; ren, Return opens Render; Mirror greyed says why, no part by a keyword; Escape)",
       "area": "building"
     },
     {

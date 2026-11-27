@@ -439,6 +439,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and Return runs nothing. Return runs the lit row through `Shell.run`, as
   its menu row does; Up, Down, Page Up and Down move; Escape puts it away.
   The last eight run from it come first (`ShellPrefs` `palette_recent`).
+  It opens 24 units under the top of `Shell.model_area`, in the middle of it
+  across, wholly in the window, and never moves while it is open; its list
+  holds as many rows as the room under it does, up to ten (`_rows_room`),
+  and its foot is two lines whatever it says, so its first open is measured
+  right (palfix: in a browser it stood at the window's top, over the menu
+  bar, as tall as the window). One row is lit: the pointer lights the one it
+  is on (`_on_list_input`), and the Tree draws no hover of its own. A part's
+  number or name lists the part under the commands, three at most, only
+  where its name or number has every word typed and of those the ones with
+  most words whole (`CommandPalette.named_by`: "mirror" lists Hand Mirror,
+  no spoon by its keyword); the key column is as wide as its keys, the names
+  as wide as the widest of them while the middle column keeps 28% of the row
+  (`_fit_columns`), so a name is cut only past that; no tooltips over rows
+  (the foot says the lit row's words); one row and no scroll bar beside it.
   `palette probe` (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) walks
   every command in `Shell._commands`: typed by its words, reached by Down,
   Return hands exactly it to the run (a stand-in, so no file dialog,
@@ -446,9 +460,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
   Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
-  Swing on its hinge (`swing`, J), each run from the menu. `palette in a
-  browser` (preview check `palette`) drives it by keys in a browser
-  (`brickworksState.palette`).
+  Swing on its hinge (`swing`, J), each run from the menu; and the box's
+  place on its first open and as rows change, rows of one height, its height
+  as the keys go down, the pointer's row the one lit, the parts "mirror"
+  lists and a long part name whole. `palette in a browser` (preview check
+  `palette`) drives it by keys in a browser (`brickworksState.palette`, its
+  `rect`, `room` and `floor`): in the window and under the toolbar at its
+  first open and every later one, the pointer lighting the third row.
+  Pictures in a browser at 1280, 1920 and a phone's 390:
+  `bench/results/palfix-2026-11-27/palette_look.mjs`.
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is

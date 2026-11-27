@@ -56,11 +56,13 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 const controls = () => page.evaluate(() => window.brickworksControls || {});
 const state = () => page.evaluate(() => window.brickworksState || {});
 const box = async () => (await state()).palette || {};
-// Wholly in the window and under the model's part's top, in the app's units.
-const placed = (now) => {
+// Wholly in the window and under the model's part's top, in the app's units:
+// that top as it was when the box opened (a banner that comes while it is
+// open, the challenge's line, moves the top down and the box stays put).
+const placed = (now, floor = now.floor) => {
   const [x, y, w, h] = now.rect || [];
   const [across, down] = now.room || [];
-  return h > 0 && x >= 0 && x + w <= across && y + h <= down && y >= now.floor;
+  return h > 0 && x >= 0 && x + w <= across && y + h <= down && y >= floor;
 };
 const where = (now) => `the box ${JSON.stringify(now.rect)} in ${JSON.stringify(now.room)}, the model from y ${now.floor}`;
 
@@ -96,7 +98,7 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
     return now.typed === "ren" && (now.rows || [])[0] === "render" && now.lit === "render";
   }, 20));
   const typed = await box();
-  check(`...and the box stays put: ${where(typed)}`, placed(typed)
+  check(`...and the box stays put: ${where(typed)}, opened under y ${first.floor}`, placed(typed, first.floor)
     && JSON.stringify((typed.rect || []).slice(0, 2)) === JSON.stringify((first.rect || []).slice(0, 2)));
   await page.screenshot({ path: `${out}/typed.png` });
   await page.keyboard.press("Enter");

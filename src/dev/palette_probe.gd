@@ -117,7 +117,11 @@ func _menus() -> void:
 					continue
 				var named: String = ids[id]
 				homes[named] = int(homes.get(named, 0)) + 1
-	var twice: Array = homes.keys().filter(func(named: String) -> bool: return homes[named] > 1)
+	# But the instructions, in Build and in File, Export, where a parent
+	# looking to print them looks first: one command in both (ux12,
+	# 1334c1de0).
+	var twice: Array = homes.keys().filter(func(named: String) -> bool:
+		return homes[named] > (2 if named == "instructions" else 1))
 	_check("no command is in two menus (%d commands in the menus%s)" % [homes.size(),
 		"" if twice.is_empty() else "; twice: " + ", ".join(twice)], twice.is_empty() and homes.size() > 150)
 	var edit: MenuButton = _shell.menu("Edit")
@@ -214,13 +218,14 @@ func _render_by_keys() -> void:
 	_check("Ctrl+/ opens the box over the model (%s in %s), the keys in its field" % [box, over],
 		_palette.visible and _typing() and over.encloses(box))
 	var opened_at: Vector2i = _palette.position
+	var opened_under: float = over.position.y
 	for letter: String in "ren":
 		await _type(letter)
 		presses += 1
 	var rows: Array = _palette.get("_names")
 	_check("\"ren\": Render… first (%s)" % ", ".join(rows.slice(0, 3)), not rows.is_empty() and rows[0] == "render")
 	_check("...the box stays put as the rows change (%s, opened at %s): %s" % [_palette.position, opened_at,
-		_placed_words()], _palette.position == opened_at and _placed())
+		_placed_words()], _palette.position == opened_at and _placed(opened_under))
 	var list: Tree = _palette.get("_list")
 	var heights: Dictionary = {}
 	for n: int in mini(rows.size(), CommandPalette.ROWS_SHOWN):
@@ -601,12 +606,14 @@ func _typing() -> bool:
 
 ## Whether the box is where it is meant: wholly in the window, and under the
 ## top of the model's part of it, so the menu bar, the toolbar and the
-## model's banners over that are in sight.
-func _placed() -> bool:
+## model's banners over that are in sight; that top as it was when the box
+## opened ([param floor]), if given: a banner come since moves it down, and
+## the box stays put.
+func _placed(floor: float = -1.0) -> bool:
 	var room: Rect2 = root.get_visible_rect()
 	var box := Rect2(Vector2(_palette.position), Vector2(_palette.size))
-	return _palette.visible and room.encloses(box) and box.size.y > 0.0 \
-		and box.position.y >= _shell.model_area.get_global_rect().position.y
+	var top: float = floor if floor >= 0.0 else _shell.model_area.get_global_rect().position.y
+	return _palette.visible and room.encloses(box) and box.size.y > 0.0 and box.position.y >= top
 
 
 func _placed_words() -> String:
