@@ -3208,6 +3208,92 @@ What is left. The tells the judge names on the sets are still the plastic's pris
 the seamless white (0.95) and its flat colour (0.66), not the clean. A denoise for the desktop's
 fewer samples (its window's Best while it gathers) may still take the filter, and is unjudged.
 
+## 5ag. Light under the skin (photoreal32)
+
+**Not merged (NO-GO).** The lever below lives on branch `photoreal32` (b604613d4) only; the app has
+no such setting. This section is the round's record. Bench, base, judge and draws are photoreal31's
+(5af): photoreal30's `shots.json`, Best's 256 samples, sets drawn 21-24 and close-ups 21-23, the solo
+judge at 3 trials x 4 rounds, base today's desktop Best (t31). Results and scripts are in
+`bench/results/photoreal32-2026-11-27/`.
+
+**What the photographs' faces carry that ours do not** (measured on the bench's photographs beside
+t31 at the judge's frames: `measure/`, `look/`, scripts `faces32.py`, `boxes32.py`, `shade32.py`):
+
+- A colour's lightness spreads wider across a photographed part: the red slope's middle half spans
+  5.9 L* in its photograph and 1.3 in ours; black_2x4's grey 16.0 against 7.1.
+- A photographed red keeps its hue as it lightens (h 37 to 45 from L* 10 to 70 on the red slope, 37-39
+  on three_2x2_top's). Ours turns pink in its lightest pixels (h 31 and 27 at L* 60-80 on the slope,
+  32 in three_2x2_top's lightest tenth). A lit yellow is lemon in ours (h 96-100 on 6512, 6532 and
+  6660, against 89-95 in the photographs); 6532's and 6660's shaded yellows are amber in the
+  photographs (h 72-77) where ours are 77-83, though 6512's go the other way.
+- Flat tops carry a finer texture: black_2x4's black 2.1 times ours, grey_1x3's white 3 times. The red
+  slope's moulded grain is the other way round (ours 1.5 times the photograph's).
+- At a set's scale (`look/c6660_door.jpg`): dust specks and a fibre on 6660's windscreen, a lit white
+  edge soft and luminous, faint seams. Ours has crisp edges, darker seams and a spotless windscreen.
+
+**Built: light under the skin.** ABS is lit from inside. Light goes in under the clear skin, scatters
+off the pigment and comes out a little way off, so a shade's edge softens in the part's own colour
+and a white stays bright in its shade. At the eye's first plastic hit, a share of the samples
+(`RenderSettings.subsurface`) light the hit at a point drawn round it from Burley's normalised
+diffusion (2015). Its mean free path is `subsurface_reach` LDU over 1.85 - A + 7|A - 0.8|^3 for each
+channel's albedo A, so a red's fringe is red and a white's is wide. A short bare probe finds that
+point on the part's own skin. The body's diffuse is weighed there by the profile over the draw's
+chance, and the gloss is lit there too, a hair from the hit. A point past an edge finds no skin, and
+the hit lights itself. The browser's port takes the same code. It is general, has no per-set
+content, and at 0 draws no random number. Lit the first way (the gloss at the hit, the body under the
+skin, two lights a sample), a set took 1.4 to 1.8 times as long.
+
+The second form also made the desktop's shadow rays, the walk through clear parts and the probe
+bare. They ran the whole closest hit (moulding, logos, grain) only to be told whether something
+was there; the closest hit now returns at once when the payload asks for a bare hit, as the port's
+walk already did. Today's bench drawn with the lever at 0 matches t31 to within 1/255 on a few
+pixels (6512, 6532 and 6660 on one to three rows; three_2x2_top 0.025% of pixels, at most 2). The shader's
+arithmetic was reordered. The six other pictures are byte for byte. The car did not get measurably
+faster.
+
+**Judged** (pool s1 the sets, c1 the close-ups; u3 and u6 the lever at 1 with reach 3 and 6 LDU):
+
+| arm | sets | against t31 | close-ups | against t31 |
+| --- | --- | --- | --- | --- |
+| t31: today's desktop Best | 0.318 | | 0.696 | |
+| u3: reach 3 | 0.268 | -0.051 (-0.119 .. +0.003) | 0.668 | -0.028 (-0.088 .. +0.019) |
+| u6: reach 6 | 0.309 | -0.010 (-0.058 .. +0.036) | 0.686 | -0.009 (-0.044 .. +0.022) |
+
+By shot: 6532 0.459 / 0.318 / 0.386 (t31 / u3 / u6), 6660 0.555 / 0.487 / 0.596, 6657 and 6512
+level; black_2x4 0.744 / 0.592 / 0.676, three_2x2_top 0.789 / 0.715 / 0.734, the grey, green and
+red slope a hair up. trans_round, which has no opaque plastic, drew byte for byte in all three arms
+and scored within 0.003 (the pool tells 0.005 apart). The tells on the sets did not move: plastic
+pristine 0.99 / 0.98 / 0.97, uniform colour 0.82 / 0.89 / 0.83, seamless white 0.92 / 0.94 / 0.92.
+
+**Why it moved nothing.** At the judge's 1024 pixels a set is about one LDU a pixel. The profile
+softens a shade's edge by a pixel or two, and the studio's light is broad, so a face's light barely
+changes across it. A set drawn with it at reach 6 differs from t31 by 0.36 to 0.83/255 on average,
+as t31's own draw 21 differs from its draw 22 (0.36 to 0.90). On the close-ups (ten pixels an LDU) the stud's shade side and the
+slope's grain soften, and black_2x4 and three_2x2_top read a little less real. The probe looks only
+along the hit's normal, so the light that goes round an edge (a lit face glowing into the shaded
+face beside it, the clearest sign of a translucent part) is left out, by design of the cheap probe.
+
+**Time.** The car at Best (`photoreal_probe --car --car-under --car-reach`, interleaved with
+pre261's, two rounds, median of three): pre261 5.42 and 6.69 s, the branch at 0 5.95 and 7.22,
+reach 3 5.47 and 7.40, reach 6 5.65 and 11.68. The box drifted between rounds. The sets, not
+interleaved, against t31's draws: reach 3 1.29 times, reach 6 1.45 times. Both are over the 1.15 bar
+on the sets.
+
+**Browser and desktop.** The page's tracer (tracer_port.py's GLSL ES with page_tracer.js's packing,
+run on the card through EGL as in photoreal28) drew the red slope at reach 6 from the desktop's own
+capture, 256 samples. The two agree in the mean (each channel within 0.3/255) and by eye, but differ
+by 2.1/255 a pixel, 13% of pixels by more than 8, where photoreal28's pair differed by 0.05 to 0.09.
+Averaged over 4 to 16 pixel blocks they differ as two desktop draws of the shot do (0.75 to 0.40
+against 0.75 to 0.25): the same picture from parted random streams, not a bias. A control at today's
+defaults was queued on the card and stopped unrun. Nothing merges, so this bar decided nothing.
+
+**Next.** The largest measured gaps are not in the plastic. A colour's lightness spread and hue in
+the light come from the light and the camera's curve: the reds' pink and the yellows' khaki are
+where the light is strongest. The plastic's next step is the light that goes round an edge: probes
+along the two tangents as well as the normal (King et al. 2013), with the edge's own normal there.
+At a set's scale, dust and fine scratches on clear parts are what a windscreen shows. A hazed
+windscreen was tried in handled plastic (5u) and moved no set; sharp specks were not.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
