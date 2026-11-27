@@ -617,7 +617,10 @@ const HINTS := {
 	# keys it had, one step to undo (camreview M1: said to change nothing, it
 	# replaced three hand-made keys, its step unmarked).
 	"render_motion": ["Render a motion", "remove"],
-	"simulate_mechanism": ["Simulate the mechanism", "file"],
+	# program= puts a program in place of the model's, one step to undo: said
+	# to leave the model as it was, its step went unmeasured and unmarked, and
+	# the session's own undo then left it as the person's (d43save).
+	"simulate_mechanism": ["Simulate the mechanism", "remove"],
 	"undo": ["Undo or redo", "remove"],
 	# In place of the model, and with discard_changes its unsaved changes.
 	"open_model": ["Open a model", "remove"],
