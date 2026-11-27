@@ -466,13 +466,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to
   (up to 500, counted a slice a frame, the first 2 ms on the click, and given
-  up when another part is shown, `Inspector._count_joined`; "Joined to …
+  up when another part is shown, `Inspector._count_joined`; a part of many
+  boxes is asked a piece of its faces at a time, `SelectBy._joined_to_paced`,
+  since 10030's 6 x 12 plate asked whole was one frame of 130-370 ms; "Joined to …
   other parts, directly or through others" holds its line until then, wrapped
   as most counts are, so Joined, Lock and Hide stay put: on
   the click it held 10030's window 1.2-1.7 s, and Simple's way back to Full as
-  long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1 and
-  5972-1 to the next frame under one, reads the line against a whole look on the
-  spot, and switches parts mid-count; `simple_switch_probe --case=models` reads
+  long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1,
+  5972-1 and Orthanc to the next frame under one, reads the line against a whole
+  look on the spot, holds every frame of the count to 100 ms and the buttons
+  where they were, and switches parts mid-count; `simple_switch_probe --case=models` reads
   it after the switch),
   which way its studs face, its sub-model, its step in the instructions (models
   of 600 parts or fewer, worked out a slice a frame from the click,

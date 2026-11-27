@@ -8,7 +8,8 @@
 ##   godot --headless --path . --script src/dev/clickfast_probe.gd
 ##   godot --headless --path . --script src/dev/clickfast_probe.gd -- --case=10030
 ##
-## --case= 10030, stepped, flexible (all when not said). On each, at 1400 x
+## --case= 10030, stepped, flexible, orthanc (all when not said; Orthanc's
+## 10,105 parts are the largest model the probes open). On each, at 1400 x
 ## 900 with the Select tool, parts on show picked by the camera's own ray
 ## (EditVerbs.click, as a press of the left button runs it):
 ##   clicks   the first click after the model opens (the instructions' steps
@@ -18,8 +19,9 @@
 ##            least of the warm ones, and the first on its own); Properties
 ##            name the part clicked at once; the line "Joined to N" reached
 ##            within 3,000 frames, the same words a whole look from the part
-##            finds on the spot (SelectBy.connected, no limit), and the
-##            longest frame while it counted said; on the two of 600 parts or
+##            finds on the spot (SelectBy.connected, no limit), no frame
+##            while it counted over 100 ms, and Joined, Lock and Hide where
+##            they were when a count of several came; on the two of 600 parts or
 ##            fewer, its step in the instructions, worked out a slice a frame
 ##            too, as the steps worked out on the spot after the clicks.
 ##   switch   a part clicked, a second one clicked two frames later while the
@@ -39,7 +41,12 @@ const MODELS: Array = [
 	["10030", "res://vendor/omr/files/10030-1.mpd"],
 	["stepped", "res://vendor/omr/files/6685-1.mpd"],
 	["flexible", "res://vendor/omr/files/5972-1.mpd"],
+	["orthanc", "res://models/orthanc.ldr"],
 ]
+## The longest a frame may be while the count is under way: FramePace's
+## slices are 12-50 ms, and one part's look was a single frame of 130-370 ms
+## on 10030 before a part of many boxes was asked a piece at a time.
+const COUNT_FRAME_MS := 100.0
 const FRAME_MS := 1000.0 / 60.0
 ## The line while the count is under way (Inspector._count_joined).
 const COUNTING := "Joined to … other parts, directly or through others"
@@ -74,7 +81,7 @@ func _note(what: String) -> void:
 
 
 func _run() -> void:
-	var cases: String = "10030,stepped,flexible"
+	var cases: String = "10030,stepped,flexible,orthanc"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--case="):
 			cases = arg.trim_prefix("--case=")
@@ -175,10 +182,8 @@ func _case_model(tag: String, path: String) -> void:
 	for got: Dictionary in took:
 		longest.append(snappedf(float(got["longest"]), 0.1))
 	longest.sort()
-	# Said, not held to a frame: one part's look is one piece, and on 10030
-	# a 6 x 12 plate of 3,720 boxes is 130-220 ms of it (SelectBy._joined_to).
-	_note("%s: the longest frame while it counted %.1f ms (the least of %s)" % [tag,
-		longest[0], longest])
+	_check("%s: no frame while it counted over %.0f ms (the longest %.1f of %s)" % [tag,
+		COUNT_FRAME_MS, longest.back(), longest], float(longest.back()) <= COUNT_FRAME_MS)
 	await _switch(tag, parts, took)
 	await _pieces(tag, parts[1])
 	_builder.clear_selection()
