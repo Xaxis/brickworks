@@ -752,27 +752,26 @@ static func _shifted(bricks: Array, by: Vector3) -> Array:
 
 ## Lay bricks through edit_model, checked like any edit; the ids they were
 ## given, or none when it was refused. As [param by]'s (Builder.BY), else
-## whoever is [member Builder.acting] as it is asked.
+## whoever is [member Builder.acting] as it is asked. Its ids are the parts
+## the edit itself laid (BrickWorld.Ledger), never every part new since it
+## began: one the person's own design laid meanwhile was the piece's, and
+## taking the piece off took it.
 func lay(bricks: Array, remove: Array[int] = [], by: Variant = null) -> Array[int]:
 	var actor: String = Builder.acting if by == null else str(by)
-	var before: Dictionary = {}
-	for brick: BrickWorld.Brick in assistant.world.bricks():
-		before[brick.id] = true
 	var input: Dictionary = {"add": bricks}
 	if not remove.is_empty():
 		input["remove"] = remove
+	var own: BrickWorld.Ledger = assistant.world.open_ledger(actor, assistant.scenery)
 	assistant._laying_whole = true
 	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input}, actor)
 	assistant._laying_whole = false
+	assistant.world.close_ledger(own)
 	var head: String = str(answer if answer is String else "")
 	var out: Array[int] = []
 	if head.begins_with("Not applied") or head.begins_with("No brick") \
 			or head.begins_with("Nothing in that") or head.begins_with("That would"):
 		return out
-	for brick: BrickWorld.Brick in assistant.world.bricks():
-		if not before.has(brick.id):
-			out.append(brick.id)
-	return out
+	return own.laid(assistant.world)
 
 
 ## Take the proposal's bricks off, those still standing. True when they

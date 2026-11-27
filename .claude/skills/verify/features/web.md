@@ -706,6 +706,23 @@ plan with Claude as the client.
   C1: "is the person's own, made in the tab, so it was left"; `savereview3_attack_probe`,
   `savereview3b_attack_probe`, `savereview2_attack_probe`). A call's own steps fold into
   one, and a person's step kept between stays where it was (`Builder.fold_since`).
+  A call's or a run's step holds only what its own code changed, never the model's
+  difference over the time it worked: the world notes each part a maker's code puts
+  down, takes off, moves or paints inside `Builder.by` in that maker's ledger
+  (`BrickWorld.Ledger`, `BrickWorld._ledger_note`, opened by `ClaudeStep.mark`), and
+  the step is made from it part by part (`ClaudeStep.steps_of`). Code that names no
+  maker (the person by hand, an Open, Together) is noted in none. So a chat's
+  review_model, save_model or clear_model while the person's panel design lays its
+  576 parts keeps none of them, and another chat's design beside a review stays its
+  own (savereview5 F1: a review took 916). A clear during a design starts the design's
+  ledger again, so what it lays after the clear is in its step, never in none
+  (`BrickWorld.clear`; F2). A feature or surface piece's parts are the ones its own
+  edit laid (`Ledger.laid`, `FeaturePass.lay`, `SurfacePass._edit`).
+  `savereview5_attack_probe` (headless, API stand-in on 13080-13089;
+  `--sr5=pr,ps,pc,cr,cc`): pr/ps/pc the person's panel design beside their chat's
+  review, save and clear; cr/cc a chat's design beside another chat's review and
+  clear. Each says every designed part standing is in a step and the other's undo
+  takes none of them.
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
   Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):

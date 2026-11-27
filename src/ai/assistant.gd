@@ -1420,6 +1420,7 @@ func _sketches_shown() -> void:
 	_sketch_round = false
 	_busy = false
 	# Held off the baseplate: nothing to undo. Choosing one begins the step.
+	ClaudeStep.drop(world, _run_mark)
 	_run_mark = {}
 	_messages.clear()
 	var spend: Brain.Spend = _spend
@@ -1452,7 +1453,8 @@ func choose_sketch(number: int, by: Variant = null) -> String:
 	var model: Model = one.model
 	# In the app, the sketch going down begins the design's one step.
 	if not outside:
-		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design")
+		ClaudeStep.drop(world, _run_mark)
+		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design", actor)
 	await _ensure_parts(model)
 	await _apply(model, true, true, actor)
 	if outside:
@@ -1543,11 +1545,13 @@ func _model_moved() -> bool:
 	return _busy and world != null and world.generation() != _run_generation
 
 
-## The same, the run ended if so: nothing more is put down, nothing put
-## back and no step recorded, for the bricks it laid and the snapshot it
-## took went with that model, and the one there now numbers its own bricks
-## from one again (forget_built). Before, the reply's design landed in the
-## model opened meanwhile, marked as Claude's (pubbind).
+## The same, the run ended if so: nothing more is put down and nothing put
+## back, for the bricks it laid went with that model, and the one there now
+## numbers its own bricks from one again (forget_built). Before, the reply's
+## design landed in the model opened meanwhile, marked as Claude's
+## (pubbind). What its design laid on the model there now, going down as a
+## chat cleared the baseplate, is its step (ClaudeStep.record): it stood in
+## none, and no undo ever took it (savereview5 F2).
 func _model_gone() -> bool:
 	if not _model_moved():
 		return false
@@ -1559,7 +1563,7 @@ func _model_gone() -> bool:
 		_streaming.stop()
 		_streaming = null
 	forget_built()
-	_run_mark = {}
+	_record_run()
 	if not _spend.is_empty():
 		spent.emit(_spent_on, _spend)
 	finished.emit(false, MODEL_GONE)
@@ -1623,10 +1627,12 @@ func _start(text: String) -> void:
 	_pending = null
 	_before = _snapshot()
 	# What this request changes is one undo step, Claude's, kept as it ends
-	# (ClaudeStep). About a selection, its edits gather into one already.
+	# (ClaudeStep): only what the run's own code lays, takes off, moves and
+	# paints, as [member _run_by]'s. About a selection, its edits gather into
+	# one already.
 	if not _scoped and _run_mark.is_empty():
 		_run_mark = ClaudeStep.mark(builder, world, scenery,
-			"Claude's design" if _messages.is_empty() else "Claude's change")
+			"Claude's design" if _messages.is_empty() else "Claude's change", _run_by)
 	# References first, in the same message as the brief.
 	#
 	# A named real subject was designed entirely from memory of it. The
@@ -1725,7 +1731,13 @@ func _snapshot() -> Array[Dictionary]:
 ## Ids are minted afresh — BrickWorld numbers from one and the old ones
 ## are gone — so _placed_ids is rebuilt from which bricks were the
 ## assistant's, or a later design would refuse to replace its own work.
+## The run's own changes ([member _run_by]'s), so its step pairs what it
+## took down with what it put back (ClaudeStep.record).
 func _restore() -> void:
+	Builder.by(_run_by, _put_back_before)
+
+
+func _put_back_before() -> void:
 	if _before.is_empty():
 		return
 	# Only the assistant's own bricks, and only its own put back.
@@ -1830,9 +1842,10 @@ func _send() -> void:
 					continue
 				if not _sketching:
 					_sketching = true
-					_begin_sketch()
-				_sketch_one(Placement.from_dict(raw),
-					_sketching_sections))
+					Builder.by(_run_by, _begin_sketch)
+				# The run's own, as what replaces it is (ClaudeStep).
+				Builder.by(_run_by, _sketch_one.bind(Placement.from_dict(raw),
+					_sketching_sections)))
 		_streaming = reader
 		reader.run(url, headers, JSON.stringify(body))
 		var streamed: Array = await reader.done
@@ -1854,10 +1867,7 @@ func _send() -> void:
 		if int(streamed[0]) != HTTPRequest.RESULT_SUCCESS:
 			progress.emit("lost the connection — asking again")
 			body.erase("stream")
-			for brick_id: int in _sketched_ids:
-				builder.lattice.release(brick_id)
-				world.remove_brick(brick_id)
-			_sketched_ids = PackedInt64Array()
+			_take_sketch_off()
 			var again: Array = await _ask_again(url, headers, body)
 			if again.is_empty():
 				_stop(false, "could not reach the assistant after "
@@ -1933,6 +1943,16 @@ func clear_sketch() -> void:
 	for brick_id: int in _sketched_ids:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
+
+
+## This app's own run's sketch taken off, as the run's own change
+## ([member _run_by]'s), as it was drawn.
+func _take_sketch_off() -> void:
+	Builder.by(_run_by, func() -> void:
+		for brick_id: int in _sketched_ids:
+			builder.lattice.release(brick_id)
+			world.remove_brick(brick_id))
 	_sketched_ids = PackedInt64Array()
 
 
@@ -3226,10 +3246,7 @@ func _stop(ok: bool, summary: String) -> void:
 	# either replaced it or never came. Skipping this when an edit had
 	# landed left those bricks behind, and the next run's snapshot
 	# adopted them as bricks the person had placed by hand.
-	for brick_id: int in _sketched_ids:
-		builder.lattice.release(brick_id)
-		world.remove_brick(brick_id)
-	_sketched_ids = PackedInt64Array()
+	_take_sketch_off()
 	_busy = false
 	_record_run()
 
@@ -3689,12 +3706,17 @@ func _tool_answer(block: Dictionary, by: String) -> Variant:
 			if scoped and focus.before == null and ModelShot.possible():
 				_ensure_shot().highlight = {}
 				focus.before = await _shot.take(world, "corner", scenery, focus.region)
-			var standing_was: Dictionary = SelectionScope.snapshot(world, scenery) \
-				if scoped else {}
+			# What the edit itself changes, part by part, for its own step about
+			# the selection ([method _gather_focus_step]).
+			var own: BrickWorld.Ledger = world.open_ledger(by, scenery) if scoped else null
 			# Where what it takes off stood, for the picture of what changed.
 			var gone: AABB = _bounds_of(_bricks_numbered(args.get("remove", []))) \
 				if lean else AABB()
-			_apply_edit(edited)
+			# As [param by]'s, whose the edit is, for the step its run or call
+			# keeps of what it changed (ClaudeStep).
+			Builder.by(by, _apply_edit.bind(edited))
+			if own != null:
+				world.close_ledger(own)
 			_name_assemblies(edited.assemblies)
 			_pending = null
 			_edited = true
@@ -3719,7 +3741,7 @@ func _tool_answer(block: Dictionary, by: String) -> Variant:
 			_judged_said = {"resting": resting, "weigh": lean}
 			if scoped:
 				var had: int = world.brick_count()
-				var words: String = _gather_focus_step(standing_was, by)
+				var words: String = _gather_focus_step(own, by)
 				if not _focus_refused.is_empty():
 					_judged_said = {}
 					return CommandSocket.refused_answer(_focus_refused)
@@ -19007,11 +19029,16 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false,
 			if running and not _busy:
 				world.release_drawing()
 				return
-	# Down first, so nothing new is registered inside what is leaving.
+	# Down first, so nothing new is registered inside what is leaving. Each
+	# part it takes off and puts down is [param by]'s change, noted so as it
+	# is made (Builder.by), for the step its run or call keeps of what it
+	# changed (ClaudeStep): laid over frames, with no step until it ends, a
+	# design was taken whole into the step of a chat's review_model at work
+	# meanwhile (savereview5 F1).
 	for key: String in standing:
 		for brick_id: int in standing[key]:
 			builder.lattice.release(brick_id)
-			world.remove_brick(brick_id)
+			Builder.by(actor, world.remove_brick.bind(brick_id))
 	_sketched_ids = PackedInt64Array()
 	_placed_ids = PackedInt64Array()
 	_placed_of = {}
@@ -19023,8 +19050,8 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false,
 		var placement: Placement = model.placements[index]
 		var brick_id: int = kept.get(index, 0)
 		if brick_id == 0:
-			brick_id = world.add_brick(placement.part, placement.color,
-				at_of[index])
+			brick_id = int(Builder.by(actor, world.add_brick.bind(placement.part, placement.color,
+				at_of[index])))
 			if brick_id == 0:
 				continue
 			builder.register(brick_id, placement.part, at_of[index])
@@ -19042,7 +19069,7 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false,
 					var standing_id: int = kept.get(later, 0)
 					if standing_id != 0:
 						builder.lattice.release(standing_id)
-						world.remove_brick(standing_id)
+						Builder.by(actor, world.remove_brick.bind(standing_id))
 				world.release_drawing()
 				return
 	if gradually:
@@ -23886,14 +23913,15 @@ func _refused_beyond(beyond: PackedStringArray) -> String:
 		+ "edit_selection room= the box it needs and why=, and the person is asked.")
 
 
-## An edit about the selection has landed: its changes made one step of
-## the history (with whatever else this request changed before it), new
-## parts put in the selection's sub-assembly, the selection now what it
-## became. Kept as [param by]'s (Builder.BY), whose the edit is; gathered
-## into the step before it only when that is theirs too.
-func _gather_focus_step(was: Dictionary, by: String) -> String:
+## An edit about the selection has landed: its changes, as [param noted]
+## holds them part by part, made one step of the history (with whatever else
+## this request changed before it), new parts put in the selection's
+## sub-assembly, the selection now what it became. Kept as [param by]'s
+## (Builder.BY), whose the edit is; gathered into the step before it only
+## when that is theirs too.
+func _gather_focus_step(noted: BrickWorld.Ledger, by: String) -> String:
 	_focus_refused = ""
-	var steps: Array = SelectionScope.steps_back(was, world, scenery)
+	var steps: Array = ClaudeStep.steps_of(noted, world, scenery)
 	if steps.is_empty():
 		return ""
 	var ids_were: Dictionary = focus.ids.duplicate()

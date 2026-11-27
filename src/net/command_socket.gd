@@ -877,9 +877,9 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			# One step too: a review lays a feature's piece, saving can hand
 			# the next feature back laid, and clearing takes everything off.
 			await _until_whole()
-			var before: Dictionary = _before_change(name)
-			var held: Dictionary = _held()
 			var actor: String = actor_of(chat, connection)
+			var before: Dictionary = _before_change(name, actor)
+			var held: Dictionary = _held()
 			_at_work += 1
 			assistant.chat = chat
 			assistant.who = who
@@ -948,10 +948,10 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	# made while it works is not taken for the model it leaves. An open's own
 	# moment is the open's, and a save changes nothing.
 	_outside(name, true)
-	var before: Dictionary = _before_change(name)
+	var actor: String = actor_of(chat, connection)
+	var before: Dictionary = _before_change(name, actor)
 	var held: Dictionary = _held()
 	var answer: Variant
-	var actor: String = actor_of(chat, connection)
 	_at_work += 1
 	assistant.chat = chat
 	assistant.who = who
@@ -1026,23 +1026,24 @@ const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
 
 
 ## The history as it stood before a call, for its own steps to be one step,
-## and of a call that may change the model the model too, for what it
-## changes with no step of its own to be one; {} for an undo, an open and a
-## clear, which keep their own (Main.clear_model). Whose a step is was never
-## the hints' to say: each step says it ([constant Builder.BY]). A tool said
-## to leave the model as it was took no record, so what it kept stayed the
-## person's (render_motion, simulate_mechanism); its steps are its own now,
-## and only what it changed with no step goes unmeasured.
-func _before_change(name: String) -> Dictionary:
+## and of a call that may change the model a mark of [param actor]'s
+## (ClaudeStep.mark), for what its code changes with no step of its own to be
+## one; {} for an undo, an open and a clear, which keep their own
+## (Main.clear_model). Whose a step is was never the hints' to say: each step
+## says it ([constant Builder.BY]). A tool said to leave the model as it was
+## took no record, so what it kept stayed the person's (render_motion,
+## simulate_mechanism); its steps are its own now, and only what it changed
+## with no step goes unmeasured.
+func _before_change(name: String, actor: String = NO_SESSION) -> Dictionary:
 	if assistant == null or assistant.builder == null or assistant.world == null \
 			or name in NOT_A_STEP or name == "clear_model":
 		return {}
 	var builder: Builder = assistant.builder
 	var last: Dictionary = builder.last_step()
 	var before: Dictionary = {"last": last, "size": (last.get("steps", []) as Array).size(),
-		"kept": builder.steps_now()[0], "generation": assistant.world.generation()}
+		"kept": builder.steps_now()[0]}
 	if not leaves_the_model(name):
-		before["was"] = SelectionScope.snapshot(assistant.world, assistant.scenery)
+		before["mark"] = ClaudeStep.mark(builder, assistant.world, assistant.scenery, "", actor)
 	return before
 
 
@@ -1052,14 +1053,17 @@ func _before_change(name: String) -> Dictionary:
 ## no history at all, so the person's Undo after it took back their own last
 ## part and left Claude's edit standing. A call that keeps its own history
 ## (the window's commands, an edit about a selection) has its own steps
-## folded into one, with whatever it changed that no step names; any other
-## has the difference made one step. A step anyone else kept meanwhile, the
-## person's own above all, stays theirs and where it was kept: the call's
-## own on each side of it are a step each side (Builder.fold_since). Returns
-## what followed it ([method _copies_follow]).
+## folded into one, with whatever its code changed that no step names; any
+## other has what its code changed made one step. Only the call's own: what
+## anyone else changed while it was at work, a part of the person's panel
+## design laid meanwhile or another chat's, is never in it (ClaudeStep.mark).
+## A step anyone else kept meanwhile, the person's own above all, stays theirs
+## and where it was kept: the call's own on each side of it are a step each
+## side (Builder.fold_since). Returns what followed it ([method _copies_follow]).
 func _one_step(name: String, before: Dictionary, actor: String, who: String = CLAUDE) -> Array:
 	if before.is_empty():
 		return [0, 0]
+	var mark: Dictionary = before.get("mark", {})
 	var builder: Builder = assistant.builder
 	var kept: Array = before["kept"]
 	var history: Array = builder.steps_now()[0]
@@ -1080,8 +1084,9 @@ func _one_step(name: String, before: Dictionary, actor: String, who: String = CL
 	var untouched: bool = from == kept.size() and from == history.size()
 	if untouched and not last.is_empty() and is_same(last, before["last"]) \
 			and (last.get("steps", []) as Array).size() != int(before["size"]):
+		ClaudeStep.drop(assistant.world, mark)
 		return [0, 0]
-	if before.has("was"):
+	if not mark.is_empty():
 		# A session's first design lays its parts with no step and then keeps
 		# the floor it chose as one: only the floor's was folded, so undoing
 		# everything after two small designs left 55 and 8 parts on the bare
@@ -1094,11 +1099,11 @@ func _one_step(name: String, before: Dictionary, actor: String, who: String = CL
 		# number, none paired off: a call that took a part off and put the
 		# same down is a re-lay it asked for, and its undo gives the old
 		# number back (copyfaults twin_relaid).
+		var call_mark: Dictionary = mark.duplicate()
+		call_mark["steps"] = [kept, builder.steps_now()[1]]
+		call_mark["words"] = "%s's %s" % [who, name.replace("_", " ")]
 		Builder.by(actor, func() -> bool:
-			return ClaudeStep.record(builder, assistant.world, assistant.scenery,
-				{"was": before["was"], "steps": [kept, builder.steps_now()[1]],
-				"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
-				own, false))
+			return ClaudeStep.record(builder, assistant.world, assistant.scenery, call_mark, own, false))
 	builder.fold_since(from, "", actor)
 	var now: Array = builder.steps_now()[0]
 	var made: bool = false

@@ -109,62 +109,6 @@ func allow(more: AABB) -> void:
 	region = region.merge(more)
 
 
-## Every part standing that is not scenery, as it is now: brick id ->
-## [part, colour, transform, group, unit, step]. With its build step, so one
-## taken off is put back in it: undone, a session's edit put a part back in
-## no step, its step left empty and the part after the model's last
-## (pullkept).
-static func snapshot(world: BrickWorld, scenery: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
-		if scenery.has(brick.id):
-			continue
-		out[brick.id] = [brick.part_id, brick.color_code, brick.transform,
-			brick.group, brick.unit, brick.step]
-	return out
-
-
-## The history steps that take the world back to [param was], in the order
-## undo applies them: what was put down comes off, what moved goes back,
-## what was painted is painted back, and what was taken off is put down
-## again under its old number's successor (Builder._renumbered).
-static func steps_back(was: Dictionary, world: BrickWorld,
-		scenery: Dictionary) -> Array:
-	var off: Array = []
-	var moved: Array = []
-	var painted: Array = []
-	var back_on: Array = []
-	var now: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
-		if scenery.has(brick.id):
-			continue
-		now[brick.id] = true
-		if not was.has(brick.id):
-			off.append({"undo": "remove", "brick": brick.id})
-			continue
-		var then: Array = was[brick.id]
-		if then[0] != brick.part_id:
-			# Not a part the edit can turn into another under one number;
-			# it takes one off and puts one down. Said so, in case.
-			off.append({"undo": "remove", "brick": brick.id})
-			back_on.append({"undo": "add", "part": then[0], "color": then[1],
-				"transform": then[2], "group": then[3], "unit": then[4],
-				"step": int(then[5]) if then.size() > 5 else -1})
-			continue
-		if not (then[2] as Transform3D).is_equal_approx(brick.transform):
-			moved.append({"undo": "move", "brick": brick.id, "transform": then[2]})
-		if int(then[1]) != brick.color_code:
-			painted.append({"undo": "recolor", "brick": brick.id, "color": then[1]})
-	for brick_id: int in was:
-		if now.has(brick_id):
-			continue
-		var then: Array = was[brick_id]
-		back_on.append({"undo": "add", "part": then[0], "color": then[1],
-			"transform": then[2], "group": then[3], "unit": then[4], "was": brick_id,
-			"step": int(then[5]) if then.size() > 5 else -1})
-	return off + moved + painted + back_on
-
-
 ## What the steps did, the way round a person reads it: "4 painted, 2 put
 ## down, 1 taken off".
 static func words_for(steps: Array) -> String:

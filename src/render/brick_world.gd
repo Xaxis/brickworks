@@ -108,6 +108,38 @@ class Brick extends RefCounted:
 		transform = at
 
 
+## What one maker changed in the model with no step of its own, part by part,
+## while a run or a call of theirs is open (ClaudeStep.mark): each part it put
+## down, took off, moved or painted, by number, as it stood before the first
+## of those changes. Noted here, at the one door every change to the model
+## goes through, and only as the maker the code making the change names
+## (Builder.by): never anything else that changed while it was open. Measured
+## instead as the model's difference over the time a call worked, a chat's
+## review_model took 916 parts the person's own panel design laid meanwhile
+## into its steps, and the chat's undo took them (savereview5 F1).
+class Ledger extends RefCounted:
+	## Whose changes it holds (Builder.BY): "" the person's.
+	var by: String = ""
+	## The model's scenery (ModelStore.scenery): a floor's plate is no part.
+	var scenery: Dictionary = {}
+	## Part number -> [part, colour, transform, group, unit, step] as it stood
+	## before its first change here, or null for one put down here.
+	var was: Dictionary = {}
+	## The world was cleared since it opened ([method BrickWorld.clear]): what
+	## it held went with that model, and it holds what was changed since.
+	var begun_again: bool = false
+
+	## The parts put down here that still stand in [param world], in the order
+	## they were laid: a piece's own parts (FeaturePass.lay), never one laid by
+	## someone else while it went down.
+	func laid(world: BrickWorld) -> Array[int]:
+		var out: Array[int] = []
+		for brick_id: int in was:
+			if was[brick_id] == null and world.get_brick(brick_id) != null:
+				out.append(brick_id)
+		return out
+
+
 ## A MultiMesh and the bricks currently drawn by it.
 class Batch extends RefCounted:
 	var instance: MultiMeshInstance3D
@@ -500,6 +532,8 @@ func put_from_hand(brick_id: int, to: Transform3D) -> bool:
 	# with the part in its batch (StepsBar._on_reveal_ended).
 	if not _reveal_order.is_empty():
 		_stop_reveal()
+	if not _ledgers.is_empty() and _bricks[brick_id].transform != to:
+		_ledger_note(brick_id)
 	_in_hand.erase(brick_id)
 	var brick: Brick = _bricks[brick_id]
 	brick.in_hand = false
@@ -619,6 +653,45 @@ func key_of(brick_id: int) -> String:
 	return "%d:%d" % [_generation, brick_id]
 
 
+## The ledgers open now ([class Ledger]): as a rule none, and then a change
+## costs nothing more than it did.
+var _ledgers: Array[Ledger] = []
+
+
+## A ledger of what [param by] changes from now with no step of its own,
+## until [method close_ledger] (ClaudeStep.mark).
+func open_ledger(by: String, scenery: Dictionary) -> Ledger:
+	var ledger := Ledger.new()
+	ledger.by = by
+	ledger.scenery = scenery
+	_ledgers.append(ledger)
+	return ledger
+
+
+func close_ledger(ledger: Ledger) -> void:
+	_ledgers.erase(ledger)
+
+
+## [param brick_id] about to change, or [param laid] just now: noted as it
+## stands in each open ledger of the maker the code changing it names
+## (Builder.naming), the first time only. Code that names no maker changes
+## the model as nobody's run: the person by hand, keeping their steps as they
+## go, a model opened, a part of it whose shape came late.
+func _ledger_note(brick_id: int, laid: bool = false) -> void:
+	if not Builder.naming():
+		return
+	var who: String = Builder.acting
+	for ledger: Ledger in _ledgers:
+		if ledger.by != who or ledger.was.has(brick_id) or ledger.scenery.has(brick_id):
+			continue
+		if laid:
+			ledger.was[brick_id] = null
+			continue
+		var brick: Brick = _bricks[brick_id]
+		ledger.was[brick_id] = [brick.part_id, brick.color_code, brick.transform, brick.group,
+			brick.unit, brick.step]
+
+
 ## Place a brick. Returns its id, or 0 if the part has no geometry.
 ##
 ## [param as_id] puts a brick taken off back under the number it had
@@ -630,6 +703,8 @@ func key_of(brick_id: int) -> String:
 func add_brick(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
 	var brick_id: int = _place(part_id, color_code, at, as_id)
 	if brick_id != 0:
+		if not _ledgers.is_empty():
+			_ledger_note(brick_id, true)
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
 			"colour": color_code, "at": _bricks[brick_id].transform})
 	return brick_id
@@ -709,6 +784,8 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 func remove_brick(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
+	if not _ledgers.is_empty():
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "remove")
 	_unplace(brick_id)
 	_note({"op": "remove", "id": brick_id})
@@ -743,6 +820,8 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
+	if not _ledgers.is_empty():
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "move")
 	_touching_brick(brick_id)
 	brick.transform = to
@@ -769,6 +848,8 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
+	if not _ledgers.is_empty():
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "paint")
 	_touching_brick(brick_id)
 
@@ -860,6 +941,12 @@ func clear(keep_numbers: bool = false) -> void:
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
+	# What each open ledger held went with the model; it goes on with what
+	# its maker changes next (ClaudeStep.record): a design laid after a clear
+	# beside it is a step of its maker's, not parts in none (savereview5 F2).
+	for ledger: Ledger in _ledgers:
+		ledger.was = {}
+		ledger.begun_again = true
 	cleared.emit()
 
 
@@ -2037,6 +2124,8 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
+		if not _ledgers.is_empty():
+			_ledger_note(brick_id)
 		brick.transform = at
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)
