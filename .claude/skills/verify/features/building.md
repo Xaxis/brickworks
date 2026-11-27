@@ -4224,7 +4224,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   sections apart, or together where the model changed). A part put down in
   Simple goes in the step Full's timeline was left on (`Main._place_step`,
   `StepsBar.place_where`/`step_for`), and `Main._timeline_back` steps on to
-  any part made in Simple the step does not show. A carry under way goes
+  any part made in Simple the step does not show. A part or a dragged brick
+  aimed at a side face rests on what is under it in Simple, never in the air
+  at the face's height as in Full (`Builder.side_keeps_height`, off while
+  Simple is up; `Carry.aim` reads it too). A carry under way goes
   down on a tap whatever Full's tool (Place kept for a part Full picked).
   Simple | Full is made with the controls' own chosen
   (`AppHeader.controls_switch`'s layer), pressed and described "Chosen".

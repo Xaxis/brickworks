@@ -5143,6 +5143,15 @@ func _not_scenery(ids: PackedInt64Array) -> PackedInt64Array:
 ## offset, or a part nudged off the grid, needs the finer ones.
 var snap_across: float = BrickLattice.STUD
 
+## Whether a part (or a carried group, Carry.aim) aimed at a side face keeps
+## the height the face implies, put beside it in the air where nothing is
+## under it, as Full builds out from a wall. Off while Simple's controls are
+## up (SimpleLayer._set_full_aside): there it rests on what is under it, as
+## it does aimed anywhere else, for Simple puts a part only where it stands
+## (simplereview4's hidden case: a 2 x 4 let go on a brick's side stood 16
+## LDU up, joined to nothing).
+var side_keeps_height: bool = true
+
 
 ## A point put on the grid ``snap_across`` says: on the studs, keeping a
 ## part's own phase, at a stud; on whole multiples of the step otherwise.
@@ -5238,7 +5247,7 @@ func _settle(
 	# floor, so a sideways hit keeps the height the face implies, to the
 	# plate the pointer is on, as a carried group keeps it: two LDU off
 	# every course, a beam beside a brick stood a cell or two off it.
-	if hit.is_valid() and hit.normal.y == 0:
+	if hit.is_valid() and hit.normal.y == 0 and side_keeps_height:
 		var level: int = BrickLattice._floor_div(hit.adjacent().y,
 			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
 		var beside: float = level * BrickLattice.CELL - box.position.y

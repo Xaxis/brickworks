@@ -548,7 +548,8 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	var rise: int = lattice.rise_onto(covers[2], Builder.GROUND_CELL, shift.x, shift.z)
 	# A side face keeps the height it implies, as a single part does, to
 	# the plate: a whole group two LDU off every course reads as a fault.
-	if hit.is_valid() and hit.normal.y == 0:
+	# Not in Simple, where it rests on what is under it (side_keeps_height).
+	if hit.is_valid() and hit.normal.y == 0 and builder.side_keeps_height:
 		var level: int = BrickLattice._floor_div(hit.adjacent().y,
 			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
 		rise = maxi(rise, level - _lowest(whole))

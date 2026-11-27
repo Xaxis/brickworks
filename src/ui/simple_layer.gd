@@ -696,6 +696,9 @@ func _set_full_aside() -> void:
 		verbs.set_snap("stud", false)
 	if verbs.turn_step != 90.0:
 		verbs.turn_step = 90.0
+	# A part let go on a brick's side rests on what is under it, never in
+	# the air beside it at the side's height (Builder.side_keeps_height).
+	builder.side_keeps_height = false
 	# Made Later, as the ruler is (Main._make_measure): not named here.
 	var measure: Node = app.get("_measure")
 	if measure != null and bool(measure.get("active")):
@@ -718,6 +721,7 @@ func _put_full_back(where_it_was: bool) -> void:
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
 	var assemblies: Assemblies = (app.get("_shell") as Shell).assemblies
+	builder.side_keeps_height = true
 	if verbs.snap != str(context["snap"]):
 		verbs.set_snap(str(context["snap"]), false)
 	if verbs.turn_step != float(context["turn_step"]):

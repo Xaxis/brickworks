@@ -30,6 +30,23 @@
 extends "res://src/dev/simplereview4_probe.gd"
 
 const AppHeader := preload("res://src/ui/app_header.gd")
+## Two sub-assemblies and a plain brick: the exploded view takes a model
+## apart only where it has two sections or more (Sections.explode_groups).
+const EXPLODE_MODEL := """0 FILE s4_explode.ldr
+0 Name: s4_explode.ldr
+1 4 -40 -8 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 -60 -8 -60 1 0 0 0 1 0 0 0 1 s4_wing.ldr
+1 1 60 -8 40 1 0 0 0 1 0 0 0 1 s4_tail.ldr
+0 NOFILE
+0 FILE s4_wing.ldr
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+0 FILE s4_tail.ldr
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+"""
 
 
 func _run() -> void:
@@ -166,8 +183,7 @@ func _drawn_apart() -> int:
 
 func _case_explode() -> void:
 	for variant: String in ["nothing", "put"]:
-		await _from_full_open()
-		_builder.forget_history()
+		await _open_saved(EXPLODE_MODEL, "s4_explode.ldr")
 		var sections: Node = _shell().sections
 		sections.call("explode_now", true)
 		await _frames(3)

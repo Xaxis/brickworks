@@ -37,7 +37,7 @@ ui:simple's controls swapped in live
 
 You can also tap a part in the tray, then tap the model where one should go. Its see-through ghost shows where it will sit: tap the ghost to put it down, tap somewhere else to show it there instead, or drag the ghost where you want it and let go. With a mouse, the ghost follows the pointer and a click puts it down. Tap the part in the tray again to stop.
 
-A new model in Simple starts on a 16 x 16 plate that fills the view. Parts go on the plate or on other parts: let go beside the plate or over the sky and nothing goes down, and Simple says so. If there is no room where you let go, nothing goes down and Simple says that too. [[Esc]] lets go of the part you chose in the tray.
+A new model in Simple starts on a 16 x 16 plate that fills the view. Parts go on the plate or on other parts: let go on the side of a part and the new one goes down beside it, on whatever is under it, never in the air; let go beside the plate or over the sky and nothing goes down, and Simple says so. If there is no room where you let go, nothing goes down and Simple says that too. [[Esc]] lets go of the part you chose in the tray.
 
 ## Move, turn, copy and delete {#edit}
 
