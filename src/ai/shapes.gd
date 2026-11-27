@@ -3117,12 +3117,15 @@ class Plan extends RefCounted:
 			# The side's outermost cube: where the model reaches into the cube
 			# past this one, that one faces out instead (its own surface too
 			# little or too mixed to say so). Not into a sliver of fewer plates
-			# than a cube's least: that cube was refused for them ("few") and
-			# the side left stacked, 2.6% of the fourteen's steep faces at 48
-			# studs; this cube's shell takes the sliver (_cube_shell).
+			# than a cube's least with nothing past it: that cube was refused
+			# for them ("few") and the side left stacked, 2.6% of the
+			# fourteen's steep faces at 48 studs; this cube's shell takes the
+			# sliver (_cube_shell).
 			for _step: int in 2:
 				var past := c + Vector3i(facing.x, 0, facing.y)
-				if cubes.has(past) or moved.has(past) or _cube_plates(past) < CUBE_LEAST:
+				var plates_past: int = _cube_plates(past)
+				if cubes.has(past) or moved.has(past) or plates_past == 0 or (plates_past < CUBE_LEAST
+						and _cube_plates(past + Vector3i(facing.x, 0, facing.y)) == 0):
 					break
 				c = past
 			if c != key:
@@ -3367,14 +3370,23 @@ class Plan extends RefCounted:
 			# came away; refused for it, the side was left stacked (with the
 			# move outward, 7.8% of the fourteen's steep faces at 48 studs, the
 			# most of the cube rule's tests). More than a sliver is its own
-			# cube's, and refuses this one as before.
+			# cube's, and refuses this one as before; so does a sliver with
+			# the model past it again. The shell keeps the air round the sliver
+			# as it keeps its own cube's: left to the next shell, that one's
+			# parts reached in and ran into the sliver's (the Utah teapot at 48
+			# studs mended 2 parts out and propped a third, 1.65 times its
+			# time).
 			var sliver: Array[Vector3i] = []
-			var thin_past: bool = not kept.has(c + out3) and _cube_plates(c + out3) < CUBE_LEAST
+			var sliver_air: Array[Vector3i] = []
+			var thin_past: bool = not kept.has(c + out3) and _cube_plates(c + out3) < CUBE_LEAST \
+				and _cube_plates(c + out3 * 2) == 0
 			for cell: Vector2i in cells:
 				var past: Vector2i = cell + facing * CUBE_STUDS
 				var inner: bool = _lane(cell, facing, along).y == inmost
 				for j: int in range(j0, j0 + CUBE_PLATES):
 					var key := Vector3i(cell.x, j, cell.y)
+					if thin_past and at(past, j) < 0 and not taken.has(Vector3i(past.x, j, past.y)):
+						sliver_air.append(Vector3i(past.x, j, past.y))
 					if at(past, j) >= 0 and not kept.has(c + out3):
 						var out_key := Vector3i(past.x, j, past.y)
 						if not thin_past or Shapes.is_glass(library, at(past, j)):
@@ -3416,6 +3428,8 @@ class Plan extends RefCounted:
 				mine[key] = true
 			for key: Vector3i in sliver:
 				mine[key] = true
+			if not sliver.is_empty():
+				outside.append_array(sliver_air)
 			outside.append_array(empty)
 			for cell: Vector2i in cells:
 				var lt: Vector2i = _lane(cell, facing, along)
