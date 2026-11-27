@@ -91,7 +91,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
   `"depth"`), each cube the side's outermost with a stud of core behind it
   (`CUBE_BACK`; where less than three, `CUBE_HOLDS`, only where that core runs
-  on into the model past the cube, `_runs_on`, `CUBE_REACH`), its plates none
+  on into the model past the cube, `_runs_on`, `CUBE_REACH`), the cube past
+  it faced out instead only where the model fills a cube's least of it
+  (`CUBE_LEAST`, `_cube_plates`), less than that (a sliver) laid by this
+  cube's shell, its air kept by the shell too (since the twelfth round), its plates none
   that a side-stud brick's studs stand into (every one in the column,
   `stud_tops`), and no cap or ledge a plate or two thick on it unless the
   cap runs on back over the core behind the cube, on the core there, laid as a design's
