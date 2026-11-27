@@ -4188,7 +4188,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   gesture, and the camera's fingers by `CadCamera.let_go_of_fingers`, so two
   fingers put down on one side of the switch and lifted on the other are
   nobody's tap and undo nothing), run going in and out, on every open and
-  New, and by Escape before Full's ladder. `Main._hover_again` aims nothing in Simple. Where
+  New, and by Escape before Full's ladder. `Main._hover_again` aims nothing in Simple, and
+  `Main._select_hover` outlines nothing there (Full's hover went round a part's whole
+  sub-assembly, which Simple leaves alone); it asks again once Full is back. Where
   Full's header has no room for Simple | Full (a phone 390 across, a narrow
   window, a long language), the switch is put away rather than take Redo or
   fold a menu, and Simple is a tile of More or a row of "…"
@@ -4206,14 +4208,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   en/de/fr/es. Runs on `simplereview2_probe`'s start (`_start`).
 - `simple3 probe` (`src/dev/simple3_probe.gd`; `PROBE_SIZE=390x844
   tools/probe.sh simple3_probe -- --pictures=DIR`, `--desktop` at 1280x800,
-  headless with `--headless-ok`; `--case=context,chosen`): Full inside the
+  headless with `--headless-ok`; `--case=context,chosen,hover`): Full inside the
   sub-assembly with Half on the toolbar (so in the prefs), a 45 degree turn,
   Paint, the part in hand on its side, x-ray; in Simple the model's top
   (`place_group` ""), the banner away, the studs, a quarter turn, Select, no
   x-ray, the prefs still Half; a tray brick on a plain red one in the model,
   upright, joined; back in Full each setting as it was, inside the
   sub-assembly with its banner and x-ray, or (chosen) at the top with the
-  part chosen in Simple selected.
+  part chosen in Simple selected. `hover` (a window only): the pointer on a
+  part of a sub-assembly outlines what a click takes in Full, nothing in any
+  of 40 frames into Simple, and the outline again back in Full with the
+  pointer not moved.
 - `simplereview3 probe` (`src/dev/simplereview3_probe.gd`;
   `PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- --pictures=DIR`,
   `--desktop` at 1280x800; `--case=subedit,snap,locked,undomid,wayback`):

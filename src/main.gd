@@ -6874,6 +6874,19 @@ func _select_hover() -> void:
 	# So while a model drawn before it is whole is still being laid.
 	if _world.is_being_laid():
 		return
+	# None of Full's under Simple, which says what a tap does in its own way
+	# (SimpleLayer). Full's outline went round all a click takes, and with
+	# Simple at the model's top that was a part's whole sub-assembly, one
+	# Simple leaves alone: 2,927 parts of 10030 outlined again in each frame
+	# of the lens easing in after the switch, under a pointer a click left
+	# on the model, 11-15 ms of each in a 1280 window (simple3 T6). Asked
+	# again from nothing once Full is back.
+	if _layer == &"simple":
+		_hover_asked = []
+		if _hovered != 0:
+			_hovered = 0
+			_hover_outline.show_selection({})
+		return
 	# Looked at again only when what it is decided by moved: the pointer,
 	# whether a panel or a control is over it (one can open under a still
 	# pointer), the view, the model, the tool, the buttons. Looked at every

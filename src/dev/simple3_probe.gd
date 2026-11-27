@@ -18,14 +18,19 @@
 ##            back in Full each of Full's as it was, the prefs still Half.
 ##   chosen   the same, a part chosen in Simple: back in Full that part
 ##            selected at the model's top, not inside the sub-assembly.
+##   hover    (a window with a mouse; headless picks nothing under a pointer)
+##            Full at the model's top, the pointer on a part of a sub-assembly:
+##            Full's hover outlines the whole sub-assembly; into Simple, nothing
+##            outlined, through the lens easing in; back in Full, outlined again
+##            with the pointer not moved.
 ## Exits non-zero when a check fails.
 extends "res://src/dev/simplereview3_probe.gd"
 
 
 func _run() -> void:
-	if not await _start("context,chosen"):
+	if not await _start("context,chosen,hover"):
 		return
-	for one: String in ["context", "chosen"]:
+	for one: String in ["context", "chosen", "hover"]:
 		if not _cases.has(one):
 			continue
 		print("\n== %s" % one)
@@ -34,6 +39,8 @@ func _run() -> void:
 				await _case_context(false)
 			"chosen":
 				await _case_context(true)
+			"hover":
+				await _case_hover()
 	print("\n%s: %s" % [_probe_name(), "all passed" if _failures == 0 else "%d failed" % _failures])
 	quit(1 if _failures else 0)
 
@@ -150,6 +157,51 @@ func _case_context(choose: bool) -> void:
 	_builder.held_rotation = 0
 	_builder.clear_selection()
 	await _frames(2)
+
+
+## Full's hover outline is Full's: none under Simple, and Full's again after.
+func _case_hover() -> void:
+	if DisplayServer.get_name() == "headless" or Phone.on():
+		_note2("hover: a window with a mouse only (headless picks nothing under a pointer)")
+		return
+	await _from_full_open()
+	var shell: Shell = _main.get("_shell")
+	shell.assemblies.leave_to("")
+	_verbs.set_mode("select")
+	_builder.clear_selection()
+	await _frames(3)
+	var outline: Node3D = _main.get("_hover_outline")
+	var at := Vector2.INF
+	var part: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id) or Assemblies.path_of(brick).is_empty():
+			continue
+		at = _point_on(brick.id)
+		if at.x < INF:
+			part = brick.id
+			break
+	if not _check("a part of a sub-assembly on the screen (%d)" % part, part != 0):
+		return
+	_mouse_move(at)
+	await _frames(4)
+	var takes: int = _builder.takes(part).size()
+	_check("in Full the pointer on it outlines what a click takes: hovered %d, %d parts, outline shown %s"
+		% [int(_main.get("_hovered")), takes, outline.visible],
+		int(_main.get("_hovered")) != 0 and outline.visible and takes > 1)
+	_main.call("use_controls", &"simple")
+	var shown_in_simple: int = 0
+	for _n: int in 40:
+		await process_frame
+		if outline.visible or int(_main.get("_hovered")) != 0:
+			shown_in_simple += 1
+	await _settle()
+	_check("in Simple nothing outlined in any of 40 frames from the press, the lens easing in (%d with one)"
+		% shown_in_simple, shown_in_simple == 0 and not outline.visible)
+	_main.call("use_controls", &"full")
+	await _frames(6)
+	_check("back in Full, the pointer not moved: outlined again (hovered %d, outline shown %s)"
+		% [int(_main.get("_hovered")), outline.visible], int(_main.get("_hovered")) != 0 and outline.visible)
+	await _shot("s3_hover_back")
 
 
 func _banner() -> AssemblyBanner:
