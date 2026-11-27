@@ -3995,7 +3995,7 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 			return
 		target = landing
 
-	var onto: Variant = _onto_side_studs(part, basis, hit, origin, direction)
+	var onto: Variant = null if stands_only else _onto_side_studs(part, basis, hit, origin, direction)
 	_ghost_transform = onto if onto != null else _settle(part, basis, target, hit)
 	_seated_on = hit.brick_id if onto != null else 0
 	_ghost_valid = _fits_on_studs(part, _ghost_transform, _seated_on, Vector3i(hit.normal)) \
@@ -5143,14 +5143,17 @@ func _not_scenery(ids: PackedInt64Array) -> PackedInt64Array:
 ## offset, or a part nudged off the grid, needs the finer ones.
 var snap_across: float = BrickLattice.STUD
 
-## Whether a part (or a carried group, Carry.aim) aimed at a side face keeps
-## the height the face implies, put beside it in the air where nothing is
-## under it, as Full builds out from a wall. Off while Simple's controls are
-## up (SimpleLayer._set_full_aside): there it rests on what is under it, as
-## it does aimed anywhere else, for Simple puts a part only where it stands
-## (simplereview4's hidden case: a 2 x 4 let go on a brick's side stood 16
-## LDU up, joined to nothing).
-var side_keeps_height: bool = true
+## Whether a part goes down only standing on what is under it, whatever face
+## it is aimed at: on while Simple's controls are up
+## (SimpleLayer._set_full_aside), for Simple puts a part only where it stands.
+## Full builds out from a wall at the height the face implies, hangs a part
+## under an overhang and puts one on side studs, each of which stands it in
+## the air where nothing is under it (simplereview4's hidden case: a 2 x 4 let
+## go on a brick's side stood 16 LDU up, joined to nothing). On, a part aimed
+## at a side or an underside rests on what is under it, as aimed anywhere
+## else, and side studs are not offered; a carried group (Carry.aim) the
+## same. Joints still take a part (a wheel onto its axle): held, not stood.
+var stands_only: bool = false
 
 
 ## A point put on the grid ``snap_across`` says: on the studs, keeping a
@@ -5218,7 +5221,7 @@ func _settle(
 	# Mecabricks both attach there.
 	# Never below the ground: under the baseplate is not somewhere a part
 	# can be.
-	if hit.is_valid() and hit.normal.y < 0:
+	if hit.is_valid() and hit.normal.y < 0 and not stands_only:
 		# The struck cell is the lowest of the part above, and a box's
 		# cell n starts at n cells, as surface_under counts them.
 		var top: float = hit.cell.y * BrickLattice.CELL
@@ -5247,7 +5250,7 @@ func _settle(
 	# floor, so a sideways hit keeps the height the face implies, to the
 	# plate the pointer is on, as a carried group keeps it: two LDU off
 	# every course, a beam beside a brick stood a cell or two off it.
-	if hit.is_valid() and hit.normal.y == 0 and side_keeps_height:
+	if hit.is_valid() and hit.normal.y == 0 and not stands_only:
 		var level: int = BrickLattice._floor_div(hit.adjacent().y,
 			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
 		var beside: float = level * BrickLattice.CELL - box.position.y
@@ -5268,7 +5271,7 @@ func _settle(
 	# over the edge of the plate they stand on, and stood 2 LDU up by their
 	# box. Nothing struck from the side or below.
 	var lift: float = _hangs_below(part, basis)
-	if lift > 0.01 and not (hit.is_valid() and hit.normal.y <= 0):
+	if lift > 0.01 and not (hit.is_valid() and hit.normal.y <= 0 and not stands_only):
 		var low: float = y - lift
 		var at := Transform3D(basis, Vector3(snapped.x, low, snapped.z))
 		if low + box.position.y >= GROUND_CELL * BrickLattice.CELL - 0.01 \

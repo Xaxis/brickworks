@@ -7545,6 +7545,13 @@
     },
     {
       "kind": "cli",
+      "label": "simplesides probe",
+      "entry": "src/dev/simplesides_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplesides_probe; PROBE_SIZE=1280x800 tools/probe.sh simplesides_probe -- --desktop; tools/probe.sh simplesides_probe -- --headless-ok [--desktop]   (windowed, or headless; no part in the air in Simple whatever face a drop or drag is aimed at: a 7 x 7 grid over each of five parts' pictures from four views, ghosts, drops and drags counted, none in the air)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
       "label": "simplereview4 probe",
       "entry": "src/dev/simplereview4_probe.gd",
       "reach": "tools/probe.sh simplereview4_probe -- --headless-ok [--desktop|--tablet] [--case=ctx,undo,unsaved,same,steps,carry,peer,hidden,session]; tools/probe.sh simplereview4t_probe -- --headless-ok [--desktop]   (headless; the fourth review's attacks: Full's whole context round trip, Undo and Save byte for byte, the timeline's step, a carry with Full's tool on Place, a part hidden in Full)",

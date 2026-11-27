@@ -696,9 +696,9 @@ func _set_full_aside() -> void:
 		verbs.set_snap("stud", false)
 	if verbs.turn_step != 90.0:
 		verbs.turn_step = 90.0
-	# A part let go on a brick's side rests on what is under it, never in
-	# the air beside it at the side's height (Builder.side_keeps_height).
-	builder.side_keeps_height = false
+	# A part let go on any face rests on what is under it, never in the air
+	# beside it, under it or on its side studs (Builder.stands_only).
+	builder.stands_only = true
 	# Made Later, as the ruler is (Main._make_measure): not named here.
 	var measure: Node = app.get("_measure")
 	if measure != null and bool(measure.get("active")):
@@ -721,7 +721,7 @@ func _put_full_back(where_it_was: bool) -> void:
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
 	var assemblies: Assemblies = (app.get("_shell") as Shell).assemblies
-	builder.side_keeps_height = true
+	builder.stands_only = false
 	if verbs.snap != str(context["snap"]):
 		verbs.set_snap(str(context["snap"]), false)
 	if verbs.turn_step != float(context["turn_step"]):
@@ -1026,18 +1026,21 @@ func _offered() -> bool:
 		return false
 	var middle: Vector2
 	if builder.is_carrying():
+		# Over the ground's top: only standing on a part (Carry.rests).
 		if not builder.carrying.stands_on_ground(builder):
-			return true
+			return builder.carrying.rests(builder)
 		var pivot: Vector3 = builder.carrying.pivot()
 		middle = Vector2(pivot.x, pivot.z)
 	else:
 		var box: AABB = _ghost_box()
 		if box.size == Vector3.ZERO:
 			return false
-		# Its foot over the ground's top: on a part, which holds it, wherever
-		# that part is.
+		# Its foot over the ground's top: only standing on a part, or held on
+		# a joint (a wheel on its axle). Whatever face it was aimed at: the
+		# builder stands it so in Simple (Builder.stands_only), and this
+		# refuses any way it might not (a floating brick is never offered).
 		if box.position.y > float(Builder.GROUND_CELL * BrickLattice.CELL) + ON_GROUND:
-			return true
+			return builder.is_on_joint() or _stands(box)
 		middle = Vector2(box.get_center().x, box.get_center().z)
 	var ground: Rect2 = _ground_rect()
 	return ground.size != Vector2.ZERO and ground.grow(0.5).has_point(middle)
@@ -1046,6 +1049,24 @@ func _offered() -> bool:
 ## LDU over the ground's top a foot still stands on it: under a plate's
 ## height, so a part on a plate never counts.
 const ON_GROUND := 4.0
+
+
+## Whether a part whose box (LDU, as drawn) is [param box] stands on what
+## is under it: its foot no higher than the highest surface under its
+## footprint (BrickLattice.surface_under, as the builder rests a part) and a
+## stud's stop. A part put beside a side face at its height, hung under an
+## overhang or on side studs stands over nothing.
+func _stands(box: AABB) -> bool:
+	var builder: Builder = app.get("_builder")
+	var from: Vector3i = BrickLattice.to_cell(Vector3(box.position.x + 0.01, 0.0, box.position.z + 0.01))
+	var to: Vector3i = BrickLattice.to_cell(Vector3(box.end.x - 0.01, 0.0, box.end.z - 0.01))
+	var top: int = builder.lattice.surface_under(from.x, from.z, to.x + 1, to.z + 1, Builder.GROUND_CELL)
+	return box.position.y <= top * BrickLattice.CELL + STUD_STOP
+
+
+## LDU a part may stand over the surface under it: a cone's or a dome's stud
+## stop lifts what goes on it 4 or 6 LDU (Builder.stud_feet_lift).
+const STUD_STOP := 6.01
 
 
 ## How far back the view may go: where a stud is LEAST_STUD points, or the

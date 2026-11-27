@@ -3808,6 +3808,14 @@
       "tests": []
     },
     {
+      "id": "cli:simplesides probe",
+      "kind": "cli",
+      "entry": "src/dev/simplesides_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplesides_probe; PROBE_SIZE=1280x800 tools/probe.sh simplesides_probe -- --desktop; tools/probe.sh simplesides_probe -- --headless-ok [--desktop]   (windowed, or headless; no part in the air in Simple whatever face a drop or drag is aimed at: a 7 x 7 grid over each of five parts' pictures from four views, ghosts, drops and drags counted, none in the air)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
