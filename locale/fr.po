@@ -5972,6 +5972,15 @@ msgstr "préparation du path tracing pour cette carte graphique"
 msgid "metering the light"
 msgstr "mesure de la lumière"
 
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Path tracing derrière cette image : %d échantillons sur %d"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "En path tracing, encore en affinage : %d échantillons sur %d"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "La moyenne d'images a été gardée : l'image en path tracing avait encore plus de grain."
+
 msgid "the contact shadow"
 msgstr "l'ombre de contact"
 

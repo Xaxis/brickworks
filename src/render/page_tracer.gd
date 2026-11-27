@@ -120,8 +120,10 @@ static func _tracer() -> JavaScriptObject:
 ## The tracer fetched and started, and [param version]'s shaders compiled
 ## for this card (beside the page: KHR_parallel_shader_compile where the
 ## browser has it), a frame at a time. [param doing] is told what it waits on.
-## False, and the tracer failed, when any of it did not happen.
-static func ready(version: String, doing: Callable = Callable()) -> bool:
+## False, and the tracer failed, when any of it did not happen; false alone
+## when [param stop] says to stop waiting (Cancel, or Finish now with the
+## frames' picture already drawn: photoreal29).
+static func ready(version: String, doing: Callable = Callable(), stop: Callable = Callable()) -> bool:
 	if not usable():
 		return false
 	var tree := Engine.get_main_loop() as SceneTree
@@ -138,6 +140,8 @@ static func ready(version: String, doing: Callable = Callable()) -> bool:
 	while _state() == "loading":
 		if Time.get_ticks_msec() - began > 60000:
 			fail("its script did not arrive in a minute")
+			return false
+		if stop.is_valid() and bool(stop.call()):
 			return false
 		await tree.process_frame
 	if _state() != "started":
@@ -159,6 +163,8 @@ static func ready(version: String, doing: Callable = Callable()) -> bool:
 			return false
 		if Time.get_ticks_msec() - began > 120000:
 			fail("its shaders took more than two minutes")
+			return false
+		if stop.is_valid() and bool(stop.call()):
 			return false
 		await tree.process_frame
 	return false
@@ -254,6 +260,20 @@ static func picture(numbers: PackedFloat32Array) -> PackedByteArray:
 	if not pixels is JavaScriptObject:
 		return PackedByteArray()
 	return JavaScriptBridge.js_buffer_to_packed_byte_array(pixels)
+
+
+## How much grain the picture being traced still has (photoreal29), measured
+## by the page (page_denoise.frag) as [param numbers] would resolve it: the
+## spread between each pixel's two halves of its samples, carried through the
+## denoise, relative to the light, over the model's plastic ("left"; "raw"
+## before the denoise). Nothing of the picture is read back. {} when there is
+## no tracer or no picture yet.
+static func gauge(numbers: PackedFloat32Array) -> Dictionary:
+	var tracer: JavaScriptObject = _tracer()
+	if tracer == null:
+		return {}
+	var said: Variant = JSON.parse_string(str(tracer.gauge(_b64(numbers.to_byte_array()))))
+	return said if said is Dictionary else {}
 
 
 ## What the tracer did, for the checks: passes, rows a pass, its timings.

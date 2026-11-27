@@ -127,6 +127,13 @@ const STAGE_ROOM := "window"
 ## product look's denoise (path_tracer_resolve.glsl): a pixel differing from
 ## its neighbour by many times this over the root of the samples is an edge.
 const PRODUCT_DENOISE := 5.0
+## In a browser (photoreal29): the share of the progress Best's frames take
+## before the tracer; the grain (PathTracer.gauge's "left") under which the
+## traced picture is shown over them; and what the dialog says meanwhile.
+const FRAMES_SHARE := 0.1
+const TRACED_NOISE := 0.05
+const TRACING_BEHIND := "Path tracing behind this picture: %d of %d samples"
+const STILL_REFINING := "Path traced, still refining: %d of %d samples"
 ## The product look's camera and wear (photoreal4), where a render asks for
 ## none of its own (RenderSettings grain, vignette, aberration, softness,
 ## age, dust, paper, seating): measured against the photo bench's photographs, each kept only
@@ -577,7 +584,9 @@ static func possible() -> bool:
 	return DisplayServer.get_name() != "headless"
 
 
-static func plan_for(settings: RenderSettings) -> Plan:
+## [param raster]: Best's frames averaged even where it is path traced (in a
+## browser, the picture shown until the traced one is cleaner: photoreal29).
+static func plan_for(settings: RenderSettings, raster: bool = false) -> Plan:
 	var plan := Plan.new()
 	var full: bool = full_renderer()
 	match settings.quality:
@@ -609,7 +618,10 @@ static func plan_for(settings: RenderSettings) -> Plan:
 		RenderSettings.Quality.BEST:
 			plan.samples = settings.samples_here()
 			plan.msaa = Viewport.MSAA_DISABLED
-			if settings.traced_here():
+			if raster and settings.traced_here():
+				# Today's Best where it is not traced: its frames, not the samples.
+				plan.samples = 32 if OS.has_feature("web") else 64
+			elif settings.traced_here():
 				plan.traced = true
 				plan.key_spread = KEY_SPREAD
 				plan.lens = settings.f_stop > 0.0
@@ -2479,13 +2491,36 @@ func _contact_shadow() -> bool:
 
 
 ## The picture, piece by piece and sample by sample.
-func _picture(settings: RenderSettings, from: float, to: float, words: String = "") -> Image:
+func _picture(settings: RenderSettings, from: float, to: float, words: String = "",
+		raster: bool = false) -> Image:
 	if _line_asked != null:
 		return await _line_picture(settings, from, to, words)
-	var plan: Plan = plan_for(settings)
+	var plan: Plan = plan_for(settings, raster)
 	_traced_last = plan.traced
 	if plan.traced:
-		var traced: Image = await _traced(settings, plan, from, to, words)
+		# Never worse than today (photoreal29): in a browser Best's frames,
+		# averaged as they were before it was traced, are drawn first and shown
+		# while the tracer starts and its picture settles. The traced picture
+		# takes their place only once its grain is under what the judge prefers
+		# to them (_settled), and whatever stops it (Finish now, the tracer
+		# failing) keeps whichever is better.
+		_behind = null
+		kept_frames = false
+		_stopping = false
+		var traced_from: float = from
+		if OS.has_feature("web"):
+			traced_from = lerpf(from, to, FRAMES_SHARE)
+			_behind = await _picture(settings, from, traced_from, words, true)
+			if _cancelled:
+				_behind = null
+				return null
+			_traced_last = true
+		var traced: Image = await _traced(settings, plan, traced_from, to, words)
+		var behind: Image = _behind
+		_behind = null
+		if traced == null and behind != null and not _cancelled:
+			_traced_last = false
+			return behind
 		if traced != null or _cancelled or not OS.has_feature("web") or PathTracer.available():
 			return traced
 		# The page's tracer could not (photoreal28: no script, a shader this
@@ -2777,9 +2812,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# compiled for this card the first time Best wants them; _picture draws
 	# frames instead when it cannot.
 	if OS.has_feature("web") and not await PageTracer.ready(_tracer.version_name(),
-			_waited_on.bind(from)):
+			_waited_on.bind(from), _held_back):
 		return null
-	if _cancelled:
+	if _cancelled or _held_back():
 		return null
 	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
 		return null
@@ -2925,7 +2960,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var fit_per_pass: int = per_pass
 	var count: int = mini(per_pass, wanted)
 	var shown_at: int = Time.get_ticks_msec()
-	_stopping = false
+	# With the frames' picture shown (a browser, photoreal29) a Finish now
+	# pressed while the tracer readied is kept; on the desktop as it was.
+	if _behind == null:
+		_stopping = false
+	var shown_traced: bool = false
 	while _tracer.samples < wanted:
 		# Finish now in a browser waits out the block of samples under way, so
 		# every row of the picture has as many (the page's tracer takes a block
@@ -2958,15 +2997,22 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		count = mini(per_pass, wanted - _tracer.samples)
 		var said: String = words if not words.is_empty() else \
 			"%d of %d samples" % [_tracer.samples, wanted]
+		if words.is_empty() and _behind != null:
+			said = (STILL_REFINING if shown_traced else TRACING_BEHIND) % [_tracer.samples, wanted]
 		progress.emit(lerpf(from, to, float(_tracer.samples) / float(wanted)), said)
 		if _stopping and not OS.has_feature("web"):
 			break
 		# Shown as it gets cleaner, a picture a second, in two halves: the
 		# dialog draws pieces, and the whole of it is the finished picture.
+		# Over the frames' picture (photoreal29) only once it is the cleaner.
 		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
 			shown_at = Time.get_ticks_msec()
-			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
-				saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen, tone)
+			if _behind != null and not shown_traced:
+				shown_traced = _settled(clean)
+			var so_far: Image = null
+			if _behind == null or shown_traced:
+				so_far = _tracer.picture(exposure * scale, tonemapper, white, contrast,
+					saturation, settings.transparent, true, clean, linear_saturation, lens, sharpen, tone)
 			if so_far != null:
 				var half: int = picture.y / 2
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
@@ -2974,6 +3020,13 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 					Vector2i(0, half))
 	_stopping = false
 	last_samples = _tracer.samples
+	# Stopped (Finish now) or asked for fewer samples than a settled picture
+	# takes, and still grainier than the frames' picture: that one is kept
+	# (photoreal29). At the full count the judge prefers the traced one on
+	# every shot.
+	if _behind != null and _tracer.samples < RenderSettings.TRACED_SAMPLES and not _settled(clean):
+		kept_frames = true
+		return null
 	last_drawn_at = exposure * scale
 	last_mean = _tracer.mean_image() if keep_mean else null
 	_doing("reading the picture back")
@@ -3006,7 +3059,7 @@ func _meter_samples(round: int, rows: int) -> bool:
 		while _tracer.samples < 48:
 			_tracer.trace(48 - _tracer.samples, round, 0, rows)
 			await get_tree().process_frame
-			if _cancelled or not PageTracer.usable():
+			if _cancelled or not PageTracer.usable() or _held_back():
 				return false
 		return true
 	for _part: int in 4:
@@ -3716,6 +3769,27 @@ func finish_now() -> void:
 		_stopping = true
 
 
+## Whether Finish now has a picture to keep: samples traced, or in a browser
+## the frames' picture drawn while the tracer readies (photoreal29).
+func can_finish() -> bool:
+	return _busy and (samples_traced() > 0 or _behind != null)
+
+
+## Whether the tracer's start should stop: Finish now pressed with the frames'
+## picture there to keep (photoreal29).
+func _held_back() -> bool:
+	return _stopping and _behind != null
+
+
+## Whether the traced picture is cleaner than the frames' (photoreal29): its
+## grain left after the denoise (PathTracer.gauge, relative to the light over
+## the model's plastic) under TRACED_NOISE, the level below which the judge
+## preferred it to them on every shot of pool g29. Kept in [member last_noise].
+func _settled(clean: float) -> bool:
+	last_noise = _tracer.gauge(clean)
+	return not last_noise.is_empty() and float(last_noise.get("left", INF)) <= TRACED_NOISE
+
+
 ## How many samples the picture being traced has so far: 0 when none is.
 func samples_traced() -> int:
 	return _tracer.samples if _busy and _tracer != null else 0
@@ -3731,6 +3805,14 @@ func traced_last() -> bool:
 var pass_ms: float = PathTracer.PASS_MS
 var _tracer: PathTracer = null
 var _stopping: bool = false
+## In a browser, Best's frames averaged, drawn before the tracer starts and
+## shown until the traced picture is cleaner (photoreal29); null otherwise.
+var _behind: Image = null
+## Whether the last Best kept the frames' picture because the traced one was
+## still grainier when it stopped (photoreal29).
+var kept_frames: bool = false
+## The last measure of the traced picture's grain (PathTracer.gauge).
+var last_noise: Dictionary = {}
 var _traced_last: bool = false
 ## What the last _dress lit the set by: the place (or the product look's
 ## softbox), how much of its room is kept, its turn and the ambient light.

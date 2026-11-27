@@ -914,6 +914,19 @@ func sample_ms() -> float:
 	return -1.0
 
 
+## How much grain the picture so far has left, as [method picture] with the
+## same [param denoise] would draw it (photoreal29): in a browser the page
+## measures it (PageTracer.gauge: "left", relative to the light over the
+## model's plastic; "raw" before the denoise), reading nothing back. {} on
+## the desktop and before a sample.
+func gauge(denoise: float) -> Dictionary:
+	if not OS.has_feature("web") or not _page_staged or samples <= 0:
+		return {}
+	var push := PackedFloat32Array([float(samples), 1.0, 1.0, 4.0, 1.0, 1.0, 0.0, 0.0, denoise,
+		1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+	return PageTracer.gauge(push)
+
+
 ## The picture so far, exposed by [param exposure] and tone-mapped
 ## ([param tonemapper]: 2 Filmic, 3 ACES, 4 a camera's, at [param white]), with the
 ## product look's [param contrast] and [param saturation] after; the camera's

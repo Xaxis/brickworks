@@ -1451,6 +1451,10 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 					and OS.has_feature("web") and not PathTracer.why_not().is_empty():
 				lines.append(PathTracer.why_not())
 				_describe()
+			elif renderer.kept_frames:
+				# Stopped while the traced picture was still grainier than the
+				# frames' (photoreal29): those were kept, and it says so.
+				lines.append("Kept the frames averaged: the path-traced picture was still grainier.")
 	else:
 		output.begin_turntable(model, chosen)
 		var looped: Array[ImageTexture] = []
@@ -1628,7 +1632,7 @@ func _cancel() -> void:
 
 ## The path-traced picture kept as clean as it is now.
 func _finish() -> void:
-	if renderer != null and renderer.is_busy() and renderer.samples_traced() > 0:
+	if renderer != null and renderer.can_finish():
 		renderer.finish_now()
 		_finish_button.disabled = true
 
@@ -1765,6 +1769,10 @@ func _tell_page() -> void:
 		state["traced"] = renderer.traced_last()
 		state["samples"] = renderer.samples_traced() if renderer.is_busy() else renderer.last_samples
 		state["finish"] = _finish_button.visible and not _finish_button.disabled
+		# Never worse (photoreal29): the frames' picture kept, and the traced
+		# picture's grain as last measured.
+		state["kept_frames"] = renderer.kept_frames
+		state["noise"] = renderer.last_noise
 	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion", "parts", "steps"]:
 		if _last.has(key):
 			state[key] = _last[key]

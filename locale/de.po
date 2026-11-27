@@ -5972,6 +5972,15 @@ msgstr "Pathtracing wird für diese Grafikkarte vorbereitet"
 msgid "metering the light"
 msgstr "Licht wird gemessen"
 
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Pathtracing hinter diesem Bild: %d von %d Samples"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "Mit Pathtracing, wird noch verfeinert: %d von %d Samples"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "Die gemittelten Bilder wurden behalten: das Bild mit Pathtracing war noch körniger."
+
 msgid "the contact shadow"
 msgstr "der Kontaktschatten"
 
