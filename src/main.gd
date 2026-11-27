@@ -11357,10 +11357,14 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		# (grabtake). A change while it is copied is weighed next, as a part
 		# the library adds meanwhile is.
 		var copy := BrickWorld.ReadingCopy.new(_world, _builder.lattice)
+		_weigh_copying = true
 		while not copy.step(Time.get_ticks_usec() + FramePace.light_us()):
 			if copy.dropped:
+				_weigh_copying = false
+				_weigh_copies_dropped += 1
 				return null
 			await get_tree().process_frame
+		_weigh_copying = false
 		var judge := Stability.new()
 		judge.library = _library
 		judge.with_margins = margins
@@ -11647,6 +11651,10 @@ var _main_process_us: int = 0
 ## What the last telling of the page took, piece by piece, in ms.
 var _told_laps: Dictionary = {}
 var _weighed_us: int = 0
+## Whether weigh_joints is copying the model a slice a frame now, and how
+## many of its copies a change let go of (weighsame_probe reads both).
+var _weigh_copying: bool = false
+var _weigh_copies_dropped: int = 0
 
 
 func _process_main(_delta: float) -> void:
