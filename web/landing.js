@@ -1017,12 +1017,14 @@ if (heroLoop) {
 // signed in is going to the studio more often than not: theirs is fetched
 // once the page is in and the browser idle. Anyone else's only when the
 // pointer comes within AHEAD_NEAR_PX of a link into the studio (Start
-// building, Open the app, a post's Open in the studio), or one has the
-// focus, or is pressed.
+// building, Open the app, a post's Open in the studio), one has the focus
+// or is pressed, or the hero band (#home) is scrolled past, into the feed
+// whose posts open in the studio.
 // <html data-studio-ahead>: skipped <why>, waiting (for intent), fetching,
-// fetched or failed; data-studio-ahead-by: member, near, focus or press.
+// fetched or failed; data-studio-ahead-by: member, near, focus, press or
+// scrolled.
 const AHEAD_AFTER_MS = 3000;
-const AHEAD_NEAR_PX = 64;
+const AHEAD_NEAR_PX = 200;
 // A link into the studio: /app, bare or with a query (?lang=de, ?view=<id>).
 const STUDIO_LINK = /^\/app(\?|$)/;
 function studioLinks() {
@@ -1105,6 +1107,14 @@ function nearStudioLink(x, y) {
     addEventListener("pointerdown", (event) => {
       if (inStudioLink(event.target)) go("press");
     }, { capture: true, signal: stop.signal });
+    const band = document.getElementById("home");
+    if (band && "IntersectionObserver" in window) {
+      const past = new IntersectionObserver((seen) => {
+        if (seen.some((entry) => !entry.isIntersecting && entry.boundingClientRect.bottom <= 0)) go("scrolled");
+      });
+      past.observe(band);
+      stop.signal.addEventListener("abort", () => past.disconnect());
+    }
     if (signedIn()) {
       const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
       const whenIn = () => setTimeout(() => idle(() => go("member"), { timeout: 4000 }), AHEAD_AFTER_MS);

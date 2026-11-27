@@ -3416,10 +3416,10 @@ plan with Claude as the client.
   `<html data-hero>`: poster, still, loading, playing, paused,
   kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
   `studioAhead`), on intent only: for a member signed in, 3 s after the
-  load at idle; for anyone else once the mouse comes within 64 px of a
+  load at idle; for anyone else once the mouse comes within 200 px of a
   link into the studio (an `href` of `/app`, bare or with a query: Start
   building, Open the app, a post's Open in the studio), one takes the
-  focus, or is pressed. A home visit with no intent fetches none of it
+  focus or is pressed, or the hero band (`#home`) is scrolled past. A home visit with no intent fetches none of it
   (it was 9.7 MB at every visit). The page reads `/app`'s own
   `GODOT_CONFIG` and fetches its engine's `.js` and `.wasm` (`/e/<hash>/`)
   and its pack (`/b/<sha>/index.pck`) as `<link rel=prefetch>`, at the
@@ -3430,7 +3430,8 @@ plan with Claude as the client.
   iPhone or iPad (its engine is the switch's), nor a build not placed.
   `<html data-studio-ahead>`: waiting (for intent), fetching, fetched,
   failed, `skipped <why>` (save-data, slow, cellular, phone, apple,
-  unplaced); `data-studio-ahead-by`: member, near, focus, press. Proven by
+  unplaced); `data-studio-ahead-by`: member, near, focus, press,
+  scrolled. Proven by
   `the start by phase` with `--from=/` (the visit comes from the home page,
   signed in as the checks' pool account, so a member's; the attribute at
   the click is in its table), and the bytes of a home visit with and

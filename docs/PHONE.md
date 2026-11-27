@@ -393,8 +393,8 @@ every phase before and after).
   engine and its pack on intent, on a computer's connection
   (`web/landing.js` `studioAhead`): 9.7 MB, the 5 s a desktop first visit
   spent on the files. Intent is a member signed in (at idle after the
-  load), or the pointer within 64 px of a link into the studio, its focus
-  or a press. Every visit at idle cost the site 9.7 MB per visitor who
+  load), or the pointer within 200 px of a link into the studio, its focus
+  or a press, or the hero band scrolled past. Every visit at idle cost the site 9.7 MB per visitor who
   never pressed Start. Not on a phone's width, a cellular, slow or
   Save-Data connection, nor an iPhone or iPad.
 - **Not the car's parts.** Asked for as soon as the catalogue is read,
