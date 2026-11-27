@@ -613,3 +613,39 @@ def test_a_dry_run_designs_into_a_folder_of_its_own_never_the_real_arms(monkeypa
     realset.main(["run", "--arm", "d34lev", *common])
     assert ran == ["d34lev-dry", "d34lev-dry", "d34lev"]
     assert realset.arm_dir("2026-11-24", ran[0]) != realset.arm_dir("2026-11-24", ran[2])
+
+
+class _GatedTab:
+    """An app on a bench run as its save gates answer: features not settled until skipped,
+    then the pieces gate twice, then written."""
+
+    def __init__(self, features: bool, pieces: int):
+        self.features, self.pieces, self.calls = features, pieces, []
+
+    def __call__(self, port: int, tool: str, arguments: dict) -> dict:
+        self.calls.append((tool, dict(arguments)))
+        if tool == "settle_feature":
+            self.features = False
+            return {"content": "Skipped 3 features."}
+        if self.features:
+            return {"content": [{"type": "text", "text": "Not saved yet: 3 of its 3 features are "
+                                 "not settled (bucket, cab, exhaust). For each, ..."}]}
+        if self.pieces > 0:
+            self.pieces -= 1
+            return {"content": "Not saved yet: BrickBench counts it as 2 pieces, ..."}
+        return {"content": f"Written to {arguments['name']}, with the app's models (/x)."}
+
+
+def test_the_benchs_own_save_is_never_lost_to_a_gate(monkeypatch):
+    # 8 sessions of design32-35 left no model: the harness's one save after the session met
+    # "features not settled" and nothing was kept. The features are skipped, the pieces gate
+    # asked until it saves (its third time), and a save that passes is asked once.
+    for features, pieces, saves in ((True, 0, 2), (True, 2, 4), (False, 2, 3), (False, 0, 1)):
+        tab = _GatedTab(features, pieces)
+        monkeypatch.setattr(realset, "_ask_app", tab)
+        saved = realset._save_end(12750, "realset-x.ldr")
+        assert "Written to realset-x.ldr" in json.dumps(saved["content"])
+        assert [t for t, _ in tab.calls].count("save_model") == saves
+        skips = [a for t, a in tab.calls if t == "settle_feature"]
+        assert skips == ([{"feature": "all", "verdict": "skip",
+                           "reason": "the bench saves the model the session left"}] if features else [])

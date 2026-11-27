@@ -464,6 +464,9 @@ func _claude_undo() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var laid: int = world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
 	builder.record([{"undo": "remove", "brick": laid}], "a part laid by the probe")
+	# Laid as the session's own change, as its edit_model marks it: a chat's
+	# undo leaves a step that is the person's (AppTools._undo, savereview F5).
+	builder.last_step()["by"] = CHAT
 	var depth: int = builder.history_depth()
 	var parts: int = world.bricks().size()
 	_press_built()

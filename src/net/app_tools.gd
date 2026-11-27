@@ -4990,6 +4990,7 @@ func _undo(input: Dictionary) -> String:
 	var count: int = clampi(int(input.get("steps", 1)), 1, 25)
 	var done := PackedStringArray()
 	var others: String = ""
+	var persons: String = ""
 	var store: ModelStore = app.get("_store")
 	for _n: int in count:
 		# The newest step recorded: what the person holds in hand is theirs,
@@ -5002,13 +5003,23 @@ func _undo(input: Dictionary) -> String:
 		if words.is_empty():
 			break
 		# Another Claude chat's change, in a tab two chats work in: not this
-		# chat's to take back (CommandSocket.CHAT_KEY).
-		var by: String = str(builder.last_step().get("by", "")) if not again else ""
-		if not chat.is_empty() and not by.is_empty() and by != chat:
+		# chat's to take back (CommandSocket.CHAT_KEY). Nor the person's own,
+		# a step no chat made: a session told "undo puts it back" took the 2x4
+		# brick the person had placed since (savereview F5). Their Undo is theirs.
+		var by: String = str(builder.last_step().get("by", "")) \
+			if not again and builder.history_depth() > 0 else chat
+		if not chat.is_empty() and by.is_empty():
+			persons = words
+			break
+		if not chat.is_empty() and by != chat:
 			others = words
 			break
 		await verbs.press("redo" if again else "undo", false)
 		done.append(words)
+	if not persons.is_empty():
+		return ("%sThe next change back, %s, is the person's own, made in the tab, so it was "
+			+ "left: they take it back with Undo in the tab. Ask them before changing their work.") % [
+				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", persons]
 	if not others.is_empty():
 		# A resumed chat is a new one to the relay (api/mcp.js, "Two chats, two
 		# tabs"): nothing Claude Code sends says it is the same chat.
