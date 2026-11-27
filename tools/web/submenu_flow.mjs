@@ -180,7 +180,19 @@ await lab.evaluate(() => {
       for (let x = x0; x < x1; x++) if (gap(a, b, at(a, x, y)) > limit) columns[x - x0] += 1;
     }
     let left = -1; let right = -1;
-    columns.forEach((column, n) => { if (column >= 12) { if (left < 0) left = n; right = n; } });
+    // The first run of such columns, unbroken but for a few: a view that
+    // changed beside the panel is not the panel (File's box took in the
+    // view on menufix's preview, and its submenu was looked for past it).
+    let still = 0;
+    for (const [n, column] of columns.entries()) {
+      if (column >= 12) {
+        if (left < 0) left = n;
+        right = n;
+        still = 0;
+      } else if (left >= 0 && ++still > 6) {
+        break;
+      }
+    }
     return { x: x0 + left, y: y0 + top, w: right - left + 1, h: bottom - top + 1, count };
   };
   // The rows of words in a panel, each with whether it may be pressed (its
@@ -316,7 +328,7 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
         // it loads) changed beside the menu and made its box the whole area
         // (Edit on menufix's preview, 2026-11-27).
         let closed = await shot();
-        for (let n = 0; n < 12; n++) {
+        for (let n = 0; n < 20; n++) {
           await page.waitForTimeout(500);
           await caughtUp(page);
           const again = await shot();
