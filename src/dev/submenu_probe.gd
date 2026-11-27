@@ -1,0 +1,362 @@
+## Every submenu of the menu bar under a person's pointer, on the desktop
+## (menufix, 2026-11-27; the owner: "the submenus like 'Import' or 'Open
+## recent' are almost completely unresponsive ... they take forever to load
+## and then flash away").
+##
+##   godot --headless --path . --script src/dev/submenu_probe.gd -- [--saves=50]
+##
+## The pointer is moved as a mouse moves it: each move's speed is the one the
+## platform gives it (Input.get_last_mouse_velocity, as DisplayServerX11 and
+## DisplayServerWeb set it), so a move made just after the pointer stood
+## still has none, as a person's has. For each submenu of File, Edit and
+## View: the pointer comes down the menu from its title and rests on the
+## row, and the submenu must be open and drawn within DRAWN_MS, with no frame
+## over FRAME_MS from the first move until then; it must stay open while the
+## pointer goes straight across and down to its third row that may be
+## pressed, which must be lit, and again on a slant over the rows below. And
+## a hand that rested on one submenu's row and then went down to the next
+## within a tenth of a second opens the next (Open recent, then Import).
+## With --saves=N, N saved models are on the shelf, and Open recent's first
+## row, clicked, opens its model. "SUBMENU row" lines are the table; exits 1
+## on any failure.
+extends SceneTree
+
+const DRAWN_MS := 150
+const FRAME_MS := 50
+const SUBMENUS := [["File", "Open recent"], ["File", "Import"], ["File", "Compare"],
+	["File", "Export"], ["Edit", "History"], ["Edit", "Select by"], ["Edit", "Show and hide"],
+	["View", "Viewpoint"], ["View", "Floor"], ["View", "Edges and studs"],
+	["View", "Cut away by"], ["View", "Panels"]]
+const SHELF := ["sports_car", "three_core_rocket", "station", "orrery", "corner_shop", "barn_owl"]
+
+var _main: Node
+var _shell: Shell
+var _failures: int = 0
+var _saves: int = 0
+var _pointer := Vector2(640, 400)
+var _frame_at: int = 0
+var _frames: PackedInt64Array = []
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+	create_timer(1500.0).timeout.connect(func() -> void:
+		print("SUBMENU cut off after 1500 s")
+		quit(1))
+
+
+func _check(what: String, ok: bool) -> bool:
+	print("SUBMENU %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
+	return ok
+
+
+func _run() -> void:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--saves="):
+			_saves = int(arg.get_slice("=", 1))
+	_shelve(_saves)
+	await process_frame
+	_main = load("res://src/main.tscn").instantiate()
+	root.add_child(_main)
+	for _n: int in 200:
+		await process_frame
+	var store: ModelStore = _main.get("_store")
+	for _n: int in 600:
+		if not store.laying:
+			break
+		await process_frame
+	_shell = _main.get("_shell")
+	process_frame.connect(func() -> void:
+		var now: int = Time.get_ticks_usec()
+		if _frame_at > 0:
+			_frames.append(now - _frame_at)
+		_frame_at = now)
+	# What a row costs as its menu opens, alone: the engine's part left out.
+	_costs()
+	for pair: Array in SUBMENUS:
+		await _try(str(pair[0]), str(pair[1]))
+	await _rest_then_next()
+	if _saves > 0:
+		await _open_recent_row()
+	print("SUBMENU %d failed" % _failures)
+	quit(1 if _failures > 0 else 0)
+
+
+## [param count] saved models, cycled from the models that ship.
+func _shelve(count: int) -> void:
+	if count <= 0:
+		return
+	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	for n: int in count:
+		var text: String = FileAccess.get_file_as_string("res://models/%s.ldr" % SHELF[n % SHELF.size()])
+		var file := FileAccess.open(ModelStore.SAVE_DIR + "Shelf model %02d.ldr" % (n + 1), FileAccess.WRITE)
+		file.store_string(text)
+		file.close()
+	print("SUBMENU shelf: %d saved models" % count)
+
+
+func _costs() -> void:
+	for pair: Array in SUBMENUS:
+		var popup: PopupMenu = _popup_of(str(pair[0]))
+		var index: int = _row_of(popup, str(pair[1]))
+		var sub: PopupMenu = popup.get_item_submenu_node(index)
+		var began: int = Time.get_ticks_usec()
+		sub.about_to_popup.emit()
+		print("SUBMENU cost %s › %s: %.2f ms as it opens" % [pair[0], pair[1],
+			(Time.get_ticks_usec() - began) / 1000.0])
+	for title: String in ["File", "Edit", "View"]:
+		var began: int = Time.get_ticks_usec()
+		_popup_of(title).about_to_popup.emit()
+		print("SUBMENU cost %s: %.2f ms as it opens" % [title, (Time.get_ticks_usec() - began) / 1000.0])
+
+
+func _button_of(title: String) -> MenuButton:
+	for button: MenuButton in _shell.get("_menus"):
+		if button.text == title:
+			return button
+	return null
+
+
+func _popup_of(title: String) -> PopupMenu:
+	return _button_of(title).get_popup()
+
+
+func _row_of(popup: PopupMenu, words: String) -> int:
+	for index: int in popup.item_count:
+		if popup.get_item_submenu_node(index) != null and popup.get_item_text(index) == words:
+			return index
+	return -1
+
+
+# -- the pointer, as a mouse moves it ---------------------------------------------
+
+
+func _as_event(at: Vector2) -> Vector2:
+	return at * (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)
+
+
+func _move(to: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = _as_event(to)
+	event.global_position = event.position
+	event.relative = _as_event(to - _pointer)
+	event.screen_relative = event.relative
+	# As the platform gives a move its speed: the one measured before it.
+	event.velocity = Input.get_last_mouse_velocity()
+	event.screen_velocity = event.velocity
+	_pointer = to
+	Input.parse_input_event(event)
+
+
+## The pointer from where it is to [param to] in [param steps] moves,
+## [param gap] seconds apart (a hand's 30 ms a move), each frame drawn.
+func _glide(to: Vector2, steps: int, gap: float = 0.03) -> void:
+	var from: Vector2 = _pointer
+	for n: int in steps:
+		_move(from.lerp(to, float(n + 1) / steps))
+		await create_timer(gap).timeout
+
+
+func _click(at: Vector2) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = down
+		event.position = _as_event(at)
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await process_frame
+		await process_frame
+
+
+func _shut() -> void:
+	for button: MenuButton in _shell.get("_menus"):
+		button.get_popup().hide()
+	for _n: int in 4:
+		await process_frame
+
+
+## A row's band in its menu, top and bottom, found as the pointer finds it:
+## moved down the menu a few pixels at a time, the row it lights read. The
+## submenus are kept shut while it looks (their delay put off).
+func _band(popup: PopupMenu, index: int) -> Vector2:
+	var delay: float = popup.submenu_popup_delay
+	popup.submenu_popup_delay = 100.0
+	var x: float = popup.position.x + 40.0
+	var top: float = -1.0
+	var bottom: float = -1.0
+	var y: float = popup.position.y + 2.0
+	while y < popup.position.y + popup.size.y:
+		_move(Vector2(x, y))
+		await process_frame
+		await process_frame
+		if popup.get_focused_item() == index:
+			if top < 0.0:
+				top = y
+			bottom = y
+		elif top >= 0.0:
+			break
+		y += 2.0
+	# Off the panel to its right: the menu forgets the submenu row it was
+	# timing (submenu_over) and stops the timer. Left on a row whose long
+	# timer still ran, the menu never timed that row again when the pointer
+	# came back onto it straight (popup_menu.cpp _mouse_over_update starts the
+	# timer only for a row other than submenu_over).
+	_move(Vector2(popup.position.x + popup.size.x + 40.0, _pointer.y))
+	await process_frame
+	await process_frame
+	popup.submenu_popup_delay = delay
+	return Vector2(top, bottom)
+
+
+## The menu opened by a click on its title, the pointer then on the title.
+func _open(title: String) -> PopupMenu:
+	await _shut()
+	var button: MenuButton = _button_of(title)
+	var at: Vector2 = button.get_global_rect().get_center()
+	_move(at)
+	await process_frame
+	await _click(at)
+	for _n: int in 6:
+		await process_frame
+	await create_timer(0.4).timeout
+	return button.get_popup()
+
+
+## Rested on [param index]: the time from the last move to the submenu open
+## and its frame drawn, and the longest frame from the first move until then.
+func _rest_on(popup: PopupMenu, index: int, band: Vector2) -> Dictionary:
+	var sub: PopupMenu = popup.get_item_submenu_node(index)
+	var at := Vector2(popup.position.x + 40.0, (band.x + band.y) / 2.0)
+	_frames.clear()
+	await _glide(at, 6)
+	var rested: int = Time.get_ticks_usec()
+	var opened: int = -1
+	for _n: int in 400:
+		await process_frame
+		if sub.visible:
+			await process_frame
+			opened = Time.get_ticks_usec()
+			break
+		if Time.get_ticks_usec() - rested > 3000000:
+			break
+	var longest: int = 0
+	for frame: int in _frames:
+		longest = maxi(longest, frame)
+	return {"at": at, "sub": sub, "ms": (opened - rested) / 1000.0 if opened > 0 else -1.0,
+		"longest": longest / 1000.0}
+
+
+## The third row of [param sub] that may be pressed (or the last of fewer),
+## and its middle, found as the pointer finds it.
+func _third(sub: PopupMenu) -> Array:
+	var pressable: Array[int] = []
+	for index: int in sub.item_count:
+		if not sub.is_item_separator(index) and not sub.is_item_disabled(index):
+			pressable.append(index)
+	if pressable.is_empty():
+		return [-1, Vector2(sub.position.x + 40.0, sub.position.y + 12.0)]
+	var index: int = pressable[mini(2, pressable.size() - 1)]
+	var band: Vector2 = await _band(sub, index)
+	return [index, Vector2(sub.position.x + 40.0, (band.x + band.y) / 2.0)]
+
+
+func _try(title: String, words: String) -> void:
+	var popup: PopupMenu = await _open(title)
+	var index: int = _row_of(popup, words)
+	if not _check("%s › %s: a row of its menu" % [title, words], index >= 0):
+		return
+	var band: Vector2 = await _band(popup, index)
+	# The submenu's third row, found once with the submenu open.
+	await _shut()
+	popup = await _open(title)
+	var rest: Dictionary = await _rest_on(popup, index, band)
+	var sub: PopupMenu = rest.sub
+	if not _check("%s › %s opens with the pointer rested on it: %.0f ms to drawn (bar %d), longest frame %.1f ms (bar %d)"
+			% [title, words, rest.ms, DRAWN_MS, rest.longest, FRAME_MS],
+			sub.visible and rest.ms >= 0.0 and rest.ms <= DRAWN_MS and rest.longest <= FRAME_MS):
+		if not sub.visible:
+			return
+	var third: Array = await _third(sub)
+	# Straight: across its row into the submenu, then down to the third row.
+	await _shut()
+	popup = await _open(title)
+	rest = await _rest_on(popup, index, band)
+	var straight: bool = false
+	if sub.visible:
+		var target: Vector2 = third[1]
+		await _glide(Vector2(sub.position.x + 30.0, rest.at.y), 8)
+		await _glide(target, 4)
+		await create_timer(0.6).timeout
+		straight = sub.visible and (int(third[0]) < 0 or sub.get_focused_item() == int(third[0]))
+	_check("%s › %s stays open as the pointer goes straight across and down to its third row, lit"
+		% [title, words], straight)
+	# Slanted: from the row to the third row in one line, over the rows below.
+	await _shut()
+	popup = await _open(title)
+	var again: Dictionary = await _rest_on(popup, index, band)
+	var slant: bool = false
+	if sub.visible:
+		await _glide(third[1], 8)
+		await create_timer(0.6).timeout
+		slant = sub.visible and (int(third[0]) < 0 or sub.get_focused_item() == int(third[0]))
+	_check("%s › %s stays open as the pointer goes on a slant to its third row, lit" % [title, words],
+		slant)
+	print("SUBMENU row %s › %s | drawn %.0f / %.0f ms | longest frame %.1f / %.1f ms | straight %s | slant %s"
+		% [title, words, rest.ms, again.ms, rest.longest, again.longest,
+		"stays" if straight else "CLOSED", "stays" if slant else "CLOSED"])
+	await _shut()
+
+
+## A hand that rested on Open recent, its submenu open, then went down to
+## Import inside a tenth of a second and rested there: Import opens.
+func _rest_then_next() -> void:
+	var popup: PopupMenu = await _open("File")
+	var recent: int = _row_of(popup, "Open recent")
+	var import: int = _row_of(popup, "Import")
+	var recent_band: Vector2 = await _band(popup, recent)
+	var import_band: Vector2 = await _band(popup, import)
+	popup = await _open("File")
+	var rest: Dictionary = await _rest_on(popup, recent, recent_band)
+	await create_timer(0.5).timeout
+	await _glide(Vector2(rest.at.x, (import_band.x + import_band.y) / 2.0), 2, 0.02)
+	var sub: PopupMenu = popup.get_item_submenu_node(import)
+	var began: int = Time.get_ticks_usec()
+	while not sub.visible and Time.get_ticks_usec() - began < 1500000:
+		await process_frame
+	_check("rested on Open recent, then down to Import within a tenth of a second: Import opens "
+		+ "(%.0f ms)" % ((Time.get_ticks_usec() - began) / 1000.0), sub.visible
+		and not popup.get_item_submenu_node(recent).visible)
+	await _shut()
+
+
+## Open recent's first row, clicked, opens its model.
+func _open_recent_row() -> void:
+	var popup: PopupMenu = await _open("File")
+	var index: int = _row_of(popup, "Open recent")
+	var band: Vector2 = await _band(popup, index)
+	popup = await _open("File")
+	var rest: Dictionary = await _rest_on(popup, index, band)
+	var sub: PopupMenu = rest.sub
+	if not _check("Open recent opens with %d models saved" % _saves, sub.visible and sub.item_count > 0):
+		return
+	var first: Array = await _third(sub)
+	var band0: Vector2 = await _band(sub, 0)
+	var at := Vector2(sub.position.x + 40.0, (band0.x + band0.y) / 2.0)
+	var words: String = sub.get_item_text(0)
+	await _click(at)
+	var bar: ModelBar = _main.get("_bar")
+	for _n: int in 60:
+		await process_frame
+	var dont: Button = bar.get("_dont_save_button")
+	if dont != null and dont.is_visible_in_tree():
+		dont.pressed.emit()
+	var store: ModelStore = _main.get("_store")
+	var began: int = Time.get_ticks_usec()
+	while Time.get_ticks_usec() - began < 30000000 and (store.laying or not store.title.begins_with("Shelf model")):
+		await process_frame
+	_check("Open recent's first row (%s), clicked, opens its model: \"%s\"" % [words, store.title],
+		words.begins_with(store.title) and store.title.begins_with("Shelf model"))
+	print("SUBMENU (first row of %d found: %s)" % [first.size(), str(first[0])])

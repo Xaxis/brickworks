@@ -421,6 +421,17 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		if _sections != null:
 			_sections.sections.dismiss())
 	_define()
+	# Every move of the pointer reaches the menus with a speed (_pointer_moved).
+	var window: Window = app.get_tree().root if app != null and app.is_inside_tree() else null
+	if window != null and not window.window_input.is_connected(_pointer_moved):
+		window.window_input.connect(_pointer_moved)
+	# What Open recent lists, counted before it is asked for: after the start,
+	# and after each save, removal, rename or putting back.
+	if store != null:
+		for changed: Signal in [store.saved, store.removed_save, store.put_back_save]:
+			changed.connect(func(_name: String) -> void: _warm_recent(0.5))
+		store.renamed_save.connect(func(_from: String, _to: String) -> void: _warm_recent(0.5))
+		_warm_recent(3.0)
 
 	for menu: Array in MENUS:
 		_menus.append(_menu(str(menu[0]), menu[1]))
@@ -1903,6 +1914,7 @@ func _fold_into(more: MenuButton) -> void:
 	_dress_menu(more)
 	var popup: PopupMenu = more.get_popup()
 	popup.add_theme_font_size_override("font_size", 13)
+	popup.submenu_popup_delay = SUBMENU_DELAY
 	for menu: Array in MENUS:
 		var sub := PopupMenu.new()
 		sub.name = "folded_" + str(menu[0]).to_lower()
@@ -1965,8 +1977,46 @@ func _dress_menu(button: MenuButton) -> void:
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 
 
+## How long the pointer rests on a submenu's row before the submenu opens.
+## The engine's 0.2 s, and the frames on either side of it, read as a menu
+## that would not answer (the owner, 2026-11-27: "they take forever to load");
+## a tenth of a second less still lets a pointer cross a row on its way to
+## another without opening it. Moving on into the submenu over the rows below
+## keeps it open: the engine's own path towards it (popup_menu.cpp,
+## _close_or_suspend), once every move reaches it with a speed (_pointer_moved).
+const SUBMENU_DELAY := 0.08
+
+
+## A pointer's move as the menus need it: with a speed. The engine's menus
+## let a move with no speed go by unread (PopupMenu's mouse motion returns at
+## once when its velocity is zero), and the speed a platform gives each move
+## is the one measured over the tenth of a second before it
+## (Input.get_last_mouse_velocity), which is zero for every move made in the
+## first tenth of a second after the pointer stood still. So a hand resting
+## on Open recent and then going down to Import within that tenth was never
+## seen: Import was not lit and never opened until the pointer was wiggled,
+## and the submenu still open was shut late, by the next move, or opened
+## from the row the pointer had left (menufix, 2026-11-27). A move here with
+## none is given its own: how far it went over the time since the last move.
+## The root window hears a move before any menu does (Window._window_input).
+func _pointer_moved(event: InputEvent) -> void:
+	var motion := event as InputEventMouseMotion
+	if motion == null:
+		return
+	var now: int = Time.get_ticks_usec()
+	var seconds: float = clampf(float(now - _moved_at_usec) / 1000000.0, 1.0 / 240.0, 0.1)
+	_moved_at_usec = now
+	if motion.velocity.is_zero_approx() and motion.relative != Vector2.ZERO:
+		motion.velocity = motion.relative / seconds
+		motion.screen_velocity = motion.velocity
+
+
+var _moved_at_usec: int = 0
+
+
 func _fill(popup: PopupMenu, items: Array) -> void:
 	popup.add_theme_font_size_override("font_size", 13)
+	popup.submenu_popup_delay = SUBMENU_DELAY
 	for item: String in _shown(items):
 		if item == "-":
 			popup.add_separator()
@@ -1975,6 +2025,7 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			var kind: String = item.substr(1)
 			sub.name = kind
 			sub.add_theme_font_size_override("font_size", 13)
+			sub.submenu_popup_delay = SUBMENU_DELAY
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(SUBMENU_WORDS[kind], sub, SUBMENU_ID + popup.item_count)
 			if SUBMENUS.has(kind):
@@ -2181,17 +2232,41 @@ func render_saved_views() -> void:
 
 
 var _recent: Array[ModelStore.Entry] = []
+## The rows Open recent shows, as last written into it.
+var _recent_rows: PackedStringArray = []
+const RECENT_ROWS := 8
 
 
+## As Open recent opens: the models saved last, each counted already
+## (ModelStore.recent_saved, counted ahead by [method _warm_recent]), and the
+## rows written again only when they changed. It read and counted every
+## saved model here, each time.
 func _fill_recent(menu: PopupMenu) -> void:
+	_recent = store.recent_saved(RECENT_ROWS)
+	var rows := PackedStringArray()
+	for entry: ModelStore.Entry in _recent:
+		rows.append(entry.describe())
+	if rows == _recent_rows and menu.item_count > 0:
+		return
+	_recent_rows = rows
 	menu.clear()
-	_recent = store.list_saved()
-	_recent = _recent.slice(0, 8)
 	if _recent.is_empty():
 		menu.add_item("nothing saved yet")
 		menu.set_item_disabled(0, true)
 	for n: int in _recent.size():
-		menu.add_item(_recent[n].describe(), n)
+		menu.add_item(rows[n], n)
+
+
+## The models Open recent will list, counted [param seconds] from now, not
+## when it is opened: a model saved, removed, renamed or put back is read
+## then, and the menu finds its count kept.
+func _warm_recent(seconds: float) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	tree.create_timer(seconds).timeout.connect(func() -> void:
+		if store != null:
+			store.recent_saved(RECENT_ROWS))
 
 
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
