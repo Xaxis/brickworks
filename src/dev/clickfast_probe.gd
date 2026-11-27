@@ -42,7 +42,7 @@ const MODELS: Array = [
 ]
 const FRAME_MS := 1000.0 / 60.0
 ## The line while the count is under way (Inspector._count_joined).
-const COUNTING := "Joined to: counting…"
+const COUNTING := "Joined to … other parts, directly or through others"
 const JOINED_MOST := 500
 
 var _main: Node
@@ -144,6 +144,13 @@ func _case_model(tag: String, path: String) -> void:
 			got["title"] == part["name"] and got["selected"] == [part["id"]])
 		_check("%s #%d: \"%s\", what a whole look on the spot finds (\"%s\")" % [tag, n + 1,
 			got["line"], part["words"]], got["line"] == part["words"])
+		# Joined, Lock and Hide where the pointer found them when a count of
+		# several comes; a count of none or one is a line shorter, and on the
+		# click or the frame after it.
+		if str(part["words"]).contains("other parts"):
+			_check("%s #%d: Joined, Lock and Hide stay put as the count comes (y %.0f, then %.0f)"
+				% [tag, n + 1, got["buttons_at"], got["buttons_after"]],
+				is_equal_approx(float(got["buttons_at"]), float(got["buttons_after"])))
 	# The steps as the booklet numbers them, worked out on the spot after the
 	# clicks, so the first click found them unread.
 	if _world.brick_count() <= 600:
@@ -320,6 +327,8 @@ func _click(part: Dictionary) -> Dictionary:
 	var t2: int = _frame_began
 	var out: Dictionary = {"click": (t1 - t0) / 1000.0, "answer": (t2 - t0) / 1000.0,
 		"selected": _builder.selection.keys(), "title": title}
+	# Where the buttons under the facts are, laid out by the frame after.
+	out["buttons_at"] = _inspector._actions.global_position.y
 	var frames: int = 0
 	var longest: float = 0.0
 	var last: int = t2
@@ -333,6 +342,8 @@ func _click(part: Dictionary) -> Dictionary:
 	out["longest"] = longest
 	out["counted"] = (last - t0) / 1000.0
 	out["line"] = _first_line()
+	await _frames(2)
+	out["buttons_after"] = _inspector._actions.global_position.y
 	# Its step in the instructions, on a model of 600 parts or fewer.
 	var waited: int = 0
 	while _world.brick_count() <= 600 and _step_line().is_empty() and waited < 900:

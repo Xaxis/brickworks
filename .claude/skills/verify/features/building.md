@@ -466,8 +466,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to
   (up to 500, counted a slice a frame, the first 2 ms on the click, and given
-  up when another part is shown, `Inspector._count_joined`; "Joined to:
-  counting…" holds its line until then, so Joined, Lock and Hide stay put: on
+  up when another part is shown, `Inspector._count_joined`; "Joined to …
+  other parts, directly or through others" holds its line until then, wrapped
+  as most counts are, so Joined, Lock and Hide stay put: on
   the click it held 10030's window 1.2-1.7 s, and Simple's way back to Full as
   long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1 and
   5972-1 to the next frame under one, reads the line against a whole look on the

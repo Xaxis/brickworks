@@ -656,8 +656,11 @@ func _write_facts() -> void:
 ## to Full with one selected (simple2b).
 var _joining: Working.Job = null
 
-## The line until the count is done.
-const JOINED_COUNTING := "Joined to: counting…"
+## The line until the count is done: worded as most counts end, so it
+## wraps as they do at Properties' width (252 px) and the count changes
+## its words, not its height. "Joined to: counting…" was one line where
+## the count was two, and moved Joined, Lock and Hide a line down as it came.
+const JOINED_COUNTING := "Joined to … other parts, directly or through others"
 ## The count's first slice, on the click itself: microseconds. None on a
 ## model of more than [constant STEPS_MOST] parts, where one part's look can
 ## be a frame's worth on its own.
