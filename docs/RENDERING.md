@@ -2929,10 +2929,28 @@ Against the raster, shot by shot, the tracer at 256 is ahead beyond its interval
 Close-ups +0.672 (+0.528 .. +0.803). The four sets +0.007 (+0.005 .. +0.009), +0.039, +0.036 and
 +0.011. Against desktop Best it is within 0.012 on eight of the nine. The ninth is three_2x2_top
 (0.444 against 0.683, and 0.370 against 0.653 in pool a28). Its two pictures are 0.28 of 255
-apart, nothing over 30, so the judge is telling apart pictures no one could.
+apart, nothing over 30, so the judge is telling apart pictures no one could. Pool d28 put the
+desktop's draws 11 and 12 side by side on that shot and on black_2x4. The two desktop draws were
+0.076 and 0.173 apart, and the tracer was as far from draw 11 (-0.183 and +0.165). Over the two
+shots the tracer scored 0.609, draw 11 0.618 and draw 12 0.493.
 At 32 samples nothing has settled: grey_1x3 scores 0.105 against 0.820 at 256. The guided clean
 leaves a fine grain in the shadow and on the dark brick (sheets/grey_spp_crop.jpg), and the judge
-reads it as a render.
+reads it as a render. Pool e28 added 128 samples. At 128, every set, trans_round, green_plate,
+red_slope and three_2x2_top are within 0.010 of 256. black_2x4 is 0.154 short and grey_1x3 0.689
+short: grey_1x3 scores 0.113 at 32, 0.119 at 128 and 0.808 at 256. The judge wants about 256
+samples of a close-up before its number stops moving.
+
+**30 s on a mid laptop: not yet.** Pool f28 judged what such a Best leaves (`laptop28.sh`). Each
+shot was drawn at the default Best's 2.07 megapixels, at the samples a card a quarter of this one
+reaches in 30 s: 33 to 45 of a close-up, 7 of red_slope, 9 of three_2x2_top, 4 to 6 of a set. Then
+it was made the judge's size. Against the tracer at 256: green_plate +0.010, black_2x4 +0.045,
+three_2x2_top +0.265 (the judge again), trans_round -0.011, but grey_1x3 -0.502 and red_slope
+-0.658. The sets score 0.032 (0.027 .. 0.038), the raster's 0.033: in 30 s on such a card a set
+has nothing over the raster, and it looks grainy (sheets/laptop30.jpg). So this round is NO-GO on
+its own bar. Waited for, the browser's Best is the desktop's. Finished at 30 s on a modest card,
+a set is not. What is left is a clean that holds at 4 to 8 samples: an edge-avoiding filter over
+several passes, guided by the normals and albedo the tracer already writes, in place of the one
+7x7 pass. Then f28 again.
 
 ## 6. Web and desktop
 
