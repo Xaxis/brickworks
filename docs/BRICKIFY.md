@@ -4434,7 +4434,7 @@ studs up from +7.6% to +8.0%. Smithsonian-1 goes from 41% to 45%, the milk
 truck from 68% to 71%, the avocado, Bob, the figure, the Bell X-1 and the
 toy car up 1.3 to 2.4 points each. Every model is one piece, with no joint
 past its load, at least 97.2% of it in a part, and at most 1.020 times
-`pre261`'s parts. In same-moment pairs no model's median is over 1.22
+`pre261`'s parts. In same-moment pairs no model's median is over 1.18
 times as long. The teapot turns 1.0 point less and the Stanford bunny 0.6
 (see below).
 
@@ -4480,11 +4480,11 @@ built. It is left as it is.
 **The seam is real where its upright part is inside the turned cube.**
 `seam2.py` split each seam face by where the upright part nearest it is:
 
-| Where the upright part nearest a seam face is | Mean of the fourteen |
-|---|---:|
-| Past the turned cube: the cube above, below or beside reaches nearer | 3.6% |
-| Inside the turned cube | 3.0% |
-| No part of the shell in that half of the cube (a cube cut a stud across marks both) | 2.1% |
+| Where the upright part nearest a seam face is | Mean of the fourteen | After this round |
+|---|---:|---:|
+| Past the turned cube: the cube above, below or beside reaches nearer | 3.6% | 3.4% |
+| Inside the turned cube | 3.0% | 2.1% |
+| No part of the shell in that half of the cube (a cube cut a stud across marks both) | 2.1% | 2.0% |
 
 "Past the cube" is a neighbour's part at the boundary, and "no shell here"
 is the judge counting the thirteenth round's cuts across. "Inside" is a
@@ -4568,9 +4568,10 @@ snot8's bench and judged by its judge:
 | **The fourteen** | **48.7% → 49.8%** | **+7.6% → +8.0%** | 1.181 → 1.181 x studs up | | | |
 
 Timed in same-moment pairs, two for each of the thirteen it touches (the
-temple's build is the same part for part), the medians are 0.69 to 1.22
-times as long: the milk truck 1.22 (1.31 and 1.13), the Bell X-1 1.15,
-the Stanford bunny 1.13, Smithsonian-1 1.04, the rest 0.69 to 1.02.
+temple's build is the same part for part) and four for the three slowest,
+the medians are 0.69 to 1.18 times as long: the Stanford bunny 1.18 (1.07,
+1.18, 1.17, 1.26; 37 more parts, and one more mended), the milk truck 1.17 (1.31, 1.13, 1.17, 1.16), the Bell
+X-1 1.08, Smithsonian-1 1.04, the rest 0.69 to 1.02.
 
 What moved, by reason (`fine.py`, the study of this round against the
 count above):
@@ -4855,10 +4856,10 @@ After the fourteenth round (2026-11-27):
 - **Too thin, 8.7%.** Walls under a stud and a half have no core behind a
   turned face. A builder turns them with bricks studded on both sides
   (47905) or builds the wall itself on its side; Brickify lays neither.
-- **The rest of the seam, 7.5%.** About half is a part of the cube above,
+- **The rest of the seam, 7.5%.** 3.4 points are a part of the cube above,
   below or beside reaching nearer the face than the turned cube's own
-  shell, and a quarter the judge counting a cube cut a stud across in both
-  halves (`diag/seam2-*.txt`, `diag/seam3-*.txt`).
+  shell, 2.0 the judge counting a cube cut a stud across in both halves,
+  and 2.1 still upright inside the turned cube (`diag/seam3-*.txt`).
 - **A shell's first course of bricks.** A row between side studs that is a
   brick, three layers deep, is still laid alone and given back. Pairing
   those in bricks two rows tall turned no more cubes and cost the teapot
