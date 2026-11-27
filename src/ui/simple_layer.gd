@@ -40,12 +40,18 @@
 ## piece of a bendy part: [method left_alone]) is shown and left alone: a
 ## finger on it takes nothing, and entering Simple says so once.
 ##
-## Simple owns three things while it is up, and reads none of them from Full
-## (simple2: simplereview2's S1-S6 were each Full's copy carried in):
+## Simple owns four things while it is up, and reads none of them from Full
+## (simple2: simplereview2's S1-S6 were each Full's copy carried in; simple3:
+## simplereview3's T1-T4 were the rest of them):
 ##   what it acts on   [method acts_on], the only thing a colour, Turn, Copy,
 ##                     Delete or a move asks: the parts chosen in Simple, never
 ##                     one it leaves alone. Full's selection is set aside on
 ##                     the way in and comes back in Full if nothing was chosen.
+##   where it places   [method _set_full_aside]: the model's top (never the
+##                     sub-assembly Full is editing inside), the stud grid, a
+##                     quarter turn, the Select tool, a tray part upright.
+##                     Full's are set aside on the way in, none written to the
+##                     prefs, and put back on the way out.
 ##   its world         [method world_box]: the plate (an opened model's own
 ##                     floor and footprint) with the bricks on it. A brick is
 ##                     offered only over it or on a part ([method _offered]),
@@ -55,7 +61,8 @@
 ##                     ghost, the fingers counted, a gesture half made) let go
 ##                     of, on entering and leaving, every open and New, and
 ##                     Escape; framed and told what is left alone where a
-##                     model is new to it.
+##                     model is new to it. A finger's ghost waiting for its
+##                     tap is taken down when the model changes under it.
 class_name SimpleLayer
 extends Control
 
@@ -196,6 +203,16 @@ var _framed_gen: int = -1
 var _full_selection: Array = []
 var _full_gen: int = -1
 var _chose_here: bool = false
+## Full's placing context, set aside on the way in ([method _set_full_aside])
+## and put back on the way out; empty while Full's is in place.
+var _full_context: Dictionary = {}
+## The model as it was when Simple came up: [generation, revision].
+var _full_model: Array = []
+## The part Simple's tray last put in hand, upright and unturned; "" when the
+## hand is not the tray's ([method _take]).
+var _tray_hand: String = ""
+## The model as it was when the ghost was last aimed ([method _model_now]).
+var _aimed_on: Array = []
 ## Simple's own changes to the selection, which are not a person's choice to
 ## hear of (_on_selection).
 var _picking: bool = false
@@ -567,8 +584,13 @@ func entered() -> void:
 	camera.finger_taken = finger_taken
 	# What Full had selected is never what Simple acts on (S1): set aside, and
 	# back in Full as it was unless something is chosen here.
+	var world: BrickWorld = app.get("_world")
 	_full_selection = builder.selection.keys()
-	_full_gen = (app.get("_world") as BrickWorld).generation()
+	_full_gen = world.generation()
+	_full_model = _model_now()
+	# Before the selection is cleared: leaving Full's sub-assembly clears it
+	# too, and that is no choice made in Simple.
+	_set_full_aside()
 	_pick([])
 	_chose_here = false
 	_lay_out()
@@ -593,7 +615,13 @@ func left() -> void:
 	reset(false)
 	var builder: Builder = app.get("_builder")
 	var world: BrickWorld = app.get("_world")
-	if not _chose_here and _full_gen == world.generation():
+	# Where Full was, the sub-assembly it was editing inside with it, only
+	# where nothing was chosen here: a part chosen in Simple is one at the
+	# model's top, outside whatever Full was inside.
+	var as_it_was: bool = not _chose_here and _full_gen == world.generation()
+	var xray: bool = bool(_full_context.get("xray", false))
+	_put_full_back(as_it_was)
+	if as_it_was:
 		# Exactly the parts Full had: select_brick takes a part's whole
 		# sub-assembly, and a second part of one toggles them all off.
 		var kept := PackedInt64Array()
@@ -601,6 +629,11 @@ func left() -> void:
 			if world.get_brick(int(id)) != null:
 				kept.append(int(id))
 		builder._select_changed(kept)
+		# Full's x-ray of the sub-assembly it is inside, which leaving it
+		# for Simple ended (SeeInside._on_entered).
+		var see: SeeInside = (app.get("_shell") as Shell).see_inside
+		if xray and not see.seeing_through:
+			see.set_xray(true)
 	_full_selection = []
 	var camera: CadCamera = app.get("_camera")
 	if _camera_was.is_empty():
@@ -612,6 +645,96 @@ func left() -> void:
 	if str(_pose(camera)) == str(_framed_pose):
 		_set_pose(camera, _camera_was["pose"])
 	_camera_was = {}
+
+
+## Full's placing context set aside and Simple's own put in its place. Each
+## of these is Full's setting, which Simple neither shows nor can change, and
+## each carried in made Simple's acts land where Simple says they do not
+## (simplereview3): a brick from the tray went into the sub-assembly Full was
+## editing inside, which Simple then refused to touch and Save wrote into
+## every copy of it (T1); Full's Half or Free snap, kept across sessions, put
+## every brick between the studs (T4). So, while Simple is up:
+##   where a part goes   the model's top: Full's "editing inside" left.
+##   the grid            the studs, and a quarter turn.
+##   the tool            Select, or Place for a part Full had in hand (kept,
+##                       Main.use_controls); the ruler or a bendy part being
+##                       laid let go of, as another tool lets go of them.
+##   how it is seen      no x-ray of what Full was inside.
+## Nothing here is written to the prefs: only the toolbar writes the snap
+## (Shell.set_snap), so Full's is the one the next start has.
+func _set_full_aside() -> void:
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	var shell: Shell = app.get("_shell")
+	var assemblies: Assemblies = shell.assemblies
+	_full_context = {"entered": assemblies.entered, "snap": verbs.snap, "turn_step": verbs.turn_step,
+		"mode": verbs.mode, "xray": shell.see_inside.seeing_through and not assemblies.entered.is_empty(),
+		"hand": [builder.held_part, builder.held_color, builder.held_rotation, builder.held_face,
+			verbs.mode == "place" and not builder.is_carrying() and not builder.is_holding_figure()]}
+	_tray_hand = ""
+	if not assemblies.entered.is_empty():
+		# Its selection is set aside already (entered): nothing lost by the
+		# clear that leaving it makes.
+		assemblies.leave_to("")
+	if verbs.snap != "stud":
+		verbs.set_snap("stud", false)
+	if verbs.turn_step != 90.0:
+		verbs.turn_step = 90.0
+	# Made Later, as the ruler is (Main._make_measure): not named here.
+	var measure: Node = app.get("_measure")
+	if measure != null and bool(measure.get("active")):
+		measure.call("leave")
+	var flex: FlexTool = app.get("_flex")
+	if flex != null and flex.active:
+		flex.leave()
+	if verbs.mode != "select" and verbs.mode != "place":
+		verbs.set_mode("select")
+
+
+## Full's placing context back as [method _set_full_aside] found it, and, with
+## [param where_it_was] (the same model, nothing chosen in Simple), the
+## sub-assembly it was editing inside, while it still has parts.
+func _put_full_back(where_it_was: bool) -> void:
+	var context: Dictionary = _full_context
+	_full_context = {}
+	if context.is_empty():
+		return
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	var assemblies: Assemblies = (app.get("_shell") as Shell).assemblies
+	if verbs.snap != str(context["snap"]):
+		verbs.set_snap(str(context["snap"]), false)
+	if verbs.turn_step != float(context["turn_step"]):
+		verbs.turn_step = float(context["turn_step"])
+	if not builder.is_carrying() and not builder.is_holding_figure():
+		var hand: Array = context["hand"]
+		# The part Full had, back in hand if it was where Simple's tray took
+		# its place, with its colour and its turn as they were.
+		if builder.held_part != str(hand[0]):
+			builder.held_part = str(hand[0])
+		if bool(hand[4]) and verbs.mode != "place":
+			verbs.set_mode("place")
+		builder.held_color = int(hand[1])
+		builder.held_rotation = int(hand[2])
+		builder.held_face = str(hand[3])
+	var mode: String = str(context["mode"])
+	if mode != "select" and mode != "place" and verbs.mode != mode and not builder.is_carrying():
+		verbs.set_mode(mode)
+	var path: String = str(context["entered"])
+	if not where_it_was or path.is_empty() or assemblies.entered == path:
+		return
+	# Changed in Simple (an Undo can take a sub-assembly's making back): only
+	# while it still holds a part.
+	if _model_now() != _full_model and assemblies.ids_under(path).is_empty():
+		return
+	assemblies.enter(path)
+
+
+## The model as it stands, to tell whether it changed: its generation and
+## its revision (every part put, moved, painted or taken off; BrickWorld).
+func _model_now() -> Array:
+	var world: BrickWorld = app.get("_world")
+	return [world.generation(), world.revision]
 
 
 ## The moment let go of: the tray's choice and what it put in hand, a ghost
@@ -657,6 +780,7 @@ func reset(frame_too: bool = false) -> void:
 	if _bin != null:
 		_bin.modulate = Color.WHITE
 	_chosen = ""
+	_tray_hand = ""
 	_dress_tiles()
 	if own_hand:
 		_put_hand_away()
@@ -848,20 +972,34 @@ func _tell_left_alone() -> void:
 		return
 	# Counted once a model, none or some: a switch back and forth on a set
 	# of thousands counts nothing again.
-	_told_left[world.generation()] = true
+	var generation: int = world.generation()
+	_told_left[generation] = true
+	# A slice a frame (FramePace's light slices), from the frame after the
+	# switch: counted in it, Orthanc's 10,101 parts were most of an 84 ms
+	# frame at the press (T6).
+	var pace := FramePace.new(FramePace.LIGHT_US, FramePace.LIGHT_SHARE)
+	await pace.next()
 	var alone: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
-		if not left_alone(brick.id).is_empty():
+		if pace.due():
+			await pace.next()
+			if not _up() or world.generation() != generation:
+				# Left before it was counted: counted again next time.
+				_told_left.erase(generation)
+				return
+		if world.get_brick(brick.id) != null and not left_alone(brick.id).is_empty():
 			alone += 1
-	if alone == 0:
+	if alone == 0 or not _up():
 		return
-	_say(atr("Simple leaves %d parts as they are (in sub-assemblies, tilted or bendy): Full changes them")
+	_say(atr("Simple leaves %d parts as they are (in sub-assemblies, locked, tilted or bendy): Full changes them")
 		% alone, 6000)
 
 
-## Why Simple leaves [param brick_id] alone, or "" when it can edit it: a
-## part of a sub-assembly or a figure, one tilted off the studs' way or
-## turned off a quarter, or a piece of a bendy part.
+## Why Simple leaves [param brick_id] alone, or "" when it can edit it: one
+## locked in Full, a part of a sub-assembly or a figure, one tilted off the
+## studs' way or turned off a quarter, or a piece of a bendy part. Locked
+## first: every verb under Simple's refuses a locked part, and counted as
+## one Simple may act on, a tap on it chose nothing and said nothing (T3).
 func left_alone(brick_id: int) -> String:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
@@ -869,6 +1007,8 @@ func left_alone(brick_id: int) -> String:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if world != null else null
 	if brick == null or store.scenery.has(brick_id):
 		return ""
+	if builder.is_locked(brick_id):
+		return "locked"
 	if not brick.unit.is_empty() or not brick.group.is_empty() or builder.takes(brick_id).size() > 1:
 		return "sub-assembly"
 	if Flex.kind_of_piece(brick.part_id) != "" or Bands.is_piece_id(brick.part_id):
@@ -1058,14 +1198,22 @@ func _tap_tile(part: String) -> void:
 		_put_hand_away()
 
 
-## [param part] in hand in the colour chosen, as the bin's pick has it.
+## [param part] in hand in the colour chosen, as the bin's pick has it, and
+## the way the tray shows it: upright, unturned, held by no joint. Full's
+## hand kept those of the part it last had (a part laid on its side in Full
+## came out of the tray on its side, a part Simple then left alone); a turn
+## given in Simple (R) is kept until another part is taken.
 func _take(part: String) -> void:
 	var builder: Builder = app.get("_builder")
 	if builder == null:
 		return
 	builder.held_color = _colour
-	if builder.held_part != part or str((app.get("_verbs") as EditVerbs).mode) != "place":
+	if _tray_hand != part or builder.held_part != part \
+			or str((app.get("_verbs") as EditVerbs).mode) != "place":
 		app.call("_on_part_chosen", part)
+		builder.held_face = "up"
+		builder.held_rotation = 0
+		_tray_hand = part
 	builder.held_color = _colour
 
 
@@ -1090,6 +1238,7 @@ func _aim(at: Vector2) -> void:
 	var builder: Builder = app.get("_builder")
 	if builder == null:
 		return
+	_aimed_on = _model_now()
 	if _over_ui(at):
 		builder.hide_preview()
 		return
@@ -1180,10 +1329,14 @@ func _held() -> String:
 	return builder.held_part
 
 
-## Whether a tap's ghost is up, waiting for a tap on it to go down.
+## Whether a tap's ghost is up, waiting for a tap on it to go down, on the
+## model it was aimed on. Aimed before an Undo took the brick it stood on, a
+## tap on it put a brick down in the air (T2): the model changed under it,
+## it is no ghost to tap, and [method _process] takes it down.
 func ghost_waits() -> bool:
 	var builder: Builder = app.get("_builder")
-	return _ghost_shown and builder != null and builder.has_preview() and not _held().is_empty()
+	return _ghost_shown and builder != null and builder.has_preview() and not _held().is_empty() \
+		and _aimed_on == _model_now()
 
 
 ## The ghost's box on the screen; empty while there is none.
@@ -1746,9 +1899,11 @@ func _release(at: Vector2) -> void:
 	var under: int = verbs.brick_at(at) if mouse else brick
 	if under == 0:
 		under = _left_one
-	if under != 0 and not left_alone(under).is_empty():
+	var why: String = left_alone(under) if under != 0 else ""
+	if not why.is_empty():
 		counts["left_alone"] += 1
-		_say(atr("Simple leaves that part as it is: Full changes it"))
+		_say(atr("That part is locked: Full unlocks it") if why == "locked"
+			else atr("Simple leaves that part as it is: Full changes it"))
 		_pick([])
 		return
 	if under != 0:
@@ -1908,6 +2063,25 @@ func _process(_delta: float) -> void:
 	if builder != null and not _tray_dragging and not _moving and builder.has_preview() \
 			and not builder.is_carrying() and _held().is_empty():
 		builder.hide_preview()
+	_aim_again(builder)
+
+
+## A ghost aimed on a model that has changed since (an Undo or Redo by the
+## buttons, two fingers or a key, another window's edit, a session's): the
+## mouse's aimed again where the pointer is, as a move of it would; a
+## finger's, which nothing aims until the next tap, taken down. Its validity
+## was the old model's, and the next tap put a brick down by it (T2).
+func _aim_again(builder: Builder) -> void:
+	if builder == null or not builder.has_preview() or _aimed_on == _model_now():
+		return
+	if _moving or _tray_dragging or _ghost_drag or _finger != -1 or _mouse:
+		return
+	if _ghost_shown:
+		_ghost_shown = false
+		builder.hide_preview()
+		_aimed_on = _model_now()
+	elif not Phone.on() and _touches.is_empty() and (builder.is_carrying() or not _held().is_empty()):
+		_aim(get_viewport().get_mouse_position())
 
 
 # -- words -----------------------------------------------------------------------------

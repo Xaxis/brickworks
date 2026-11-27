@@ -18430,8 +18430,11 @@ msgstr "Dort ist kein Platz"
 msgid "No room to turn it there"
 msgstr "Dort ist kein Platz zum Drehen"
 
-msgid "Simple leaves %d parts as they are (in sub-assemblies, tilted or bendy): Full changes them"
-msgstr "Einfach lässt %d Teile, wie sie sind (in Baugruppen, schräg oder biegsam): Voll ändert sie"
+msgid "Simple leaves %d parts as they are (in sub-assemblies, locked, tilted or bendy): Full changes them"
+msgstr "Einfach lässt %d Teile, wie sie sind (in Baugruppen, gesperrt, schräg oder biegsam): Voll ändert sie"
+
+msgid "That part is locked: Full unlocks it"
+msgstr "Dieses Teil ist gesperrt: Voll entsperrt es"
 
 msgid "Simple leaves that part as it is: Full changes it"
 msgstr "Einfach lässt dieses Teil, wie es ist: Voll ändert es"

@@ -1352,11 +1352,14 @@ func _simple_keeps(key: InputEventKey, command: String) -> bool:
 ## The controls over the model swapped while the model is open (Simple's
 ## plan, bench/results/simplemode-2026-11-24/PLAN.md): &"simple" puts
 ## Simple's layer (SimpleLayer) in place of the studio's own, the phone's
-## or the desktop's, and &"full" brings those back. Only the controls go:
-## the model, its undo, the selection, the sub-assembly being edited, the
-## tool, what is in hand (a part, a figure, a lift), a drag under way, the
-## camera and the save are the same objects either side, so nothing is
-## converted and nothing can be lost by it. The words being typed in a field
+## or the desktop's, and &"full" brings those back. The model, its undo,
+## what is in hand (a part, a figure, a lift), a drag under way and the save
+## are the same objects either side, so nothing is converted and nothing can
+## be lost by it. What Simple acts on and where it places are its own: Full's
+## selection, the sub-assembly it is editing inside, its snap, turn and tool
+## are set aside going in and put back coming out (SimpleLayer.entered and
+## left; simplereview3 T1, T4: each carried in put Simple's bricks where
+## Simple says they do not go). The words being typed in a field
 ## are its own first, as a field left is. The timeline is put away going in,
 ## the whole model shown, as Simple shows it, and comes back on the step it
 ## was on. Remembered on the device (ShellPrefs "controls"). Not in a

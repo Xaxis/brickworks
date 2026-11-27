@@ -18430,8 +18430,11 @@ msgstr "No hay sitio ahí"
 msgid "No room to turn it there"
 msgstr "No hay sitio para girarla ahí"
 
-msgid "Simple leaves %d parts as they are (in sub-assemblies, tilted or bendy): Full changes them"
-msgstr "Sencillo deja %d piezas como están (en subconjuntos, inclinadas o flexibles): Completo las cambia"
+msgid "Simple leaves %d parts as they are (in sub-assemblies, locked, tilted or bendy): Full changes them"
+msgstr "Sencillo deja %d piezas como están (en subconjuntos, bloqueadas, inclinadas o flexibles): Completo las cambia"
+
+msgid "That part is locked: Full unlocks it"
+msgstr "Esa pieza está bloqueada: Completo la desbloquea"
 
 msgid "Simple leaves that part as it is: Full changes it"
 msgstr "Sencillo deja esa pieza como está: Completo la cambia"
