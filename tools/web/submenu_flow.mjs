@@ -32,7 +32,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const url = args.url || "https://brickworks.diy/app";
+// Always a preview's: it saves 50 models into the browser it drives.
+if (!args.url || /\/\/(www\.)?brickworks\.diy\b/.test(String(args.url))) {
+  console.log("submenu_flow: --url=<a preview>/app, never the live site");
+  process.exit(2);
+}
+const url = String(args.url);
 const out = args.out || "shots/submenu_web";
 const saves = Number(args.saves || 0);
 const barMs = Number(args["bar-ms"] || 0);
