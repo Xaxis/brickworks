@@ -4302,6 +4302,8 @@ static func _place(value: float, joint: Motions.Joint) -> String:
 ## define_motion: a motion kept in the model, one undo step, played once to
 ## check with the model put back.
 func _define_motion(input: Dictionary) -> String:
+	# Read at entry, before the first wait: the session the call is.
+	var by: String = Builder.acting
 	var player: MotionPlayer = app.get("_motions")
 	var builder: Builder = app.get("_builder")
 	if player == null:
@@ -4376,7 +4378,11 @@ func _define_motion(input: Dictionary) -> String:
 		first.append(Motions.quoted(one.name))
 	var played: MotionPlayer.Played = player.play(motion)
 	while builder.history_depth() > depth:
-		await verbs.press("undo", false)
+		# Each as the session's, past the waits of the ones before it
+		# (EditVerbs.press reads whose it is as it begins).
+		await Builder.by_wait(by, func() -> Variant:
+			await verbs.press("undo", false)
+			return null)
 	var joints: int = motion.joints().size()
 	if joints == 0 and motion.camera != null:
 		return ("%s %s in the model (%s s): %s. It is saved with it; play_motion plays it in the window, "
@@ -5072,7 +5078,11 @@ func _undo(input: Dictionary) -> String:
 		if whose != me:
 			others = words
 			break
-		await verbs.press("redo" if again else "undo", false)
+		# Each press as this session's, past the waits of the presses before it
+		# (EditVerbs.press reads whose it is as it begins).
+		await Builder.by_wait(me, func() -> Variant:
+			await verbs.press("redo" if again else "undo", false)
+			return null)
 		done.append(words)
 	if not persons.is_empty():
 		return ("%sThe next change %s, %s, is the person's own, made in the tab, so it was "
