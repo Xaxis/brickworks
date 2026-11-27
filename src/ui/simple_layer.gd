@@ -628,9 +628,12 @@ func left() -> void:
 	var builder: Builder = app.get("_builder")
 	var world: BrickWorld = app.get("_world")
 	# Where Full was, the sub-assembly it was editing inside with it, only
-	# where nothing was chosen here: a part chosen in Simple is one at the
-	# model's top, outside whatever Full was inside.
-	var as_it_was: bool = not _chose_here and _full_gen == world.generation()
+	# where nothing chosen here is still chosen: a part chosen in Simple is
+	# one at the model's top, outside whatever Full was inside. A choice let
+	# go of again is none: a phone's tap that puts a brick down clears the
+	# selection, and Full came back at the top with nothing selected.
+	var chosen: bool = _chose_here and not builder.selection.is_empty()
+	var as_it_was: bool = not chosen and _full_gen == world.generation()
 	var xray: bool = bool(_full_context.get("xray", false))
 	_put_full_back(as_it_was)
 	if as_it_was:
