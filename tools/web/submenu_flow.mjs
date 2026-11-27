@@ -209,10 +209,16 @@ await lab.evaluate(() => {
       }
       if (words > 0 && start < 0) { start = y; }
       if (words === 0 && start >= 0) {
-        if (y - start >= 4) rows.push({ y0: start, y1: y - 1, enabled: most > 225 });
+        if (y - start >= 4) rows.push({ y0: start, y1: y - 1, most });
         start = -1; most = 0;
       }
     }
+    // Greyed words are a good deal darker than the brightest row's: a fixed
+    // limit (225) called every row of Import greyed, its words drawn at a
+    // half pixel, and the "third row" its first, level with Import, so its
+    // slant was no slant (menufix2).
+    const brightest = rows.reduce((top, row) => Math.max(top, row.most), 0);
+    for (const row of rows) row.enabled = row.most >= brightest - 20;
     let ly0 = -1; let ly1 = -1;
     for (let y = box.y; y <= box.y + box.h; y++) {
       let lit = 0;
@@ -436,13 +442,31 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
     };
     result.straight = check(`${row}: stays open as the pointer goes straight across and down to its third row, `
       + "which is lit", litThird(after));
-    // Slanted: from the row to the third row in one line, over the rows below.
+    // Slanted: from the row to the third row in one line, over the rows below,
+    // its first move already past the row's edge, as a quick hand's moves or
+    // a slow frame's reach the app gathered into one. The engine judges the
+    // way into the submenu from where the pointer left its row; a submenu
+    // that opened under a resting pointer and heard first a move off its row
+    // took that place from a submenu opened before, and shut (menufix2).
     await shut();
     menu = await openMenu(title);
     rested = await rest(title, row, menu);
     if (rested.sub.open) {
-      for (let n = 1; n <= 8; n++) {
-        await page.mouse.move(rested.at.x + (target.x - rested.at.x) * n / 8, rested.at.y + (target.y - rested.at.y) * n / 8);
+      const index = MENUS[title].indexOf(row);
+      const band = menu.rows[index];
+      const rise = target.y - rested.at.y;
+      let from = rested.at;
+      if (Math.abs(rise) > 0.5) {
+        const next = menu.rows[index + 1]; const before = menu.rows[index - 1];
+        const edge = rise > 0 ? (next ? (band.y1 + next.y0) / 2 + 3 : band.y1 + 8)
+          : (before ? (before.y1 + band.y0) / 2 - 3 : band.y0 - 8);
+        const t = Math.min(1, Math.max(0, (edge - rested.at.y) / rise));
+        from = { x: rested.at.x + (target.x - rested.at.x) * t, y: rested.at.y + rise * t };
+        await page.mouse.move(from.x, from.y);
+        await page.waitForTimeout(30);
+      }
+      for (let n = 1; n <= 6; n++) {
+        await page.mouse.move(from.x + (target.x - from.x) * n / 6, from.y + (target.y - from.y) * n / 6);
         await page.waitForTimeout(30);
       }
       await page.waitForTimeout(1500);
