@@ -522,8 +522,11 @@ func _case_undomid() -> void:
 		(placed["made"] as Array).size() <= 1)
 	for made: Variant in placed["made"]:
 		var joined: int = SelectBy.connected(_world, _builder.lattice, [int(made)], _store.scenery, 2).size() - 1
-		var on_plate: bool = _box_of(int(made)).position.y >= _floor_box().end.y - 1.0 \
-			and _box_of(int(made)).position.y <= _floor_box().end.y + 1.0
+		# The plate's box takes in its studs (4 high): its face is 4 below, as
+		# the snap case reads it. Against the studs' tops, a brick seated on
+		# the plate read as standing on nothing.
+		var face: float = _floor_box().end.y - 4.0
+		var on_plate: bool = absf(_box_of(int(made)).position.y - face) < 1.0
 		_check("...the brick put down stands on something: joined to %d, on the plate %s (at %s)"
 			% [joined, on_plate, str(_world.get_brick(int(made)).transform.origin)], joined > 0 or on_plate)
 		await _shot("sr3_undomid_ghost_put")
