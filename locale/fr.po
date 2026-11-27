@@ -5845,8 +5845,17 @@ msgstr "Moyenne de %d images : ombres douces d'une source étendue, bords lisse
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sans rien derrière le modèle, il n'est pas rendu en path tracing."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "Le path tracing demande l'application de bureau, bientôt disponible : un navigateur ne peut pas tracer de rayons."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "Le path tracing s'est arrêté dans ce navigateur : Meilleure fait donc la moyenne d'images."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Ce navigateur dessine sans carte graphique, trop lentement pour le path tracing : Meilleure fait donc la moyenne d'images."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "Le path tracing est désactivé pour cette page : Meilleure fait donc la moyenne d'images."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Les graphismes de ce navigateur ne permettent pas le path tracing : Meilleure fait donc la moyenne d'images."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Le path tracing demande le mode graphique complet, et cette fenêtre dessine dans le mode simplifié."

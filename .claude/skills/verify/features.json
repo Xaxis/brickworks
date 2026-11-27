@@ -5591,6 +5591,14 @@
       "tests": []
     },
     {
+      "id": "lib:path tracer in a browser",
+      "kind": "lib",
+      "entry": "src/render/page_tracer.gd",
+      "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:pattern's grid over mcp",
       "kind": "lib",
       "entry": "src/net/pattern_tool.gd",

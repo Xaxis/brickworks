@@ -23,6 +23,9 @@
 class_name PathTracer
 extends RefCounted
 
+## Best in a browser (photoreal28): the page's tracer, page_tracer.js.
+const PageTracer := preload("res://src/render/page_tracer.gd")
+
 ## The most bounces a path takes off the plastic and the sweep.
 const BOUNCES := 6
 ## Cells across and down of the table a photographed place is picked from.
@@ -194,6 +197,12 @@ var _place_name: String = ""
 var _place_size := Vector2i.ZERO
 var _surface_bytes := PackedByteArray()
 var _surface_size := Vector2i.ZERO
+## In a browser (photoreal28): the number the page knows the last shape by,
+## and whether the page holds this tracer's set, place and surface.
+static var _page_key: int = 0
+var _page_staged: bool = false
+var _page_place: bool = false
+var _page_surface: bool = false
 ## Samples in the running sum so far.
 var samples: int = 0
 ## Instances in the last picture staged, and distinct shapes.
@@ -202,8 +211,11 @@ var shape_count: int = 0
 
 
 ## Whether this machine traces rays: the desktop's renderer on a card with
-## Vulkan ray tracing. Never in a browser.
+## Vulkan ray tracing, or a browser whose WebGL2 draws float targets on a
+## graphics card (photoreal28: PageTracer, page_tracer.js).
 static func available() -> bool:
+	if OS.has_feature("web"):
+		return PageTracer.usable()
 	if _checked:
 		return _can
 	_checked = true
@@ -223,7 +235,7 @@ static func why_not() -> String:
 	if available():
 		return ""
 	if OS.has_feature("web"):
-		return "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
+		return PageTracer.why_not()
 	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
 		return "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 	return "Path tracing needs a graphics card that traces rays, and this one does not."
@@ -239,6 +251,9 @@ static func _refused(what: String) -> bool:
 
 ## The pipeline, the first time it is wanted. False when the card refused.
 func _make() -> bool:
+	if OS.has_feature("web"):
+		# The page's tracer, started by PageTracer.ready before the set is staged.
+		return PageTracer.started()
 	if _pipeline.is_valid():
 		return true
 	if not available():
@@ -355,6 +370,17 @@ func shape_of(mesh: Mesh) -> Array:
 	if points.is_empty() or indices.is_empty():
 		_shapes[mesh] = shape
 		return shape
+	if OS.has_feature("web"):
+		# The page builds the shape's tree of triangles itself (page_tracer.js),
+		# known by a number; its corners are the shape's own, indexed.
+		_page_key += 1
+		var point_data: PackedByteArray = points.to_byte_array()
+		var normal_data: PackedByteArray = normals.to_byte_array()
+		var index_data: PackedByteArray = indices.to_byte_array()
+		PageTracer.shape(_page_key, point_data, normal_data, index_data)
+		shape = [RID(), RID(), point_data, normal_data, index_data, points.size(), _page_key]
+		_shapes[mesh] = shape
+		return shape
 	var bits: int = RenderingDevice.BUFFER_CREATION_DEVICE_ADDRESS_BIT \
 		| RenderingDevice.BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT
 	var point_bytes: PackedByteArray = points.to_byte_array()
@@ -447,6 +473,12 @@ func _make_photo() -> bool:
 	return true
 
 
+## The version's name, as path_tracer.glsl's #[versions] and the page's
+## shaders (tools/web/tracer_port.py) call it.
+func version_name() -> String:
+	return "photo" if photo else ("marks" if marked else "plain")
+
+
 ## The version a picture is traced by: [shader, pipeline, hit table].
 func _version() -> Array:
 	if photo:
@@ -460,11 +492,13 @@ func _version() -> Array:
 func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if not _make():
 		return false
-	if marked and not _make_marked():
-		return false
-	if photo and not _make_photo():
-		return false
+	if not OS.has_feature("web"):
+		if marked and not _make_marked():
+			return false
+		if photo and not _make_photo():
+			return false
 	_free_picture_set()
+	_page_staged = false
 	var shape_index: Dictionary = {}
 	var shape_list: Array = []
 	var records := PackedFloat32Array()
@@ -573,6 +607,19 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			bytes.encode_float(n * 80 + k * 4, records[n * 16 + k])
 		for k: int in 4:
 			bytes.encode_u32(n * 80 + 64 + k * 4, kinds[n * 4 + k])
+	if OS.has_feature("web"):
+		# The page's tracer (photoreal28) builds the instances' tree itself
+		# from each one's shape and place.
+		var keys := PackedInt32Array()
+		for shape: Array in shape_list:
+			keys.append(int(shape[6]))
+		var which := PackedInt32Array()
+		for n: int in placed.size():
+			which.append(kinds[n * 4])
+		_page_staged = PageTracer.stage(keys, bytes, _places_of(placed), which)
+		instance_count = placed.size() if _page_staged else 0
+		shape_count = shape_list.size() if _page_staged else 0
+		return _page_staged
 	_instances = _storage(bytes)
 	# The shapes' points, normals and corners, one after another.
 	var meshes := PackedByteArray()
@@ -613,7 +660,7 @@ func _storage(bytes: PackedByteArray) -> RID:
 ## Light the set with a photographed place: its picture, and a table for
 ## picking directions in proportion to its light. Null for none.
 func light_with(place: StudioPanorama) -> void:
-	if place == _place_for and _place_texture.is_valid():
+	if place == _place_for and (_place_texture.is_valid() or _page_place):
 		return
 	_free(_place_texture)
 	_free(_place_table)
@@ -629,13 +676,14 @@ func light_with(place: StudioPanorama) -> void:
 		image = Image.create(2, 2, false, Image.FORMAT_RGBAF)
 		image.fill(Color(1, 1, 1))
 	image.convert(Image.FORMAT_RGBAF)
-	var format := RDTextureFormat.new()
-	format.width = image.get_width()
-	format.height = image.get_height()
-	format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
-	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
-		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
-	_place_texture = _rd.texture_create(format, RDTextureView.new(), [image.get_data()])
+	if not OS.has_feature("web"):
+		var format := RDTextureFormat.new()
+		format.width = image.get_width()
+		format.height = image.get_height()
+		format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
+		format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+			| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+		_place_texture = _rd.texture_create(format, RDTextureView.new(), [image.get_data()])
 	# The table: rows' cumulative shares, then each row's cells', from a
 	# small copy weighed by the solid angle each cell covers.
 	var small: Image = image.duplicate() as Image
@@ -664,6 +712,14 @@ func light_with(place: StudioPanorama) -> void:
 		table[y] = all
 	for y: int in tall:
 		table[y] /= all
+	if OS.has_feature("web"):
+		# Half floats, which a browser's WebGL2 filters as the card's sampler does
+		# (32-bit floats it filters only with OES_texture_float_linear).
+		var halves: Image = image.duplicate() as Image
+		halves.convert(Image.FORMAT_RGBAH)
+		PageTracer.place(halves.get_size(), halves.get_data(), table)
+		_page_place = true
+		return
 	_place_table = _storage(table.to_byte_array())
 	if not capture_to.is_empty():
 		_capture_place(image, table)
@@ -672,7 +728,7 @@ func light_with(place: StudioPanorama) -> void:
 ## What a staged model stands on (photoreal7): [param image], a tile of a
 ## photographed surface, or null for none (a 2 x 2 white, unread).
 func surface_with(image: Image) -> void:
-	if image == _surface_for and _surface_texture.is_valid():
+	if image == _surface_for and (_surface_texture.is_valid() or _page_surface):
 		return
 	_free(_surface_texture)
 	_surface_texture = RID()
@@ -688,6 +744,10 @@ func surface_with(image: Image) -> void:
 		if tile.is_compressed():
 			tile.decompress()
 		tile.convert(Image.FORMAT_RGBA8)
+	if OS.has_feature("web"):
+		PageTracer.surface(tile.get_size(), tile.get_data())
+		_page_surface = true
+		return
 	var format := RDTextureFormat.new()
 	format.width = tile.get_width()
 	format.height = tile.get_height()
@@ -702,6 +762,16 @@ func surface_with(image: Image) -> void:
 
 ## The running sum and the picture, at [param size]: started again.
 func begin(size: Vector2i) -> bool:
+	if OS.has_feature("web"):
+		if not _page_staged:
+			return false
+		samples = 0
+		_size = size
+		if not _page_place:
+			light_with(null)
+		if not _page_surface:
+			surface_with(null)
+		return PageTracer.begin(size, scene.to_byte_array(), version_name())
 	if not _make() or not _tlas.is_valid():
 		return false
 	samples = 0
@@ -792,6 +862,14 @@ func has_glass() -> bool:
 ## sample of a big picture can be spread over frames. The card does the
 ## work after this frame's own drawing; nothing waits for it here.
 func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
+	if OS.has_feature("web"):
+		# The page's tracer paces itself (photoreal28): a band of rows a frame,
+		# sized to what the card did in the last, and none while the last is not
+		# done. Asked for the whole picture (rows 0) it draws it at once.
+		if _page_staged and count > 0:
+			_last_seed = seed
+			samples = PageTracer.trace(count, seed, rows <= 0)
+		return
 	if not _trace_set.is_valid() or count <= 0 or row >= _size.y:
 		return
 	var band: int = _size.y - row if rows <= 0 else mini(rows, _size.y - row)
@@ -819,7 +897,7 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 ## What a pixel's sample took on the card in the last pass it has timed,
 ## in ms, a few frames after the pass; -1 when there is nothing new.
 func sample_ms() -> float:
-	if _rd.get_captured_timestamps_frame() == _timed_frame:
+	if _rd == null or _rd.get_captured_timestamps_frame() == _timed_frame:
 		return -1.0
 	var mine: String = "PathTracer %d" % get_instance_id()
 	var began: int = -1
@@ -850,13 +928,18 @@ func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
 		denoise: float = 0.0, linear_saturation: float = 1.0,
 		camera: Vector4 = Vector4.ZERO, sharpen: float = 0.0, tone: float = 0.0) -> Image:
-	if not _resolve_set.is_valid() or samples <= 0:
+	if not (_resolve_set.is_valid() or _page_staged) or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
 		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, tone])
 	if not capture_to.is_empty() and dither:
 		_capture_picture(push)
+	if OS.has_feature("web"):
+		var pixels: PackedByteArray = PageTracer.picture(push) if _page_staged else PackedByteArray()
+		if pixels.size() != _size.x * _size.y * 4:
+			return null
+		return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBA8, pixels)
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
@@ -919,18 +1002,24 @@ static func _capture_file(name: String, bytes: PackedByteArray) -> void:
 func _capture_set(records: PackedByteArray, meshes: PackedByteArray, points: PackedByteArray,
 		normals: PackedByteArray, corners: PackedByteArray,
 		placed: Array[RDAccelerationStructureInstance]) -> void:
+	_capture_file("instances.bin", records)
+	_capture_file("transforms.bin", _places_of(placed).to_byte_array())
+	_capture_file("meshes.bin", meshes)
+	_capture_file("positions.bin", points)
+	_capture_file("normals.bin", normals)
+	_capture_file("indices.bin", corners)
+
+
+## Each instance's seated place, as the page's tracer and the bench's capture
+## take it: the basis's columns, the origin, the mask, then three zeros.
+static func _places_of(placed: Array[RDAccelerationStructureInstance]) -> PackedFloat32Array:
 	var places := PackedFloat32Array()
 	for instance: RDAccelerationStructureInstance in placed:
 		var at: Transform3D = instance.transform
 		places.append_array([at.basis.x.x, at.basis.x.y, at.basis.x.z, at.basis.y.x, at.basis.y.y,
 			at.basis.y.z, at.basis.z.x, at.basis.z.y, at.basis.z.z, at.origin.x, at.origin.y, at.origin.z,
 			float(instance.mask), 0.0, 0.0, 0.0])
-	_capture_file("instances.bin", records)
-	_capture_file("transforms.bin", places.to_byte_array())
-	_capture_file("meshes.bin", meshes)
-	_capture_file("positions.bin", points)
-	_capture_file("normals.bin", normals)
-	_capture_file("indices.bin", corners)
+	return places
 
 
 ## A photographed place's picture and table, kept once by their bytes beside the
@@ -991,6 +1080,15 @@ func _free_picture_set() -> void:
 
 ## Everything on the card let go: the renderer is going.
 func release() -> void:
+	if OS.has_feature("web"):
+		# The page keeps the shapes, as the desktop keeps its BLASes between
+		# pictures; the picture's set and targets go.
+		if _page_staged:
+			PageTracer.release()
+		_page_staged = false
+		_page_place = false
+		_page_surface = false
+		return
 	if _rd == null:
 		return
 	_free(_resolve_set)

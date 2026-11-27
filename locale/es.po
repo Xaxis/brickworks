@@ -5845,8 +5845,17 @@ msgstr "%d fotogramas promediados: sombras suaves de una luz de área, bordes li
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sin nada detrás del modelo, no se renderiza con trazado de rutas."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "El trazado de rutas necesita la aplicación de escritorio, que llega pronto: un navegador no puede trazar rayos."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "El trazado de rutas se detuvo en este navegador, así que Máxima promedia fotogramas."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Este navegador dibuja sin tarjeta gráfica, demasiado despacio para el trazado de rutas, así que Máxima promedia fotogramas."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "El trazado de rutas está desactivado en esta página, así que Máxima promedia fotogramas."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Los gráficos de este navegador no pueden hacer trazado de rutas, así que Máxima promedia fotogramas."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "El trazado de rutas necesita el modo gráfico completo, y esta ventana dibuja en el más sencillo."

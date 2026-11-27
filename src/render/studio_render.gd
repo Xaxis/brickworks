@@ -71,6 +71,7 @@ const RESOLVE := preload("res://src/render/studio_resolve.gdshader")
 const COPY := preload("res://src/render/studio_copy.gdshader")
 const BACKDROP := preload("res://src/render/studio_backdrop.gdshader")
 const CONTACT := preload("res://src/render/studio_contact.gdshader")
+const PageTracer := preload("res://src/render/page_tracer.gd")
 const STUDIO_SKY := preload("res://src/render/studio_sky.gdshader")
 
 ## Real places to light the model with: Poly Haven's, CC0, recorded in
@@ -2475,7 +2476,14 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 	var plan: Plan = plan_for(settings)
 	_traced_last = plan.traced
 	if plan.traced:
-		return await _traced(settings, plan, from, to, words)
+		var traced: Image = await _traced(settings, plan, from, to, words)
+		if traced != null or _cancelled or not OS.has_feature("web") or PathTracer.available():
+			return traced
+		# The page's tracer could not (photoreal28: no script, a shader this
+		# card would not compile, a lost context): Best is frames averaged,
+		# and the dialog's words say why (PathTracer.why_not).
+		plan = plan_for(settings)
+		_traced_last = false
 	_wear_frame()
 	var shot: Shot = last_shot
 	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
@@ -2756,6 +2764,13 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
 	var clean: float = PRODUCT_DENOISE if settings.look == "product" else 0.0
+	# In a browser (photoreal28) the page's tracer is fetched and its shaders
+	# compiled for this card the first time Best wants them; _picture draws
+	# frames instead when it cannot.
+	if OS.has_feature("web") and not await PageTracer.ready(_tracer.version_name(), _doing):
+		return null
+	if _cancelled:
+		return null
 	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
 		return null
 	# A staged table stands in a room (photoreal7): it lights the model and is
@@ -2885,6 +2900,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# window's: it is given a band of rows at a time until there is room,
 	# a quarter of them until the card has timed a pass.
 	var rows: int = maxi(picture.y / 4, 1)
+	if OS.has_feature("web"):
+		# The page's tracer sizes its own bands to the card (page_tracer.js):
+		# it is asked each frame for as many samples as a pass may give.
+		per_pass = PathTracer.MOST_PER_PASS
+		rows = picture.y
 	var row: int = 0
 	var card_ms: float = 0.0
 	# What the card's timing asks for, taken up between whole samples: a
