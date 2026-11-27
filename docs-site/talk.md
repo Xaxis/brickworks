@@ -111,6 +111,7 @@ ui:a thread in talk
 - **Copy link** on a post copies its own address. It opens the page the post is on, whatever page that is by then, scrolled to the post. Each post's number (`#12`) is its link too.
 - **In this thread**, beside the posts (under them on a phone), says how many posts there are and which you are reading, and goes to the question or first post, the answer, the first you have not read and the last post. Over the posts, the faces of who takes part and how many people that is.
 - **Reply** answers the whole thread; Reply on a post says whom you are answering. Each row of a board has **Reply** too, which opens the box in the row: your reply shows under it and you stay on the board. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] posts, [[Enter]] is a new line, and signed out, **Post** signs you in and then posts what you wrote.
+- **What you are writing is kept** while you look at another page of the thread, or at another thread before you start yours, until you post it or close the tab. A reply is kept for its own thread only, and a thread about a model for that model.
 - **Edit** and **Remove** are on your own posts. Removing the first post removes the whole thread.
 - **Follow** tells you of every new post in the thread, on your [Notifications](/docs/profiles#notifications) and, where you turned it on, as [this device's notification](/docs/profiles#settings). You follow a thread you started or replied in; press **Following** to stop. Mentions and replies to your own thread reach you either way.
 

@@ -369,7 +369,8 @@ function inlineHtml(text, mentions, hosts) {
 /// q, sort, period, page}, each one a list knows or its default.
 export function listAsked(query = {}) {
   const board = query.board === undefined || query.board === "" ? null : String(query.board);
-  const q = String(query.q || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  // A pasted word's zero-width joins and marks out, so "hin​ge" finds hinge.
+  const q = String(query.q || "").replace(/[​-‏⁠﻿]/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
   const given = String(query.sort || "");
   const sort = SORTS.includes(given) || given === "unread" ? given : "latest";
   const period = sort === "top" && PERIODS.includes(String(query.in || "")) ? String(query.in) : null;

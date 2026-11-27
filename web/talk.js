@@ -734,8 +734,13 @@ function newPage() {
   $("[data-signin]").hidden = true;
   form.hidden = false;
   photoPicked(form);
-  form.querySelectorAll("[data-most]").forEach(measured);
   const model = $("[data-model]", form)?.dataset.model || "";
+  // A thread half written is kept in the tab as a reply is (keptDraft), so
+  // a look at another thread on the way does not lose it: one about a
+  // model kept for that model only, never written into another's.
+  const drafts = ["title", "body"].map((name) => [form.elements[name], `talk-draft:new:${model}:${name}`]).filter(([field]) => field);
+  for (const [field, key] of drafts) keptDraft(field, key);
+  form.querySelectorAll("[data-most]").forEach(measured);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (overInForm(form)) return;
@@ -756,6 +761,11 @@ function newPage() {
         return;
       }
       if (done.status !== 201) return tell(form, told(done.body?.error, say("That did not go just now. Try again in a minute.")));
+      try {
+        for (const [, key] of drafts) sessionStorage.removeItem(key);
+      } catch {
+        // No storage: nothing was kept.
+      }
       location.href = `${langAt()}${done.body.path}${TESTS ? "?tests=1" : ""}`;
     } finally {
       send.disabled = false;

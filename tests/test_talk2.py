@@ -96,7 +96,7 @@ def test_an_address_is_one_page_and_says_only_what_differs() -> None:
 import { listAsked, listPath, threadPagePath, postPath } from "./api/_talk.js";
 const asked = [
   {}, { sort: "top", in: "month", page: "3" }, { sort: "top", in: "decade" }, { sort: "unanswered", in: "week" },
-  { sort: "nonsense", page: "-2" }, { page: "1e9" }, { q: "  red   hinge  " }, { sort: "unread", page: "2.5" },
+  { sort: "nonsense", page: "-2" }, { page: "1e9" }, { q: "  red \\u00a0 hin\\u200bge\\ufeff  " }, { sort: "unread", page: "2.5" },
 ];
 console.log(JSON.stringify({
   asked: asked.map(listAsked),
