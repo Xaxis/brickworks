@@ -68,6 +68,17 @@ func _held() -> void:
 	library.search_ahead_held = true
 	library.prepare_search()
 	_check("held, the index asked for ahead of need is not begun", not _begun(library))
+	# What the start's open reads (current) is made all the same, on a
+	# worker: held with the search's, the open made it on the page's thread,
+	# 0.9 to 2.6 s of its "known" phase (webstart14).
+	if library.index_on_a_worker:
+		_check("held, the index current() reads is begun on a worker",
+			library._current_task >= 0 or library.current_here())
+		for _frame: int in 300:
+			if library.current_here():
+				break
+			await process_frame
+		_check("…and made", library.current_here())
 	library.let_search_ahead()
 	_check("let go of, the index asked for meanwhile is begun", _begun(library))
 	await _made(library)
