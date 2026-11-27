@@ -16,8 +16,11 @@
 // (its fence), so the page's own frames are never queued behind the tracer's
 // and the tab keeps answering. Where the browser times the card's work
 // (EXT_disjoint_timer_query_webgl2) each pass is sized to BUDGET_MS of it;
-// elsewhere it grows while the last pass is done by the next frame and
-// shrinks when it is not.
+// elsewhere (Firefox, Safari) by the gap between the page's frames: the
+// browser holds the next frame until the card has drawn this one, pass and
+// all, so a pass is always done by the next frame however long it takes,
+// and only the frames' gap says it took too long. It grows while frames come
+// within FRAME_GROW_MS and shrinks once they are later than FRAME_SHRINK_MS.
 //
 // The pure parts (the trees and the textures' packing) take no WebGL, so the
 // bench (tools/web/tracer_bench.mjs) builds the very same data under Node.
@@ -28,6 +31,9 @@ const SHADERS = null; // tracer_port.py puts the shaders here
 export const WIDE = 2048;
 // What a pass may take of the card in a frame, where it can be timed.
 const BUDGET_MS = 12;
+// Where it cannot: the frames' gaps it grows within and shrinks past.
+const FRAME_GROW_MS = 22;
+const FRAME_SHRINK_MS = 34;
 // The most samples one pass gives every pixel (PathTracer.MOST_PER_PASS).
 const MOST_PER_PASS = 32;
 
@@ -664,6 +670,7 @@ export class Tracer {
 		gl.bufferData(gl.UNIFORM_BUFFER, full, gl.DYNAMIC_DRAW);
 		this.samples = 0;
 		this.row = 0;
+		this.askedAt = 0;
 		this.finishFence();
 		return true;
 	}
@@ -737,6 +744,10 @@ export class Tracer {
 			this.samples += count;
 			return this.samples;
 		}
+		// The app asks once a frame: the gap since its last asking is the frame's.
+		const now = performance.now();
+		this.frameGap = this.askedAt ? now - this.askedAt : 0;
+		this.askedAt = now;
 		if (this.fence) {
 			if (gl.getSyncParameter(this.fence, gl.SYNC_STATUS) !== gl.SIGNALED) {
 				this.waits++;
@@ -795,7 +806,12 @@ export class Tracer {
 			}
 		}
 		if (!timed) {
-			work = this.waits === 0 ? work * 1.3 : (this.waits >= 2 ? work * 0.6 : work);
+			const gap = this.frameGap || 0;
+			if (this.waits >= 2 || gap > FRAME_SHRINK_MS) {
+				work *= gap > 2 * FRAME_SHRINK_MS ? 0.4 : 0.7;
+			} else if (this.waits === 0 && gap > 0 && gap <= FRAME_GROW_MS) {
+				work *= 1.25;
+			}
 		}
 		this.waits = 0;
 		const whole = w * h;
