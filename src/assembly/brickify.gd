@@ -214,7 +214,9 @@ class Grid extends RefCounted:
 	## The same cubes cut again with their courses started a few plates up
 	## ([constant CUBE_PHASES]): [[phase, cubes]], each keyed Vector3i(x / 2,
 	## (j - phase) / 5, z / 2). Where the first cut is not turned, one of these
-	## may be.
+	## may be. Then those cut a stud across ([constant CUBE_ACROSS]): [phase,
+	## cubes, shift], keyed Vector3i((x - shift.x) / 2, (j - phase) / 5,
+	## (z - shift.y) / 2).
 	var cube_phases: Array = []
 	## Rays across, for those sides: along x through every third of a stud
 	## along z and up, and along z through every third across and up; where
@@ -490,11 +492,15 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 	grid.ms["stance"] = Time.get_ticks_msec() - clock
 	if options.smooth and options.snot:
 		clock = Time.get_ticks_msec()
-		var cuts: Array = _cubes(grid, points, count, outward, progress, [0] + Array(CUBE_PHASES))
+		var across: Array = []
+		var cuts: Array = _cubes(grid, points, count, outward, progress, [0] + Array(CUBE_PHASES), across)
 		grid.cubes = cuts[0] if not cuts.is_empty() else {}
 		if not grid.cubes.is_empty():
 			for n: int in cuts.size() - 1:
 				grid.cube_phases.append([CUBE_PHASES[n], cuts[n + 1]])
+			# Cut a stud across last: tried only where every cut before left
+			# the side upright.
+			grid.cube_phases.append_array(across)
 			grid.side_rows = ceili(grid.tall / PLATES * FINE)
 			grid.spans_x = _side_spans(grid, points, count, outward, true, progress)
 			grid.spans_z = _side_spans(grid, points, count, outward, false, progress)
@@ -622,6 +628,16 @@ const CUBE_PLATES := 5
 ## plates up alone, 31% of the steep faces of Bob, the bunny and 3DBenchy
 ## were turned, from 27%; at every phase, 37%.
 const CUBE_PHASES: Array[int] = [2, 4, 1, 3]
+## And cut again a stud across, along x and along z, at each of those
+## phases, where a cube of the first cut held a wall whose two faces cancel:
+## a wall a stud and a half to two studs thick lies in one cube or in two as
+## the lattice falls. In one, its faces cancel and it was left stacked; in
+## two, one face is laid on its side with the other half of the wall as its
+## core, held by side studs in it. 3DBenchy's hull and cabin walls at 48
+## studs: 40% of its steep faces stacked as too thin, 71% of them on a wall
+## 1.5 to 2 studs thick, where 42% of the faces it does turn stand on such
+## walls. Only the cubes facing along the cut, over a cube that cancelled.
+const CUBE_ACROSS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
 const STEEP := 0.42
 const CUBE_AREA := 1.0
 const CUBE_AGREES := 0.6
@@ -634,10 +650,10 @@ const UPRIGHT_PLATES := 5
 
 
 static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: float,
-		progress: Progress = null, phases: Array = [0]) -> Array:
-	# Summed a plate at a time first, so each cut's cubes are the sums of five
-	# plates: one pass over the model for every phase.
-	var sums: Dictionary = {}    ## Vector3i(x / 2, plate, z / 2) -> Vector3, area times the way out
+		progress: Progress = null, phases: Array = [0], across: Variant = null) -> Array:
+	# Summed a stud and a plate at a time first, so each cut's cubes are the
+	# sums of two by five by two: one pass over the model for every phase.
+	var sums: Dictionary = {}    ## Vector3i(x, plate, z) -> Vector3, area times the way out
 	var areas: Dictionary = {}   ## the same -> float, square studs
 	var iso := Vector3(1.0, 1.0 / PLATES, 1.0)
 	for t: int in count:
@@ -666,33 +682,65 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 					var v: float = (m + (1.0 if flip == 0 else 2.0) / 3.0) / k
 					var p: Vector3 = a + (b - a) * u + (c - a) * v
 					p += Vector3(inward.x, inward.y * PLATES, inward.z)
-					var key := Vector3i(floori(p.x / CUBE_STUDS), floori(p.y), floori(p.z / CUBE_STUDS))
+					var key := Vector3i(floori(p.x), floori(p.y), floori(p.z))
 					sums[key] = (sums.get(key, Vector3.ZERO) as Vector3) + share
 					areas[key] = float(areas.get(key, 0.0)) + each
 	var out: Array = []
 	for phase: int in phases:
-		var cube_sums: Dictionary = {}
-		var cube_areas: Dictionary = {}
-		for key: Variant in sums:
-			var bin: Vector3i = key
-			var cube := Vector3i(bin.x, floori(float(bin.y - phase) / CUBE_PLATES), bin.z)
-			cube_sums[cube] = (cube_sums.get(cube, Vector3.ZERO) as Vector3) + (sums[bin] as Vector3)
-			cube_areas[cube] = float(cube_areas.get(cube, 0.0)) + float(areas[bin])
-		var cubes: Dictionary = {}
-		var keys: Array = cube_sums.keys()
-		keys.sort()
-		for key: Variant in keys:
-			var sum: Vector3 = cube_sums[key]
-			var area: float = cube_areas[key]
-			if area < CUBE_AREA or sum.length() < CUBE_AGREES * area:
-				continue
-			var way: Vector3 = sum.normalized()
-			if absf(way.y) >= STEEP:
-				continue
-			cubes[key] = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
-				else Vector2i(0, 1 if way.z > 0.0 else -1)
-		out.append(cubes)
+		var cancel: Dictionary = {}
+		out.append(_cubes_cut(sums, areas, phase, Vector2i.ZERO, {}, cancel))
+		# A stud across, over the cubes whose faces cancelled.
+		if not across is Array or cancel.is_empty():
+			continue
+		for shift: Vector2i in CUBE_ACROSS:
+			var wanted: Dictionary = {}
+			for raw: Variant in cancel:
+				var c: Vector3i = raw
+				wanted[c] = true
+				wanted[c - Vector3i(shift.x, 0, shift.y)] = true
+			var cut: Dictionary = _cubes_cut(sums, areas, phase, shift, wanted, {})
+			if not cut.is_empty():
+				(across as Array).append([phase, cut, shift])
 	return out
+
+
+## One cut of [method _cubes]: the bins [param sums] and [param areas]
+## summed into cubes with their courses started [param phase] plates up and
+## the lattice [param shift] studs across, and those that face out kept.
+## With [param wanted], only those cubes, and only those facing along the
+## shift; [param cancel] gets each cube whose faces cancel.
+static func _cubes_cut(sums: Dictionary, areas: Dictionary, phase: int, shift: Vector2i,
+		wanted: Dictionary, cancel: Dictionary) -> Dictionary:
+	var cube_sums: Dictionary = {}
+	var cube_areas: Dictionary = {}
+	for key: Variant in sums:
+		var bin: Vector3i = key
+		var cube := Vector3i(floori(float(bin.x - shift.x) / CUBE_STUDS), floori(float(bin.y - phase) / CUBE_PLATES),
+			floori(float(bin.z - shift.y) / CUBE_STUDS))
+		if not wanted.is_empty() and not wanted.has(cube):
+			continue
+		cube_sums[cube] = (cube_sums.get(cube, Vector3.ZERO) as Vector3) + (sums[bin] as Vector3)
+		cube_areas[cube] = float(cube_areas.get(cube, 0.0)) + float(areas[bin])
+	var cubes: Dictionary = {}
+	var keys: Array = cube_sums.keys()
+	keys.sort()
+	for key: Variant in keys:
+		var sum: Vector3 = cube_sums[key]
+		var area: float = cube_areas[key]
+		if area < CUBE_AREA:
+			continue
+		if sum.length() < CUBE_AGREES * area:
+			cancel[key] = true
+			continue
+		var way: Vector3 = sum.normalized()
+		if absf(way.y) >= STEEP:
+			continue
+		var facing: Vector2i = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
+			else Vector2i(0, 1 if way.z > 0.0 else -1)
+		if not wanted.is_empty() and (facing.x != 0) != (shift.x != 0):
+			continue
+		cubes[key] = facing
+	return cubes
 
 
 ## The stand's colour: the one colour asked for, the darkest of the colours
