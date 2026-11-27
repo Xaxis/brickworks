@@ -3760,6 +3760,14 @@
       "tests": []
     },
     {
+      "id": "cli:simple3 probe",
+      "kind": "cli",
+      "entry": "src/dev/simple3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple3_probe -- [--desktop] [--case=context,chosen] --pictures=DIR   (windowed, or headless with --headless-ok; Full's placing context set aside in Simple and put back: the sub-assembly being edited, snap, turn, tool, the hand's facing, x-ray)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:simple_switch probe",
       "kind": "cli",
       "entry": "src/dev/simple_switch_probe.gd",
@@ -3772,6 +3780,14 @@
       "kind": "cli",
       "entry": "src/dev/simplep1_probe.gd",
       "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- [--tablet] [--desktop] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; Simple's checks, three newcomer walks, Full's pictures; numbers in DIR/*.json)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:simplereview3 probe",
+      "kind": "cli",
+      "entry": "src/dev/simplereview3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- [--desktop] [--case=subedit,snap,locked,undomid,wayback] --pictures=DIR   (windowed; a tray brick while Full edits inside a sub-assembly, Full's Half and Free snap, a locked part tapped, Undo with a finger's ghost waiting, the way in and back on 10030-1 and Orthanc frame by frame)",
       "area": "building",
       "tests": []
     },

@@ -1,9 +1,10 @@
 ---
-ai: Simple is a second set of controls for the same studio, picked in the header (Simple | Full) and remembered on the device: a tray of 30 common parts in five groups and 12 colours, one finger to build and two to move the view. The model, its undo and its file are the same in both; Simple leaves sub-assemblies, tilted parts and bendy parts as they are. An assistant edits the model the same way in either.
+ai: Simple is a second set of controls for the same studio, picked in the header (Simple | Full) and remembered on the device: a tray of 30 common parts in five groups and 12 colours, one finger to build and two to move the view. The model, its undo and its file are the same in both; Simple leaves sub-assemblies, locked parts, tilted parts and bendy parts as they are. An assistant edits the model the same way in either.
 rules:
   - Simple and Full edit the same model: switching keeps every part, the undo steps and the save.
   - In Simple a new model starts on a 16 x 16 plate.
-  - Simple never changes a part in a sub-assembly, a part turned off the quarter or tilted, or a bendy part.
+  - Simple never changes a part in a sub-assembly, a locked part, a part turned off the quarter or tilted, or a bendy part.
+  - Simple places at the model's top, on the studs, upright, a quarter turn at a time; Full's sub-assembly, snap, turn step and tool are put back as they were on the way out.
 title: Simple mode
 nav: Simple mode
 description: Build with big bricks and your fingers: a tray of 30 parts and 12 colours, drag to build, tap to select, and Full one tap away.
@@ -60,7 +61,9 @@ Holding a finger still on a part does nothing, so a resting thumb never deletes 
 
 ## Models from Full {#from-full}
 
-A model you open or build in Full opens whole in Simple. Simple leaves some parts exactly as they are: parts inside a sub-assembly, parts turned at an angle or tilted, and bendy parts such as hoses. It says once how many there are, and again if you tap one. Switch to **Full** to change them.
+A model you open or build in Full opens whole in Simple. Simple leaves some parts exactly as they are: parts inside a sub-assembly, parts you locked in Full, parts turned at an angle or tilted, and bendy parts such as hoses. It says once how many there are, and again if you tap one. Switch to **Full** to change them.
+
+Simple builds its own way whatever Full was set to: every part goes into the model itself, on the studs, upright, and turns a quarter at a time. If you were editing inside a sub-assembly in Full, or had chosen Half or Free snap, another turn step or another tool, Full has them all back as they were when you switch back.
 
 <!-- covers
 ui:simple mode

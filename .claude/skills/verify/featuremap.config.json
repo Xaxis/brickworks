@@ -7474,6 +7474,20 @@
       "area": "building"
     },
     {
+      "kind": "cli",
+      "label": "simple3 probe",
+      "entry": "src/dev/simple3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple3_probe -- [--desktop] [--case=context,chosen] --pictures=DIR   (windowed, or headless with --headless-ok; Full's placing context set aside in Simple and put back: the sub-assembly being edited, snap, turn, tool, the hand's facing, x-ray)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplereview3 probe",
+      "entry": "src/dev/simplereview3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- [--desktop] [--case=subedit,snap,locked,undomid,wayback] --pictures=DIR   (windowed; a tray brick while Full edits inside a sub-assembly, Full's Half and Free snap, a locked part tapped, Undo with a finger's ghost waiting, the way in and back on 10030-1 and Orthanc frame by frame)",
+      "area": "building"
+    },
+    {
       "kind": "ui",
       "label": "plastic new or played with",
       "entry": "src/ui/render_dialog.gd",

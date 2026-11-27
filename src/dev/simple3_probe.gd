@@ -5,6 +5,7 @@
 ## hand faces, the ruler, an x-ray of the sub-assembly. simplereview3's probe
 ## holds T1-T4 and the way back's frames; this holds the rest of the list.
 ##
+##   godot --path . --resolution 390x844 --script src/dev/simple3_probe.gd
 ##   godot --headless --path . --script src/dev/simple3_probe.gd -- --headless-ok
 ##   PROBE_SIZE=390x844 tools/probe.sh simple3_probe -- --pictures=DIR
 ##   PROBE_SIZE=1280x800 tools/probe.sh simple3_probe -- --desktop --pictures=DIR
