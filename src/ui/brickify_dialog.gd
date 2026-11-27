@@ -768,6 +768,11 @@ func _place_model(turn: Basis, box: AABB) -> void:
 
 ## Work it out and put it down. Returns when it is down, or did not go.
 ## [param job] is a session's (ToolJobs): the same bar, handed in.
+## Whose the brickify under way is (Builder.acting as it began): its step
+## is kept as theirs when it lands, frames later ([method _put_down]).
+var _by: String = ""
+
+
 func brickify(job: Working.Job = null) -> void:
 	if _busy or _mesh == null or library == null:
 		return
@@ -777,6 +782,9 @@ func brickify(job: Working.Job = null) -> void:
 		_set_landed(false)
 		_title.text = "Brickify “%s”" % _mesh.name
 	_busy = true
+	# Whose the step it puts down is, carried to the frame it lands in: the
+	# session's that asked, or the person's Brickify (Builder.acting).
+	_by = Builder.acting
 	_stopped = false
 	last_summary = ""
 	_set_enabled(false)
@@ -1035,9 +1043,7 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 		steps.append({"undo": "unitstep", "unit": unit,
 			"step": int(world.unit_steps.get(unit, -1))})
 		world.unit_steps[unit] = int(units[unit])
-	builder._history.append({"undo": "group", "steps": steps,
-		"words": "brickified %s" % Assemblies.definition(path)})
-	builder._redo.clear()
+	Builder.by(_by, builder.record.bind(steps, "brickified %s" % Assemblies.definition(path)))
 	builder.clear_selection()
 	for brick_id: int in ids:
 		builder.selection[brick_id] = true

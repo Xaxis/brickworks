@@ -4417,7 +4417,215 @@ What moved, by reason (`fine.py`, the study against the count above):
 
 ![Smithsonian-1 at 48 studs, coloured the same way with its shells' covers and lost groups red: on pre261 (top) 35% turned and 17% cover or lost, the face red; this round (bottom) 41% turned and 10%, the face green](brickify/unit6-thirteenth-smithsonian-1-48.png)
 
+### The fourteenth round: a turned side's rows between side studs (2026-11-27)
+
+This round counts again what leaves a steep face stacked on today's
+`pre261`, takes the largest reason a builder would turn, and changes it at
+its root. Unit `snot13`, from `pre261` at `3c264d6f`. Scripts, logs and
+pictures are in `bench/results/snot13-2026-11-27`.
+
+**In short: GO.** In a turned cube, a row of the shell that no side stud
+reaches is now laid in one part with the row beside it that a stud holds,
+as a builder lays a panel on its side. Before, it was laid a row tall,
+held by nothing, pruned, and its plates stood upright inside the turned
+cube. A cube that would then keep holes is stacked instead. Over the
+fourteen at 48 studs, turned rises from 48.7% to 49.8%, and nearer than
+studs up from +7.6% to +8.0%. Smithsonian-1 goes from 41% to 45%, the milk
+truck from 68% to 71%, the avocado, Bob, the figure, the Bell X-1 and the
+toy car up 1.3 to 2.4 points each. Every model is one piece, with no joint
+past its load, at least 97.2% of it in a part, and at most 1.020 times
+`pre261`'s parts. In same-moment pairs no model's median is over 1.18
+times as long. The teapot turns 1.0 point less and the Stanford bunny 0.6
+(see below).
+
+#### What leaves a steep face stacked
+
+Today's `pre261` is the thirteenth round's build, and the count of both
+arms at 48 studs (`study11.py`, `fine.py`) is that round's "after":
+
+| Why a steep face is left stacked | Mean | By area | Over 5% on |
+|---|---:|---:|---:|
+| **Turned** (the part nearest it on its side) | **48.7%** | **51.1%** | |
+| Too thin: its faces cancel in every cube | 8.6% | 8.3% | 9 models |
+| **In a turned cube, the part nearest it upright (a seam)** | **8.6%** | **8.8%** | 13 |
+| A band between phases (shelled) | 7.2% | 6.6% | 9 |
+| The whole laid again studs up (the temple) | 6.9% | 6.9% | 1 |
+| Leans too far (60 to 65 degrees) | 4.5% | 4.6% | 4 |
+| Its shell's cover too thin (uncovered) | 3.9% | 3.9% | 3 |
+| Too little core behind (backed) | 3.2% | 3.4% | 3 |
+| A cap on it (capped) | 2.1% | 1.4% | 2 |
+| The model past the cube (beyond) | 1.9% | 1.1% | 1 |
+| The ask moved out and refused (moved) | 1.5% | 1.2% | 1 |
+| Too little surface in a cube | 1.3% | 1.3% | 0 |
+| Too few plates (few) | 0.8% | 0.8% | 0 |
+| Unsure, no anchor, cut | 0.7% | 0.7% | 0 |
+
+"Too thin" and the seam tie.
+
+#### As a builder: the thin walls, and the seam
+
+**What is left of "too thin" is walls under a stud and a half.** The
+thirteenth round took the walls 1.5 to 2 studs thick that the lattice cut
+whole. `thick.py` on today's `pre261` measures the rest: 59% of the fox's
+thin faces stand on walls 1 to 1.5 studs thick, 24% of the milk truck's
+under half a stud, the figure's spread from half a stud to two. A cube's
+faces are sampled half a stud in (`CUBE_IN`), so such a wall's two faces
+fall in one cube in every cut and cancel. Turned on one face, the wall has
+nothing behind it but its other face: no core for a side-stud brick to
+stand in. A builder turns such a wall with bricks studded on both sides
+(47905) or builds the wall itself on its side. Brickify lays neither, so
+this is not a rule stricter than it needs to be but a technique not yet
+built. It is left as it is.
+
+**The seam is real where its upright part is inside the turned cube.**
+`seam2.py` split each seam face by where the upright part nearest it is:
+
+| Where the upright part nearest a seam face is | Mean of the fourteen | After this round |
+|---|---:|---:|
+| Past the turned cube: the cube above, below or beside reaches nearer | 3.6% | 3.4% |
+| Inside the turned cube | 3.0% | 2.1% |
+| No part of the shell in that half of the cube (a cube cut a stud across marks both) | 2.1% | 2.0% |
+
+"Past the cube" is a neighbour's part at the boundary, and "no shell here"
+is the judge counting the thirteenth round's cuts across. "Inside" is a
+plate standing upright where the shell should be: 73% to 97% of them in
+the cube's lowest three plates, tiles and plates a stud wide (3069b,
+3070b, 3023b, 2431, 3710). Smithsonian-1 has the most, 6.6% of its steep
+faces.
+
+A shell is held by bricks with a stud on one side (87087) in the core's
+outer wall, every second row of the shell (`_anchored`): the brick is three
+plates tall and a row on its side two and a half, so a side stud meets
+every second row. The row between was laid in plates a row tall, held by
+nothing, pruned to what a side stud holds, and given back to the core
+(`_give_back`), which stood its plates upright. In six models' builds,
+92% of the plates given back were in such a row (Smithsonian-1 537 of 578,
+Spot 380 of 418, the avocado 272 of 305, Bob 223 of 235, the toy car 97 of
+107, the Bell X-1 all 38; `diag/d1-*`, `d2-*`, `d3-*`).
+
+That guards nothing. In a set, the row between studs is never laid alone:
+a 1 x 2 or 2 x 2 plate on its side spans the held row and the one beside
+it, and one side stud holds both. It was only stricter than the build
+needs.
+
+![A vertical section through Bob at 48 studs, across two turned cubes at each side, a part a box: green on its side, grey upright, blue frames the turned cubes. On pre261 (top) the lower half of each lower cube is grey plates standing upright, 21% of the turned cubes cut; this round (bottom) it is plates on their side, 4%](brickify/unit6-fourteenth-bob-rows.png)
+
+#### The change
+
+1. **A row no side stud reaches is laid with the row a stud holds**
+   (`Plan._rows_paired`). In a turned cube's shell, in its first layer
+   against the core, each such row with the row over it first, then with
+   the row under it, in one part two rows tall where that row's side stud
+   holds it: plates, or tiles where both rows are the shell's outside. In
+   one colour; where both are hidden under the layers over them, in the
+   colour of the row the stud holds.
+2. **A cube that would keep holes is stacked** (`CUBE_HOLES`,
+   `Plan._returned`). Paired, more cubes came up to the share their parts
+   must cover (`CUBE_KEEPS`) and kept the rest of their plates as holes,
+   neither in a part of the shell nor given back to the core. The Bell X-1
+   at 48 studs fell from 97.6% to 96.5% in a part (`diag/d4-bell*`). A cube
+   whose holes are more than a fifth of its plates now goes back to the
+   core, as one short of the share does.
+3. **Only a cube's shell pairs** (`pairs_rows`). A shape's own flank, laid
+   on its side over the parts the shape laid under it, has no tiled core
+   under its lowest row. Paired, a ship's hull's planked bow stood that row
+   on the studs of the inverted slopes under it: 14 collisions in
+   `shapes_probe` (`hull.gd`).
+
+Tried and dropped (`diag/d6-*` to `d9-*`): pairing the bricks of the
+shell's first course too, two rows tall (no more cubes on any model; the
+teapot from 99.3% to 98.5% in a part with 12 parts mended); a tenth for
+the holes instead of a fifth (the Bell X-1 down to 33 cubes with a joint
+past its load, the toy car from 169 cubes to 118); `CUBE_KEEPS` 0.7 in
+place of the holes rule (fewer cubes on every model).
+
+#### Smithsonian-1
+
+Its five points lost in the twelfth round were found and fixed in the
+thirteenth (a group's shell laid again up to eight times: 35% to 41%).
+This round it gains the most: 41% to 45%, its seam 12.7% to 11.0% and
+"uncovered" 9.6% to 7.9%.
+
+**The fourteen at 48 studs**, `pre261` against this round, each laid by
+snot8's bench and judged by its judge:
+
+| Model | Steep faces turned | Nearer than studs up | Parts (x `pre261`) | In a part | Past load | Mended |
+|---|---|---|---|---|---|---|
+| **Bob** | **64% → 66%** | +12.7% → +14.0% | 4,168 (0.993) | 99.4% → 99.4% | 0 | 1 |
+| Stanford bunny | 65% → 64% | +10.5% → +10.2% | 6,566 (1.006) | 99.3% → 99.4% | 0 | 2 (was 1) |
+| 3DBenchy | 39% → 39% | +4.1% → +4.4% | 3,337 (1.020) | 99.5% → 99.5% | 0 | 0 |
+| Armadillo | 53% → 53% | +6.9% → +6.8% | 3,787 (1.007) | 98.4% → 98.4% | 0 | 0 |
+| **Avocado** | **61% → 63%** | +7.5% → +9.1% | 4,298 (0.984) | 99.3% → 99.3% | 0 | 0 |
+| **Figure** | **33% → 35%** | -3.0% → -1.1% | 2,798 (0.995) | 98.6% → 98.8% | 0 | 1 |
+| Fox | 52% → 52% | +18.1% → +17.9% | 1,067 (1.014) | 98.8% → 98.7% | 0 | 8 |
+| **Milk truck** | **68% → 71%** | +26.8% → +30.3% | 3,873 (0.984) | 99.5% → 99.5% | 0 | 0 |
+| Objaverse (the temple) | 4% → 4% | -5.9% → -5.9% | 10,744 (1.000) | 98.2% → 98.2% | 0 | 179 |
+| **Smithsonian-1** | **41% → 45%** | +6.1% → +6.6% | 6,396 (1.001) | 98.1% → 98.3% | 0 | 3 (was 2) |
+| **Smithsonian-2 (the Bell X-1)** | **36% → 38%** | -0.1% → +0.3% | 712 (1.014) | 97.6% → 97.2% | 0 | 0 |
+| Spot | 67% → 68% | +13.7% → +14.0% | 5,279 (1.001) | 99.1% → 99.2% | 0 | 1 |
+| **Toy car** | **48% → 50%** | +9.3% → +8.7% | 3,299 (1.000) | 98.9% → 99.0% | 0 | 2 |
+| Utah teapot | 50% → 49% | +8.6% → +8.0% | 3,616 (1.002) | 99.3% → 99.5% | 0 | 0 |
+| **The fourteen** | **48.7% → 49.8%** | **+7.6% → +8.0%** | 1.181 → 1.181 x studs up | | | |
+
+Timed in same-moment pairs, two for each of the thirteen it touches (the
+temple's build is the same part for part) and four for the three slowest,
+the medians are 0.69 to 1.18 times as long: the Stanford bunny 1.18 (1.07,
+1.18, 1.17, 1.26; 37 more parts, and one more mended), the milk truck 1.17 (1.31, 1.13, 1.17, 1.16), the Bell
+X-1 1.08, Smithsonian-1 1.04, the rest 0.69 to 1.02.
+
+What moved, by reason (`fine.py`, the study of this round against the
+count above):
+
+| Why | `pre261` | This round |
+|---|---:|---:|
+| Turned | 48.7% (51.1% by area) | 49.8% (52.3%) |
+| In a turned cube, the part nearest it upright | 8.6% (8.8%) | 7.5% (7.6%) |
+| Too thin | 8.6% | 8.7% |
+| Its shell's cover too thin (uncovered) | 3.9% | 3.9% |
+
+- **The seam falls on all thirteen** that turn a cube, by 0.2 to 2.3
+  points. Turned rises on nine and falls on four, the armadillo and
+  3DBenchy by 0.2 and 0.1.
+- **The teapot and the Stanford bunny turn less** (-1.0 and -0.6). Their
+  seam falls too, but "uncovered" rises (+0.4 and +1.2), where the holes
+  rule is counted: it stacks cubes they kept on `pre261` with more than a
+  fifth of their plates neither covered nor given back.
+- **The Bell X-1 is 0.4 points less in a part** (97.6% to 97.2%) while
+  turning 1.9 points more: a cube kept with holes under a fifth of its
+  plates still leaves them out (81 cells by a turned cube against 70,
+  `diag/d10-bell*`, `d1-bell*`).
+
+![The milk truck at 48 studs, its steep faces coloured by why they are where they are, from +x, from +z and a corner, red the seam: on pre261 (top) 68% turned (green) and 7% seam, red patches on the van's side; this round (bottom) 71% turned and 5%, the side green](brickify/unit6-fourteenth-milk-truck-48.png)
+
+![Smithsonian-1 at 48 studs, coloured the same way, red the seam: on pre261 (top) 41% turned and 13% seam; this round (bottom) 45% turned and 11%, the head and shoulders greener](brickify/unit6-fourteenth-smithsonian-1-48.png)
+
 ### Proof
+
+The fourteenth round's runs (`snot13`, 2026-11-27), all in
+`bench/results/snot13-2026-11-27`, from the locked snapshot `snot13snap3`
+(`a2213a0d`) against `snot13base` (`pre261` at `3c264d6f`):
+
+- **The count:** the thirteenth round's study of today's `pre261` (the
+  same Brickify code, its `judge/after-fine.txt`); `seam2.py` split the
+  seam (`diag/seam2-*.txt`, `diag/seam3-*.txt` after); `thick.py` measured
+  the thin walls (`diag/thick-*.txt`); `build.gd` in a tree that logs the
+  plates given back by row (`diag/d1-*` to `d5-*`) and each variant tried
+  (`diag/d6-*` to `d10-*`, `b1-*` the teapot on `pre261`).
+- **The ship's hull:** `hull.gd` laid `shapes_probe`'s hull alone and
+  listed its collisions.
+- **The fourteen:** `bench.sh` laid both arms of each set at once
+  (`bench1/`, the first change alone); `bench2.sh` laid this round's arms
+  against `bench1`'s `pre261` arms (`bench2/`, then `bench3/` from the
+  final snapshot, the same parts on every model) and ran snot8's judge
+  (`bench3/judge/`); `study.sh` and `fine.py` the reasons
+  (`judge/base-fine.txt`, `judge/final-fine.txt`); `causemap.py` and
+  `rowpic.py` drew the pictures (`pics/`); `pairs.sh` laid the
+  same-moment pairs (`pairs3/`, `pairs4/`).
+- **The probes the thirteenth round ran,** from `snot13snap3`, 0 FAIL:
+  brickify 84, bond 16, side studs 25, snot 11, shapes 84, buy 25, worker
+  12, techniques 116, face 30, balance 58, stabletruth 12, stability 9
+  (its first run timed Orthanc's check at 4.3 times its build at a load of
+  53 on 24 cores, the second 2.37), Brickify's dialog (`probes3/`).
 
 The thirteenth round's runs (`snot12`, 2026-11-27), all in
 `bench/results/snot12-2026-11-27`, from the locked snapshot `snot12snap`
@@ -4642,6 +4850,24 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the fourteenth round (2026-11-27):
+
+- **Too thin, 8.7%.** Walls under a stud and a half have no core behind a
+  turned face. A builder turns them with bricks studded on both sides
+  (47905) or builds the wall itself on its side; Brickify lays neither.
+- **The rest of the seam, 7.5%.** 3.4 points are a part of the cube above,
+  below or beside reaching nearer the face than the turned cube's own
+  shell, 2.0 the judge counting a cube cut a stud across in both halves,
+  and 2.1 still upright inside the turned cube (`diag/seam3-*.txt`).
+- **A shell's first course of bricks.** A row between side studs that is a
+  brick, three layers deep, is still laid alone and given back. Pairing
+  those in bricks two rows tall turned no more cubes and cost the teapot
+  0.8 points in a part with 12 parts mended (`diag/d6-*`).
+- **Holes the holes rule lets through.** A cube kept with under a fifth of
+  its plates neither covered nor given back leaves them out: the Bell X-1
+  is 0.4 points less in a part (97.2%). Laying those plates in the shell,
+  rather than refusing the cube, is not tried.
 
 After the thirteenth round (2026-11-27):
 

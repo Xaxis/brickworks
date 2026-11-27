@@ -8470,6 +8470,68 @@ limit.
 sessions build. Results: `bench/results/design44-2026-11-27/` (FINDINGS.txt,
 pair43_score.txt, pair44_score.txt, pictures/, pictures43/).
 
+### Know what it is, then check that it reads (2026-11-27, design45, `e560950c8`, NO-GO)
+
+**Why.** Designs that hold together but do not read as their subject lose
+likeness. A brief's name was sometimes taken for letters to spell.
+
+**The change** (on pre261 `a2689a30a`, not merged). Nothing in it names a
+subject or a set.
+- Know what it is: `submit_design`'s first property, required, is `subject`.
+  It holds the kind (vehicle, creature, figure, building, machine, scene,
+  object), what it is in plain words, and the 3-5 things a person knows it by
+  (silhouette, proportions, stance, signature parts). Its description says
+  that a name which is a word names a thing to build, never letters to spell,
+  unless the brief asks for lettering. The method a chat hears once says the
+  same at step 2.
+- Check it reads: once a chat's first design stands on a bare baseplate, the
+  answer carries the corner and front views and the stated features, numbered.
+  Before any other call but a save, the session answers `check_reads`: what it
+  reads as, whether each feature reads, and a fix for each that does not. When
+  no picture could be drawn, the next build tries again, 3 tries in all. The
+  first save's fresh look lists the same features.
+
+**The bench.** design44's: the 12 tune subjects (6 Technic, 6 System), one
+design a subject an arm via the relay, `--instructions none`, held out,
+45 minutes. pair45.py put each pair to the pairwise judge with the set's views
+as references: both orders, 4 verdicts each way, 96 of 96 asked.
+
+| lever minus base | share (95%) | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall, all 12 | 69% (48-88) | +218 | (-70, +433) | no |
+| likeness, all 12 | 66% (43-86) | +214 | (-81, +386) | no |
+| overall, Technic | 75% (54-94) | +262 | (-54, +546) | no |
+| overall, System | 62% (29-92) | +175 | (-155, +413) | no |
+
+- 8 of 12 subjects went to the lever, 5 of them 8 of 8. The pairs still swing
+  both ways, so the result is mostly which session built the better model.
+- Reach: the subject was stated in 12 of 12 lever sessions, and the check was
+  answered in 9 of 12. One session missed it because the GPU queue drew no
+  picture three times. Two saved the tab's example first and built beside it,
+  so their design never went down on a bare baseplate.
+- The wins do not follow the check: the three subjects it missed went 75%,
+  100% and 100%; the nine it reached averaged 61%.
+- Best (8464-1, 8 of 8): the lever named the bucket among its features and built
+  it set-sized, black and toothed, on two lift arms. The base built a small
+  yellow scoop on a tractor body.
+- Worst (21004-1, 0 of 8): the lever listed the real Guggenheim's grey annex
+  tower and built it, where the set shows a tan block, which the base built.
+  A feature true of the real thing can be false of the set it is judged
+  against.
+- Leaks 0 of 24, limits 0 of 24. Every design ends with a model, but the
+  lever's first 42107-1 lost its model to pre261's end-save gate (5 features
+  unsettled at 45 minutes); it was run again once.
+
+**Verdict.** NO-GO: a lean the right way, not beyond its interval. It points
+at saying what the thing is and building its signature parts big, not at the
+check.
+
+**Next.** The subject statement alone, without the check, on 24 subjects or
+2 designs a subject: +218 would clear the with-runs interval at that size. For
+a set brief, take the features from what the set shows where there is a
+reference. Results: `bench/results/design45-2026-11-27/` (FINDINGS.txt,
+pictures/).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

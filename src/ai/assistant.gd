@@ -1431,8 +1431,11 @@ func _sketches_shown() -> void:
 ## Put sketch [param number] down and go on from it; the others are dropped.
 ## The app's own: the whole model designed from it, a fresh conversation at
 ## the person's model and effort ("" when that has begun). From outside:
-## what to do next, said to the session.
-func choose_sketch(number: int) -> String:
+## what to do next, said to the session. [param by] whose the choice is
+## (Builder.BY), else whoever is [member Builder.acting] as it is asked: the
+## person's card in the panel, a session's choose_sketch.
+func choose_sketch(number: int, by: Variant = null) -> String:
+	var actor: String = Builder.acting if by == null else str(by)
 	if _busy:
 		return "Not now — a design is running. Choose when it has finished."
 	if _held_sketches.is_empty():
@@ -1451,7 +1454,7 @@ func choose_sketch(number: int) -> String:
 	if not outside:
 		_run_mark = ClaudeStep.mark(builder, world, scenery, "Claude's design")
 	await _ensure_parts(model)
-	await _apply(model, true, true)
+	await _apply(model, true, true, actor)
 	if outside:
 		# Standing, so a check is a check and not a replacement for it.
 		_outside_standing = true
@@ -1511,6 +1514,11 @@ func cancel() -> void:
 ## change to be one step of the history as it ends (ClaudeStep); {} when no
 ## request is running, or it is about a selection.
 var _run_mark: Dictionary = {}
+## Whose this app's own run is (Builder.BY), read once as it begins
+## ([method _start]): the person's (""), whose panel it is. Only the run's own
+## code reads it; nothing from outside sets it, and no other run begins
+## while one is going.
+var _run_by: String = ""
 
 
 ## This request's change, one undo step named as Claude's.
@@ -1566,6 +1574,8 @@ func _start(text: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	# Whose the run is, once, as it begins: the person's, asking in the panel.
+	_run_by = Builder.acting
 	_run_generation = world.generation() if world != null else -1
 	_repairs = 0
 	_turns = 0
@@ -2068,7 +2078,7 @@ func _on_response(result: Array) -> void:
 			tool_results.append({
 				"type": "tool_result",
 				"tool_use_id": block.get("id", ""),
-				"content": await _run_tool(block),
+				"content": await _run_tool(block, _run_by),
 			})
 			# A tool that waited on parts: the next is never run on another
 			# model opened meanwhile.
@@ -2177,7 +2187,7 @@ func _on_response(result: Array) -> void:
 
 	if report["ok"]:
 		await _ensure_parts(_pending)
-		await _apply(_pending, true, true)
+		await _apply(_pending, true, true, _run_by)
 		if not _busy:
 			return
 		# One deliberate look before it is finished.
@@ -2744,7 +2754,8 @@ func _detail_next(also: Array = []) -> bool:
 			progress.emit("working the %s (feature %d of %d)" % [one["name"], of,
 				_features.size()])
 			_feature_now = str(one["name"])
-			var brief: Variant = await _feature_brief(_feature_now, of, _features.size(), true)
+			var brief: Variant = await _feature_brief(_feature_now, of, _features.size(), true,
+				_run_by)
 			if not _busy:
 				return true
 			_note_feature("looked up %s" % _feature_now)
@@ -3237,8 +3248,11 @@ func _stop(ok: bool, summary: String) -> void:
 
 
 ## What a tool hands back, and what it did for the feature being worked, if
-## one is (see [method _feature_brief]).
-func _run_tool(block: Dictionary) -> Variant:
+## one is (see [method _feature_brief]). [param by] whose the call is
+## (Builder.BY): what it keeps once it has waited is kept as theirs. Else
+## whoever is [member Builder.acting] as it is asked.
+func _run_tool(block: Dictionary, by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	# all_steps read at the edge into a real bool, or refused before anything
 	# runs: "true" and 1 were script errors in the step gate, which then let
 	# the change through (stepreview F2).
@@ -3258,7 +3272,7 @@ func _run_tool(block: Dictionary) -> Variant:
 		str(block.get("name", "")))
 	if changes:
 		world.outside += 1
-	var answer: Variant = await _tool_answer(block)
+	var answer: Variant = await _tool_answer(block, actor)
 	if changes:
 		world.outside += 1
 	if str(block.get("name", "")) == "find_techniques":
@@ -3342,8 +3356,8 @@ static func _with_line(answer: Variant, line: String) -> Variant:
 ##
 ## A String for most of them. An Array of content blocks when the answer
 ## includes a picture, which Anthropic accepts in a tool result exactly
-## as it does in a message.
-func _tool_answer(block: Dictionary) -> Variant:
+## as it does in a message. [param by] whose the call is ([method _run_tool]).
+func _tool_answer(block: Dictionary, by: String) -> Variant:
 	# Awaited by the caller, because checking a design may first have to
 	# fetch the geometry for parts this build has not loaded.
 	var name: String = block.get("name", "")
@@ -3398,10 +3412,14 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# that was stopped — but a model opened, or built in another
 			# session, was still checked onto: the owner's test gear and axle
 			# came out on the baseplate as bricks #223 and #224.
-			var applied: bool = _busy and not trial.placements.is_empty() \
+			# This app's own run's check only (by its run's own [member
+			# _run_by]): a chat's check of 400 bricks while the person's own
+			# design in the panel was at work went down on it, "Claude's
+			# design (408 put down)" for a hut of 12 (savereview4).
+			var applied: bool = _busy and by == _run_by and not trial.placements.is_empty() \
 				and not _edited and not _keeps_to_focus()
 			if applied:
-				await _apply(trial, false, true)
+				await _apply(trial, false, true, by)
 			progress.emit("checked %d bricks%s: %s" % [
 				trial.placements.size(), _shorthand_used(args),
 				report["summary"]])
@@ -3474,7 +3492,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				args.get("kinds", []) as Array)
 		"place_technique":
 			progress.emit("laying %s as a real set built it" % str(args.get("id", "")))
-			return await _place_technique(args)
+			return await _place_technique(args, by)
 		"find_parts_like":
 			var query: String = str(args.get("query", ""))
 			progress.emit("looking for a part that reads as %s" % query)
@@ -3532,7 +3550,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 				return str(change["summary"])
 			_laying_whole = true
 			var said: Variant = await _run_tool({"name": "edit_model",
-				"input": change["edit"]})
+				"input": change["edit"]}, by)
 			_laying_whole = false
 			if said is Array:
 				return [{"type": "text", "text": change["summary"]}] + (said as Array)
@@ -3550,7 +3568,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 					+ "open to. Does each read as the room it is?"}
 			_laying_whole = true
 			var laid: Variant = await _run_tool({"name": "edit_model",
-				"input": {"add": rooms["bricks"]}})
+				"input": {"add": rooms["bricks"]}}, by)
 			_laying_whole = false
 			_look_after_edit = {}
 			if laid is Array:
@@ -3701,7 +3719,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			_judged_said = {"resting": resting, "weigh": lean}
 			if scoped:
 				var had: int = world.brick_count()
-				var words: String = _gather_focus_step(standing_was)
+				var words: String = _gather_focus_step(standing_was, by)
 				if not _focus_refused.is_empty():
 					_judged_said = {}
 					return CommandSocket.refused_answer(_focus_refused)
@@ -3749,16 +3767,16 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"edit_selection":
 			progress.emit("trying a change to the selection" if bool(args.get("check_only", false))
 				else "changing the selection")
-			return await _edit_selection(args)
+			return await _edit_selection(args, by)
 		"settle_feature":
-			return await _settle_feature(args)
+			return await _settle_feature(args, false, by)
 		"where_to_attach":
 			progress.emit("finding where parts fit")
 			return await _where_to_attach(args)
 		"settle_surface":
 			progress.emit("settling the surface pass: %s %s" % [str(args.get("finding", "")),
 				str(args.get("verdict", ""))])
-			return await surface_pass().settle(args)
+			return await surface_pass().settle(args, by)
 		"submit_design":
 			# Asked about part of the model, a whole new one is not an answer.
 			if _keeps_to_focus():
@@ -3785,7 +3803,7 @@ func _tool_answer(block: Dictionary) -> Variant:
 			_say_shorthand_trouble()
 			return "Received. Checking it now."
 		"choose_sketch":
-			return await choose_sketch(int(args.get("sketch", 0)))
+			return await choose_sketch(int(args.get("sketch", 0)), by)
 	return "No tool called %s." % name
 
 
@@ -4665,6 +4683,12 @@ var chat: String = ""
 ## Who made the call that is running, by name, for the history's step:
 ## Claude, or the model on the person's key (CommandSocket.who_of).
 var who: String = "Claude"
+## Whose a step this designer keeps is (Builder.BY) is never a member: each
+## act reads it once as it begins (Builder.acting) and hands it on to what
+## keeps the step frames later (by=, below). A member set around each call
+## from outside was the chat's while a person's own design in the panel laid
+## its floor, and the person's while a chat's design did and a save ran
+## beside it (savereview4 F3, F1). The panel's run is [member _run_by].
 
 
 ## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
@@ -11794,12 +11818,12 @@ static func _subject_words(text: String) -> String:
 ## standing there, to accept, adjust or reject with settle_feature. When
 ## nothing fits, the pieces it tried and the worked technique, to build it.
 ## [param picture] adds the picture where one can be taken.
-func _feature_brief(name: String, of: int, count: int, picture: bool) -> Variant:
+func _feature_brief(name: String, of: int, count: int, picture: bool, by: String) -> Variant:
 	var said := PackedStringArray()
 	said.append("The %s — feature %d of %d." % [name, of, count])
 	var one: FeaturePass.Proposal = null
 	if await RealSnippets.ensure(self):
-		one = await feature_pass().propose(name)
+		one = await feature_pass().propose(name, by)
 	var worked: Dictionary = Techniques.for_feature(name)
 	var technique: String = ("show_technique(\"%s\") — %s" % [worked["name"], worked["when"]]) \
 		if not worked.is_empty() else ""
@@ -11901,7 +11925,7 @@ func _proposal_picture(one: FeaturePass.Proposal) -> Dictionary:
 ## settle_feature: what the design says of the app's piece for a feature.
 ## In the loop the loop then hands the next feature; from outside this
 ## answer does, with its piece laid, and after the last says what is next.
-func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
+func _settle_feature(args: Dictionary, quiet: bool, by: String) -> Variant:
 	var asked: String = str(args.get("feature", "")).strip_edges()
 	var names: Array[String] = _features if _busy else _outside_features
 	# Several at once, for a verdict that lays nothing: a design that built
@@ -11914,10 +11938,10 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 			for n: int in several.size() - 1:
 				var each: Dictionary = args.duplicate()
 				each["feature"] = several[n]
-				heads.append(str(await _settle_feature(each, true)))
+				heads.append(str(await _settle_feature(each, true, by)))
 			var last: Dictionary = args.duplicate()
 			last["feature"] = several[-1]
-			return _joined("\n".join(heads), await _settle_feature(last, quiet))
+			return _joined("\n".join(heads), await _settle_feature(last, quiet, by))
 	var name: String = ""
 	for listed: String in names:
 		if listed.to_lower() == asked.to_lower():
@@ -11947,7 +11971,8 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 			var moving: bool = not move.is_empty() and (absf(float(move.get("dx", 0.0)))
 				+ absf(float(move.get("dy", 0.0))) + absf(float(move.get("dz", 0.0)))) > 0.0
 			if moving or turns % 4 != 0 or not recolor.is_empty():
-				var why: String = await features.adjust(one, move if moving else {}, turns % 4, recolor)
+				var why: String = await features.adjust(one, move if moving else {}, turns % 4, recolor,
+					by)
 				if not why.is_empty():
 					return why
 				one.verdict = "adjusted"
@@ -11955,17 +11980,17 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 				one.verdict = "accepted"
 		"next":
 			if one == null:
-				one = await features.propose(name)
+				one = await features.propose(name, by)
 			else:
-				if not await features.take_off(one):
+				if not await features.take_off(one, by):
 					return "Could not take the %s's piece off; settle it another way." % name
 				if one.candidates.is_empty():
 					one.candidates = features.candidates_for(name)
 				if one.spot.is_empty():
 					one.spot = features.spot_for(name)
-				await features._lay_next(one)
+				await features._lay_next(one, by)
 			var of: int = names.find(name) + 1
-			return await _feature_brief(name, of, names.size(), true) if not one.piece.is_empty() \
+			return await _feature_brief(name, of, names.size(), true, by) if not one.piece.is_empty() \
 				else ("No other real piece fits where the %s goes. Build it your own way and " % name
 					+ "settle_feature \"built\" with how, or \"skip\" to leave it out.")
 		"reject":
@@ -11976,7 +12001,7 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 				one = FeaturePass.Proposal.new()
 				one.feature = name
 				features.proposals[name.to_lower()] = one
-			elif not await features.take_off(one):
+			elif not await features.take_off(one, by):
 				return "Could not take the %s's piece off; settle it another way." % name
 			one.verdict = "rejected"
 			one.reason = reason
@@ -11991,7 +12016,7 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 				features.proposals[name.to_lower()] = one
 			# Built its own way: the app's piece is not it. A session that said
 			# the proposed piece "sat at the neck" and settled built left it there.
-			elif not await features.take_off(one):
+			elif not await features.take_off(one, by):
 				return "Could not take the %s's piece off; settle it another way." % name
 			one.verdict = "built"
 			one.reason = reason
@@ -12002,7 +12027,7 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 				one = FeaturePass.Proposal.new()
 				one.feature = name
 				features.proposals[name.to_lower()] = one
-			elif not await features.take_off(one):
+			elif not await features.take_off(one, by):
 				return "Could not take the %s's piece off; settle it another way." % name
 			one.verdict = "skipped"
 			one.reason = reason
@@ -12018,7 +12043,7 @@ func _settle_feature(args: Dictionary, quiet: bool = false) -> Variant:
 		return head
 	var left: Array[String] = features.open(_outside_features)
 	if not left.is_empty():
-		var brief: Variant = await _review_feature(left[0])
+		var brief: Variant = await _review_feature(left[0], by)
 		return _joined(head + " Next, the %s:" % left[0], brief)
 	_feature_now = ""
 	return "%s\n\nEvery feature is settled:\n%s\n\n%s" % [head,
@@ -12315,7 +12340,7 @@ func surface_pass() -> SurfacePass:
 ## The loop's turn for the surface pass, with [param also] first: false when
 ## it found nothing, so the creative pass comes straight after.
 func _surface_turn(also: Array) -> bool:
-	var handed: Variant = await surface_pass().hand()
+	var handed: Variant = await surface_pass().hand(_run_by)
 	if not _busy:
 		return true
 	if surface_pass().findings.is_empty():
@@ -12337,10 +12362,12 @@ func _surface_turn(also: Array) -> bool:
 
 ## review_model {"surface": true}, for a session from outside: the pass laid
 ## on the model as it stands, with what comes after it.
-func surface_review() -> Variant:
+## [param by] whose the review is, else whoever is [member Builder.acting].
+func surface_review(by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	if _bricks_inside({}).is_empty():
 		return "The baseplate is bare: there is nothing to review."
-	var handed: Variant = await surface_pass().hand()
+	var handed: Variant = await surface_pass().hand(actor)
 	var then: String = ("Then the creative pass: review_model {\"creative\": true}."
 		if not _outside_creative_handed else "Then save_model.")
 	if handed is Array:
@@ -18918,7 +18945,13 @@ func _swaps_found(model: Model, fresh: Array[Placement], doomed: PackedInt64Arra
 ## A design of this app's own loop can be stopped while it is going down:
 ## Stop puts the model back as it was (_restore) from what has been placed
 ## so far, and the rest is then not placed.
-func _apply(model: Model, finished: bool = true, gradually: bool = false) -> void:
+##
+## [param by] whose the design is (Builder.BY), else whoever is [member
+## Builder.acting] as it begins: the floor it chose is kept as theirs once
+## it is down, frames later.
+func _apply(model: Model, finished: bool = true, gradually: bool = false,
+		by: Variant = null) -> void:
+	var actor: String = Builder.acting if by == null else str(by)
 	if gradually:
 		world.hold_drawing()
 	var running: bool = _busy
@@ -19028,7 +19061,9 @@ func _apply(model: Model, finished: bool = true, gradually: bool = false) -> voi
 		if not named.is_empty() and named != "Model":
 			titled.emit(named)
 		if not model.stands_on.is_empty():
-			floor_chosen.emit(model.stands_on)
+			# The floor's step is the design's, after its checks have waited:
+			# whoever's it was as it began, whoever else acts meanwhile.
+			Builder.by(actor, floor_chosen.emit.bind(model.stands_on))
 		built.emit(_placed_ids.size())
 	else:
 		sketched.emit(_placed_ids.size())
@@ -21065,7 +21100,7 @@ const PLACE_REACH := 4.0 * 20.0
 const PLACE_TRIES := 3
 
 
-func _place_technique(args: Dictionary) -> Variant:
+func _place_technique(args: Dictionary, by: String) -> Variant:
 	var id: String = str(args.get("id", ""))
 	await RealSnippets.ensure(self)
 	var entry: Dictionary = RealSnippets.entry(id)
@@ -21074,7 +21109,7 @@ func _place_technique(args: Dictionary) -> Variant:
 		# minifigure laid in one call, its joints put by their connectors.
 		var worked: Dictionary = Techniques.named(id) if not id.strip_edges().is_empty() else {}
 		if not worked.is_empty():
-			return await _place_worked(worked, args)
+			return await _place_worked(worked, args, by)
 		return ("No piece has the id \"%s\", and no worked technique is called that. Use "
 			% id + "an id find_techniques gave or a name show_technique lists."
 			if RealSnippets.available()
@@ -21117,7 +21152,7 @@ func _place_technique(args: Dictionary) -> Variant:
 			var colour: int = int((brick as Dictionary)["color"])
 			(brick as Dictionary)["color"] = int(recolor.get(colour, colour))
 		_laying_whole = true
-		said = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
+		said = await _run_tool({"name": "edit_model", "input": {"add": bricks}}, by)
 		_laying_whole = false
 		var first: String = str(said if said is String else (said as Array)[0].get("text", ""))
 		if not (first.begins_with("Not applied") or first.begins_with("That would")):
@@ -21196,7 +21231,7 @@ func _piece_sizes(entry: Dictionary) -> String:
 ## with it. Its names are made the model's own ("torso 2" where a torso
 ## stands), so a second figure attaches to its own parts. One built in
 ## sections is copied from show_technique instead.
-func _place_worked(technique: Dictionary, args: Dictionary) -> Variant:
+func _place_worked(technique: Dictionary, args: Dictionary, by: String) -> Variant:
 	if not (technique.get("sections", []) as Array).is_empty() \
 			or not (technique.get("repeat_section", []) as Array).is_empty():
 		return ("\"%s\" is built in sections, which place_technique does not lay: copy it "
@@ -21293,7 +21328,7 @@ func _place_worked(technique: Dictionary, args: Dictionary) -> Variant:
 			brick["face"] = face
 		bricks.append(brick)
 	_laying_whole = true
-	var said: Variant = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
+	var said: Variant = await _run_tool({"name": "edit_model", "input": {"add": bricks}}, by)
 	_laying_whole = false
 	var rows := PackedStringArray()
 	for raw: Variant in bricks:
@@ -21843,10 +21878,15 @@ static func gear_ratio_said(args: Dictionary) -> String:
 ## stands it up; called from outside, nothing would, and a caller would
 ## get "Received. Checking it now." for a design that was never checked
 ## and never built.
+##
+## Whose the call is (Builder.BY) is read once, as it begins: the session
+## the socket runs it for (CommandSocket._by), and handed to what keeps its
+## steps once it has waited, its design's floor above all.
 func use_tool(name: String, input: Dictionary) -> Variant:
+	var by: String = Builder.acting
 	var bare: bool = name == "submit_design" and world != null \
 		and world.brick_count() <= scenery.size()
-	var answer: Variant = await _run_tool({"name": name, "input": input})
+	var answer: Variant = await _run_tool({"name": name, "input": input}, by)
 	if name != "submit_design" or _pending == null:
 		return answer
 	var design: Model = _pending
@@ -21860,7 +21900,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		return "Not applied — it does not hold together yet.\n%s%s" \
 			% [report["feedback"], _where_it_would_stand(design, report)]
 	await _ensure_parts(design)
-	await _apply(design, true, true)
+	await _apply(design, true, true, by)
 	var designing: bool = is_design(design)
 	if not _busy:
 		_outside_standing = true
@@ -22239,7 +22279,11 @@ static func _span(from: float, to: float) -> String:
 
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String, feature: String = "", creative: bool = false) -> Variant:
+## [param by] whose the review is (Builder.BY), else whoever is [member
+## Builder.acting] as it is asked: what a feature's piece keeps is theirs.
+func review(assembly: String, feature: String = "", creative: bool = false,
+		by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
@@ -22247,7 +22291,7 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 	if creative:
 		return _creative_review()
 	if not feature.strip_edges().is_empty():
-		return await _review_feature(feature.strip_edges())
+		return await _review_feature(feature.strip_edges(), actor)
 	# What the last assembly reviewed brought, for the next one to know.
 	if not _outside_reviewing.is_empty():
 		var before: Dictionary = _outside_reviewing["parts"]
@@ -22296,7 +22340,7 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		if not left.is_empty():
 			said.append("Once the silhouette is right, the first feature, the %s — the app "
 				% left[0] + "has laid a real set's piece for it:")
-			return _joined("\n\n".join(said), await _review_feature(left[0]))
+			return _joined("\n\n".join(said), await _review_feature(left[0], actor))
 		return "\n\n".join(said)
 	var one: Dictionary = {}
 	for named: Dictionary in _outside_assemblies:
@@ -22428,7 +22472,8 @@ static func _exact_faults_said(report: Dictionary) -> String:
 ## Orthanc's last act was to save, with two of its three assemblies never
 ## reviewed: so saving hands it the next, as this app's own loop hands each
 ## assembly back in turn.
-func next_review() -> Variant:
+func next_review(by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	# A coroutine because review is: callers await it. Called as the model is
 	# saved, so what stands is kept.
 	_outside_unsaved = false
@@ -22438,7 +22483,7 @@ func next_review() -> Variant:
 		return _joined(_first(passed, "Before it is finished: %d of its %d features %s not "
 			% [undone.size(), _outside_features.size(), "is" if undone.size() == 1 else "are"]
 			+ "settled yet (%s). The next is the %s." % [", ".join(undone), undone[0]]),
-			await _review_feature(undone[0]))
+			await _review_feature(undone[0], actor))
 	# Parts placed for a person (is_design) have no assemblies to detail one
 	# by one: a save that handed the side pod's back would be the designer's
 	# method by another door.
@@ -22463,7 +22508,7 @@ func next_review() -> Variant:
 	return _joined(_first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
 		% [left.size(), _outside_assemblies.size(), "has" if left.size() == 1 else "have"]
 		+ "a close look (%s). This app's own designer details each in turn; the " % ", ".join(left)
-		+ "next is the %s." % name), await review(name))
+		+ "next is the %s." % name), await review(name, "", false, actor))
 
 
 ## Whether a session from outside may save yet: "" when it may; otherwise
@@ -22474,12 +22519,13 @@ func next_review() -> Variant:
 ## [param before_write]: asked before a bench's file is written, where the
 ## parts the exact check refuses are taken off first ([method _exact_save_gate]);
 ## asked after a person's file is written, it only speaks.
-func save_gate(before_write: bool = false) -> Variant:
+func save_gate(before_write: bool = false, by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	if _busy or not _outside_standing:
 		return ""
 	var left: Array[String] = _features_left()
 	if left.is_empty():
-		return await _exact_save_gate(before_write)
+		return await _exact_save_gate(before_write, actor)
 	progress.emit("not saved: %d features not settled" % left.size())
 	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
 		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
@@ -22487,7 +22533,7 @@ func save_gate(before_write: bool = false) -> Variant:
 		+ "settle_feature accepts it (adjusted if need be), asks for the next, rejects "
 		+ "it with a reason, says you built it, or skips it; built and skip settle "
 		+ "several in one call (\"feature\": \"all\"). Then save again. The %s:" % left[0],
-		await _review_feature(left[0]))
+		await _review_feature(left[0], actor))
 
 
 ## Times saving has been held back for what the exact check finds; after
@@ -22532,7 +22578,7 @@ var _pieces_advised: bool = false
 ## twice at most, and never changes the model: taking the gear off there left
 ## the person's baseplate without the part their file held, and their next
 ## Save wrote it without (savereview F1). "" lets it save.
-func _exact_save_gate(before_write: bool) -> String:
+func _exact_save_gate(before_write: bool, by: String) -> String:
 	if world == null or world.brick_count() == 0:
 		return ""
 	if not before_write and _exact_save_refusals >= MOST_EXACT_REFUSALS:
@@ -22546,7 +22592,7 @@ func _exact_save_gate(before_write: bool) -> String:
 		_save_advice = _pieces_advice(report)
 		return ""
 	if not faults.is_empty() and before_write:
-		_save_advice = await _saved_without(model, report, faults)
+		_save_advice = await _saved_without(model, report, faults, by)
 		return ""
 	if not faults.is_empty():
 		_exact_save_refusals += 1
@@ -22580,7 +22626,7 @@ const SAVE_CHECKS := 3
 ## call's edits (CommandSocket._one_step), and undo puts them all back. The
 ## words say which and why, for the save's answer; what could not come off is
 ## saved as it stands, and said with what to fix.
-func _saved_without(model: Model, report: Dictionary, faults: String) -> String:
+func _saved_without(model: Model, report: Dictionary, faults: String, by: String) -> String:
 	var fix: String = _fix_said(faults)
 	var taken: Array = []
 	for _check: int in SAVE_CHECKS:
@@ -22588,7 +22634,7 @@ func _saved_without(model: Model, report: Dictionary, faults: String) -> String:
 		var before: int = world.brick_count()
 		if off.is_empty() or off.size() >= before:
 			break
-		await _run_tool({"name": "edit_model", "input": {"remove": off, "picture": false}})
+		await _run_tool({"name": "edit_model", "input": {"remove": off, "picture": false}}, by)
 		if world.brick_count() != before - off.size():
 			break
 		taken.append_array(off)
@@ -22759,7 +22805,7 @@ func _not_yet_reviewed() -> Array[String]:
 ## A feature for a session from outside: how real sets built it and the
 ## worked technique, and from now until the next review what it uses is
 ## put down to this feature.
-func _review_feature(name: String) -> Variant:
+func _review_feature(name: String, by: String) -> Variant:
 	var known: String = name
 	for listed: String in _outside_features:
 		if listed.to_lower() == name.to_lower():
@@ -22770,7 +22816,7 @@ func _review_feature(name: String) -> Variant:
 	_note_feature("looked up %s" % known)
 	var of: int = _outside_features.find(known) + 1
 	progress.emit("working the %s (feature %d of %d)" % [known, of, _outside_features.size()])
-	return await _feature_brief(known, of, _outside_features.size(), true)
+	return await _feature_brief(known, of, _outside_features.size(), true, by)
 
 
 ## The features listed that have not been settled (settle_feature).
@@ -23190,7 +23236,7 @@ static func _box_words(box: AABB) -> String:
 
 ## edit_selection: edit_model, kept to the selection's room, asking the
 ## person first for any more room it says it needs.
-func _edit_selection(args: Dictionary) -> Variant:
+func _edit_selection(args: Dictionary, by: String) -> Variant:
 	var selected: Array = builder.selection.keys() if builder != null else []
 	if not _focus_alive():
 		var why: String = focus_on(selected)
@@ -23213,7 +23259,7 @@ func _edit_selection(args: Dictionary) -> Variant:
 	var was: bool = _scoped
 	_scoped = true
 	_trial_only = trial
-	var answer: Variant = await _run_tool({"name": "edit_model", "input": input})
+	var answer: Variant = await _run_tool({"name": "edit_model", "input": input}, by)
 	_trial_only = false
 	_scoped = was
 	return answer
@@ -23843,8 +23889,9 @@ func _refused_beyond(beyond: PackedStringArray) -> String:
 ## An edit about the selection has landed: its changes made one step of
 ## the history (with whatever else this request changed before it), new
 ## parts put in the selection's sub-assembly, the selection now what it
-## became.
-func _gather_focus_step(was: Dictionary) -> String:
+## became. Kept as [param by]'s (Builder.BY), whose the edit is; gathered
+## into the step before it only when that is theirs too.
+func _gather_focus_step(was: Dictionary, by: String) -> String:
 	_focus_refused = ""
 	var steps: Array = SelectionScope.steps_back(was, world, scenery)
 	if steps.is_empty():
@@ -23886,14 +23933,19 @@ func _gather_focus_step(was: Dictionary) -> String:
 	var own: Array = steps
 	# What followed first, newest first as a group keeps them (Builder.extend_last).
 	steps = (followed[0] as Array) + steps
-	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
+	# Into the request's step only when it is this edit's maker's too: a
+	# chat's edit_selection after the person's own request about the same
+	# parts went into the person's step, theirs to undo, and the chat's
+	# undo could not take it back.
+	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step) \
+			and Builder.whose(focus.step) == by:
 		focus.own_steps = own + focus.own_steps
 		focus.step["steps"] = steps + (focus.step["steps"] as Array)
 		focus.step["words"] = "%s's change to the selection (%s)" \
 			% [who, SelectionScope.words_for(focus.own_steps)]
 	else:
 		focus.own_steps = own
-		builder.record(steps, "%s's change to the selection (%s)" % [who, words])
+		Builder.by(by, builder.record.bind(steps, "%s's change to the selection (%s)" % [who, words]))
 		focus.step = builder.last_step()
 	if ClaudeStep.lays({"steps": steps}):
 		laid_parts.emit()

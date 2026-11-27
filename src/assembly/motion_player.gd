@@ -789,6 +789,9 @@ class Paced extends RefCounted:
 	var run := Run.new()
 	## The history's depth when it began: folded to one step at the end.
 	var depth: int = 0
+	## Whose it is (Builder.acting as it began): each slice keeps its steps
+	## as theirs, frames later, whoever acts between.
+	var by: String = ""
 	## The motion being worked out, and its number in the order.
 	var at: int = 0
 	var playing: Played = null
@@ -824,6 +827,7 @@ func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Pa
 	paced.words = words
 	paced.fps = fps
 	paced.depth = builder.history_depth()
+	paced.by = Builder.acting
 	paced.kept_at = Time.get_ticks_msec()
 	return paced
 
@@ -831,9 +835,14 @@ func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Pa
 ## [param paced] worked on for about [param budget_ms] (all of it when 0),
 ## a motion's joints taken hold of, a frame or a motion kept at least:
 ## whether it is all played and kept, one step, as play_in_order keeps it.
+## What it keeps is [member Paced.by]'s, whichever frame it is kept in.
 func pace_on(paced: Paced, budget_ms: float) -> bool:
 	if paced.done:
 		return true
+	return Builder.by(paced.by, _pace_slice.bind(paced, budget_ms))
+
+
+func _pace_slice(paced: Paced, budget_ms: float) -> bool:
 	var began: int = Time.get_ticks_usec()
 	var until: int = began + int(budget_ms * 1000.0) if budget_ms > 0.0 else 0
 	while until == 0 or Time.get_ticks_usec() < until:

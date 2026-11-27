@@ -829,6 +829,9 @@ func _lay_now() -> Flex.Laid:
 func _put() -> void:
 	if _laying:
 		return
+	# Whose its step is, carried past the fetch (Builder.acting): a
+	# session's lay_flex, or the person's click.
+	var by: String = Builder.acting
 	var laid: Flex.Laid = _lay_now()
 	if laid == null:
 		_draw()
@@ -866,14 +869,14 @@ func _put() -> void:
 	var steps: Array = builder.swap_bricks(assemblies.ids_under(_item), adds)
 	var depth: int = builder.history_depth()
 	var words: String = ("laid %s" if first else "reshaped %s") % Assemblies.label(_item)
-	builder.record(steps, words)
+	Builder.by(by, builder.record.bind(steps, words))
 	if _is_made():
 		# Made or reshaped in one go, however many clicks it took.
 		if _depth < 0:
 			_depth = depth
 			_session_words = words
 		else:
-			builder.fold_since(_depth, _session_words)
+			builder.fold_since(_depth, _session_words, by)
 		if _is_spring():
 			_turns = laid.links
 	_laid = laid
