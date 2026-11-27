@@ -4173,7 +4173,7 @@
       "kind": "cli",
       "label": "palette in a browser",
       "entry": "tools/web/palette_flow.mjs",
-      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/, ren, Return opens Render; Mirror greyed says why; Escape)",
+      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/ opens it in the window under the toolbar, first and later opens; the pointer lights the third row; ren, Return opens Render; Mirror greyed says why, no part by a keyword; Escape)",
       "area": "building"
     },
     {
@@ -7507,6 +7507,69 @@
       "entry": "src/render/page_tracer.gd",
       "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "submenus probe",
+      "entry": "src/dev/submenu_probe.gd",
+      "reach": "tools/probe.sh submenu_probe -- --saves=50   (every submenu of File, Edit and View: open within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and slanted into it, a rest-then-next move opens the next; SUBMENU lines)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "submenus in a browser",
+      "entry": "tools/web/submenu_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/submenu_flow.mjs --url=<preview>/app --saves=50 --out=DIR [--only=Import,Open recent] [--bar-ms=N]   (with .env sourced; preview_checks submenu: time to drawn by screencast, longest task, straight and slanted paths, Open recent opens a model; results.txt)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "simple's controls swapped in live",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "Simple | Full in the studio's header on every device (AppHeader.controls_switch: ModelBar.controls, PhoneShell._switch), one tap, remembered on the device (ShellPrefs controls), Full until somebody picks Simple; also ?controls=simple in a browser's address or --controls=simple on the command line; live from the page with window.brickworksUseControls = \"simple\" or \"full\" (brickworksState.controls says which); Main.use_controls(&\"simple\" | &\"full\") keeps the header and puts Simple's layer in place of the rest of the studio's own controls, the phone's or the desktop's, and back, the model, undo, selection, hand, a drag and the save untouched, the view framed in Simple and Full's again back in Full; the timeline put away going in and back on its step (StepsBar.show_step)  (tools/probe.sh simple_switch_probe; docs/simple)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple_switch probe",
+      "entry": "src/dev/simple_switch_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simple_switch_probe; PROBE_SIZE=390x844 tools/probe.sh simple_switch_probe; --case=layer|models|steps|hand|drag|typing|start; --pictures=DIR   (windowed, 1280x720 by its header)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "simple mode",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe; docs/simple)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplep1 probe",
+      "entry": "src/dev/simplep1_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- [--tablet] [--desktop] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; Simple's checks, three newcomer walks, Full's pictures; numbers in DIR/*.json)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple2 probe",
+      "entry": "src/dev/simple2_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple2_probe -- [--tablet] [--desktop] [--case=offworld,fitone,movedoff,setaside,keys,fingers,header] --pictures=DIR   (windowed; Simple's world, what it acts on, fingers across the switch, Full's header with Simple in More or \"…\")",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple3 probe",
+      "entry": "src/dev/simple3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple3_probe -- [--desktop] [--case=context,chosen] --pictures=DIR   (windowed, or headless with --headless-ok; Full's placing context set aside in Simple and put back: the sub-assembly being edited, snap, turn, tool, the hand's facing, x-ray)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplereview3 probe",
+      "entry": "src/dev/simplereview3_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- [--desktop] [--case=subedit,snap,locked,undomid,wayback] --pictures=DIR   (windowed; a tray brick while Full edits inside a sub-assembly, Full's Half and Free snap, a locked part tapped, Undo with a finger's ghost waiting, the way in and back on 10030-1 and Orthanc frame by frame)",
+      "area": "building"
     }
   ]
 }

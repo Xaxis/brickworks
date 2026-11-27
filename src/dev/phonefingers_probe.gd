@@ -266,9 +266,14 @@ func _during_a_drag() -> void:
 	await _frames(8)
 	depth = _builder.history_depth()
 	twos = int(_camera.taps_said["two"])
+	# On the bar between its controls: with Simple | Full in the bar, the
+	# middle of the window is its Undo button, which a finger presses.
 	var bar: float = float(_phone.call("top_height")) * 0.5
-	var across: float = root.get_visible_rect().size.x
-	await _tap([Vector2(across * 0.45, bar), Vector2(across * 0.55, bar)])
+	var free: Array = _bar_gaps(bar)
+	_check("the top bar has room between its controls for two fingers (%s)" % str(free), free.size() >= 2)
+	if free.size() < 2:
+		return
+	await _tap([Vector2(float(free[0]), bar), Vector2(float(free[1]), bar)])
 	await _frames(6)
 	_check("a two-finger tap on the top bar undoes nothing (%d steps, was %d)" % [
 		_builder.history_depth(), depth],
@@ -531,6 +536,45 @@ func _in_the_keys_sheet() -> void:
 
 
 # -- fingers ---------------------------------------------------------------------
+
+
+## Two places along the top bar at height [param y], each in the middle of
+## a gap at least 12 units wide between the bar's visible buttons and
+## fields, the two gaps nearest the window's middle; fewer when there are
+## not two.
+func _bar_gaps(y: float) -> Array:
+	var taken: Array = []
+	var stack: Array = [_phone]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		stack.append_array(node.get_children())
+		var control := node as Control
+		if control == null or not control.is_visible_in_tree():
+			continue
+		if not (control is BaseButton or control is LineEdit):
+			continue
+		var rect: Rect2 = control.get_global_rect()
+		if rect.position.y <= y and rect.end.y >= y:
+			taken.append(Vector2(rect.position.x, rect.end.x))
+	var across: float = root.get_visible_rect().size.x
+	var gaps: Array = []
+	var x: float = 0.0
+	var run: float = -1.0
+	while x <= across:
+		var over: bool = false
+		for span: Vector2 in taken:
+			if x >= span.x - 2.0 and x <= span.y + 2.0:
+				over = true
+		if not over and run < 0.0:
+			run = x
+		if (over or x + 1.0 > across) and run >= 0.0:
+			if x - run >= 12.0:
+				gaps.append((run + x) * 0.5)
+			run = -1.0
+		x += 1.0
+	gaps.sort_custom(func(a: float, b: float) -> bool:
+		return absf(a - across * 0.5) < absf(b - across * 0.5))
+	return gaps.slice(0, 2)
 
 
 ## Fingers down together, each wobbling 2 units as a fingertip does, and up

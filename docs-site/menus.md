@@ -19,6 +19,6 @@ ui:find a command
 
 ![Find a command with colour typed: the commands whose names say colour, each with where it is in the menus and its key; those that cannot be used yet are greyed, saying what they wait for, and the chosen one's tooltip is under the list.](/docs/img/menus-find-command.webp "Find a command (Ctrl+/), with colour typed.")
 
-Press [[Ctrl+/]], or choose **Find a command…** in the Brickworks menu, and type a few letters of a command's name or of its menu: "same colour", "export picture", "turn left". Each row says the command's key and where it is in the menus. [[↑]] and [[↓]] move, [[Enter]] runs it as its menu would, [[Esc]] puts the box away. A command that cannot be used yet stays in the list, greyed, saying what it waits for, such as "Select a part first". The ones you ran last come first.
+Press [[Ctrl+/]], or choose **Find a command…** in the Brickworks menu, and type a few letters of a command's name or of its menu: "same colour", "export picture", "turn left". Each row says the command's key and where it is in the menus. [[↑]] and [[↓]] move, or the pointer lights the row it is over; [[Enter]] or a click runs it as its menu would, [[Esc]] puts the box away. A command that cannot be used yet stays in the list, greyed, saying what it waits for, such as "Select a part first". The ones you ran last come first. A part's number or words of its name, such as 3001 or hand mirror, list the part under the commands, and [[Enter]] takes it into your hand.
 
 ## The menus {#the-menus}

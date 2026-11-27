@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe, cli:wide150 probe, cli:studio words probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, cli:submenus probe, cli:submenus in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe, cli:wide150 probe, cli:studio words probe, ui:simple's controls swapped in live, cli:simple_switch probe, ui:simple mode, cli:simplep1 probe, cli:simple2 probe, cli:simple3 probe, cli:simplereview3 probe -->
 
 ## Sub-features
 
@@ -368,6 +368,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   orthographic, `,` Settings; never the engine's "QuoteLeft" or "Comma"). The
   menus can only draw the engine's name for a key, so one it misnames is
   handed the character it then draws (`Shell.menu_accel`).
+  Submenus (menufix, 2026-11-27) open 0.08 s after the pointer rests on their
+  row (`Shell.SUBMENU_DELAY`), and every pointer move reaches them with a
+  speed (`Shell._pointer_moved` on the root window's `window_input`): the
+  engine's PopupMenu skips a move whose velocity is zero, which every move in
+  the first tenth of a second after the pointer stood still was. A row the
+  engine timed, and the pointer left by the menu's side before it opened, is
+  woken when the pointer comes back (`Shell._wake_submenus` restarts the
+  engine's own timer, `Shell.submenu_timer`): the engine times a row only
+  once until the pointer visits another. Open recent reads no model as it
+  opens: `ModelStore.recent_saved` counts only the eight
+  it lists, each kept by its file's time and size (`_counted`), and they are
+  counted 3 s after the start and 0.5 s after a save, removal or rename.
+  `submenus probe` (headless, `-- --saves=50`) times each submenu of File,
+  Edit and View from the pointer's rest (150 ms bar, no frame over 50 ms),
+  drives a straight and a slanted way into it to its third row, a rest on
+  Open recent then down to Import, and Import crossed, left by the side and
+  come back to; `submenus in a browser` (preview_checks
+  `submenu`) does the same by pictures and a screencast, 50 models saved.
 - `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
   drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`
   writes and `tests/test_mark.py` holds byte for byte) and the app's name,
@@ -439,6 +457,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and Return runs nothing. Return runs the lit row through `Shell.run`, as
   its menu row does; Up, Down, Page Up and Down move; Escape puts it away.
   The last eight run from it come first (`ShellPrefs` `palette_recent`).
+  It opens 24 units under the top of `Shell.model_area`, in the middle of it
+  across, wholly in the window, and never moves while it is open; its list
+  holds as many rows as the room under it does, up to ten (`_rows_room`),
+  and its foot is two lines whatever it says, so its first open is measured
+  right (palfix: in a browser it stood at the window's top, over the menu
+  bar, as tall as the window). One row is lit: the pointer lights the one it
+  is on (`_on_list_input`), and the Tree draws no hover of its own. A part's
+  number or name lists the part under the commands, three at most, only
+  where its name or number has every word typed and of those the ones with
+  most words whole (`CommandPalette.named_by`: "mirror" lists Hand Mirror,
+  no spoon by its keyword); the key column is as wide as its keys, the names
+  as wide as the widest of them while the middle column keeps 28% of the row
+  (`_fit_columns`), so a name is cut only past that; no tooltips over rows
+  (the foot says the lit row's words); one row and no scroll bar beside it.
   `palette probe` (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) walks
   every command in `Shell._commands`: typed by its words, reached by Down,
   Return hands exactly it to the run (a stand-in, so no file dialog,
@@ -446,9 +478,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
   Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
-  Swing on its hinge (`swing`, J), each run from the menu. `palette in a
-  browser` (preview check `palette`) drives it by keys in a browser
-  (`brickworksState.palette`).
+  Swing on its hinge (`swing`, J), each run from the menu; and the box's
+  place on its first open and as rows change, rows of one height, its height
+  as the keys go down, the pointer's row the one lit, the parts "mirror"
+  lists and a long part name whole. `palette in a browser` (preview check
+  `palette`) drives it by keys in a browser (`brickworksState.palette`, its
+  `rect`, `room` and `floor`): in the window and under the toolbar at its
+  first open and every later one, the pointer lighting the third row.
+  Pictures in a browser at 1280, 1920 and a phone's 390:
+  `bench/results/palfix-2026-11-27/palette_look.mjs`.
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
@@ -4074,6 +4112,192 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   assumption listed) and how the measured run differs from its own model.
   `tests/test_cadtask_klm.py` pins the model. A `stop` file in `--out` ends
   the building early. On this box a part takes about a minute.
+- `simple's controls swapped in live` (`Main.use_controls`, `SimpleLayer`,
+  `AppHeader.controls_switch`; Simple's phase 0 and 1,
+  bench/results/simplemode-2026-11-24/PLAN.md): "Simple | Full" in the
+  studio's header on every device (`ModelBar.controls`, the phone's
+  `PhoneShell._switch`), one tap each way, remembered on the device
+  (ShellPrefs `controls`); Full until somebody picks Simple. Also
+  `?controls=simple` in a browser's address or `--controls=simple`; live
+  from a page, `window.brickworksUseControls = "simple"` (or `"full"`),
+  heard as the page is next told, and `brickworksState.controls` says which.
+  A timeline left on one model is not opened on another opened in Simple.
+  Into Simple the header stays (the desktop's goes plain, `set_simple`: the
+  menus and name away; the phone's keeps its mark, the switch and Menu) and
+  the rest of the studio's own controls (the desktop's column, the phone's
+  foot row, pill and buttons, an open sheet but a part's menu opened again
+  on the way back) are put away, each as it was, and Simple's
+  layer goes over the model with the notices strip lent to it; the model is
+  framed in Simple's room, under the header and over the tray, and Full's
+  view comes back on leaving if Simple's was not moved. The model, its
+  undo, what is in Full's hand and the save are the same objects either
+  side; Full's selection is set aside in Simple (nothing chosen there) and
+  back in Full if nothing was chosen in Simple meanwhile, and so is Full's
+  placing context (simple3: the sub-assembly being edited, snap, turn, tool,
+  the hand's facing, ruler, x-ray; `SimpleLayer._set_full_aside`,
+  `_put_full_back`), and Simple's own moment (a tray drag, a ghost, a move)
+  is let go of at the switch, a moved part back where it was. The
+  timeline is put away going in (the whole model shown; its key opens
+  nothing in Simple) and opens again on the same step coming back
+  (`StepsBar.show_step`). A finger's hold opens nothing in Simple, nor a
+  right click (Full's part menu), nor First acts' Add parts, and of the
+  studio's keys Simple keeps only `Main.SIMPLE_KEEPS` (file, undo, redo,
+  copy, paste, Duplicate, Delete, turn the part in hand, Fit, the app's) and
+  the view's: the rest opened Full's panels hidden behind it. A field still
+  on screen keeps the keyboard across the switch (one put away lets go as it
+  hides), so the next keys are its, not the studio's. A desktop started in
+  Simple makes no tiles in the hidden parts bin (`PartsBin` grows its grid
+  only while seen).
+  `simple_switch_probe` at 1280 x 720 and 390 x 844: P2's four real models
+  (10030-1, 6685-1's steps, 5972-1's LSynth hoses, 4005-1 with two parts the
+  library lacks), each edited in Simple and undone across the switch, saved
+  byte for byte as the same edits in Full alone and every untouched line
+  kept; a drag, a part in hand, a lift and the name being typed through the
+  switch. The switch each way within a frame (the least of three), a part
+  selected in Full included: both properties panels are put away with the
+  studio while Simple shows (`Inspector.put_away`), so Full's selection put
+  back on the way out is what they show already (redrawn for nobody, the
+  part's view and its Hinge's joint were 6-15 ms of the way back), and
+  back in Full the properties' joined count says what a look finds. The
+  notices strip goes over Simple's model only while a note in it shows
+  (`Main._show_notices`, `_notices_over_simple`), put away with the column
+  otherwise (moving it was 3-8 ms each way); the layer case shows another
+  window's save there and reads it back in its place in Full.
+- `simple mode` (`src/ui/simple_layer.gd`; Simple mode phase 1, simple1,
+  2026-11-26; docs-site/simple.md): on every device once the header's Simple is
+  picked, the model not a viewer's. A tray along the foot: 12 solid colours
+  (`SimpleLayer.COLOURS`; one row where the screen is 600 points across, two
+  under it), five group tabs (Bricks, Plates, Slopes, Tiles, Specials) and
+  the six parts of the group shown (`GROUPS`, 30 in all, pictures from
+  `PartThumbnails` in the chosen colour). Undo and Redo as 60-point buttons
+  over the tray's corner on a phone, up the left side at the model's middle
+  where the window is 600 points or more across, Fit (48) under the header. A new model in Simple
+  (and Simple entered on an empty one) stands on a 16 x 16 plate framed to
+  fill the room (`new_sketch`, `ModelBar.started_new`); the view is never
+  let pull back so far a stud is under 12 points (`LEAST_STUD`,
+  `CadCamera.max_distance`), unless the model itself needs more to be seen
+  whole. A brick dragged out of the tray puts its ghost on the nearest legal
+  studs a lift (`lift_points`) over the finger, eased in over the first 40
+  points, and lifting puts it there (`Main._drop_dragged`'s rules, refused:
+  "No room there") with a 14-LDU drop drawn onto its studs over 160 ms; let
+  go over the tray or a second finger down puts nothing down; a tap on a
+  tile then a finger's tap on the model shows its ghost there and waits
+  (`SimpleLayer.ghost_waits`): a tap on the ghost puts it down, a tap
+  elsewhere shows it there, a drag from it carries it and lets go as from
+  the tray (a mouse's click puts one down at once). One finger builds and two
+  move the view: a tap on a placed part selects it (Turn, Copy, Delete come
+  up on the right), a drag moves it with what rests on it and lets it snap
+  again, over the red bin that shows while it moves it is deleted; Turn is a
+  quarter about up where it stands (no room: what is in the way is lit and
+  it stays), a double tap on the selected part turns it too, Copy puts one
+  beside it selected (`EditVerbs.duplicate_beside`; no room beside: a copy
+  in hand, put by a tap), a colour tapped paints the selection; a held
+  finger deletes nothing. Two fingers tapped undo, three redo. A finger on
+  nothing says "Two fingers turn the view" once. With a mouse the left
+  button is the finger, a left drag on nothing turns the view and the wheel
+  zooms. A model opened in Full is framed whole; parts in sub-assemblies,
+  turned off the quarter or tilted, and bendy ones (`left_alone`) are drawn
+  and left as they are, said once per model ("Simple leaves N parts as they
+  are...", counted a slice a frame after the switch) and again when one is
+  tapped; a part locked in Full is left alone too, and a tap on it says
+  "That part is locked: Full unlocks it". With Full picked nothing of it is
+  made (`Later`) and the studio is the same to the pixel but the header's
+  switch. Simple owns four things (simple2, after simplereview2's S1-S6, and
+  simple3, after simplereview3's T1-T4): where it places
+  (`SimpleLayer._set_full_aside` going in: the model's top, never the
+  sub-assembly Full is editing inside, its banner and x-ray put away; the
+  stud grid and a quarter turn, by `EditVerbs.set_snap` so the prefs keep
+  Full's; Select, the ruler and a bend let go of; a part from the tray
+  upright and on the quarter; `_put_full_back` coming out: each of Full's as
+  it was, inside its sub-assembly again with its x-ray unless a part was
+  chosen in Simple, which is at the model's top; a ghost a finger left
+  waiting taken down, and the mouse's aimed again, when the model changes
+  under it, Undo, Redo or another window's);
+  what it acts on (`SimpleLayer.acts_on`: every verb, the colours, Turn,
+  Copy, Delete, a drag and the kept keys Delete, Ctrl+D and Fit via
+  `run_key`, on what is chosen in Simple, never a part it leaves alone;
+  Full's selection is set aside going in and back on leaving if nothing was
+  chosen meanwhile; a drag chooses the brick the finger moved, not its
+  riders); its world (`world_box`: the plate or an opened model's own
+  floor with what is built on it; a ghost, a drop or a move only over it or
+  on a part, else nothing goes down and "Put it on the plate or on a brick";
+  first framing, Fit and the far cap from it); and one reset of the moment
+  (`reset`: the tray's choice, a ghost, a move, fingers, a half-made
+  gesture, and the camera's fingers by `CadCamera.let_go_of_fingers`, so two
+  fingers put down on one side of the switch and lifted on the other are
+  nobody's tap and undo nothing), run going in and out, on every open and
+  New, and by Escape before Full's ladder. `Main._hover_again` aims nothing in Simple, and
+  `Main._select_hover` outlines nothing there (Full's hover went round a part's whole
+  sub-assembly, which Simple leaves alone); it asks again once Full is back. Where
+  Full's header has no room for Simple | Full (a phone 390 across, a narrow
+  window, a long language), the switch is put away rather than take Redo or
+  fold a menu, and Simple is a tile of More or a row of "…"
+  (`Shell` command `simple_mode`, `ModelBar.switch_folded`).
+- `simple2 probe` (`src/dev/simple2_probe.gd`; `PROBE_SIZE=390x844
+  tools/probe.sh simple2_probe -- --pictures=DIR`, `--tablet` at 820x1180,
+  `--desktop` at 1280x800; `--case=offworld,fitone,movedoff,setaside,keys,fingers,header`):
+  drops let go off the plate put nothing down and say why, a tap off it
+  shows no ghost; Fit after one brick keeps the plate whole; a brick dragged
+  off the plate goes back, no step, still chosen; Full's selection set aside
+  in Simple and back in Full; Delete and Ctrl+D on what Simple chose; two
+  fingers across the switch either way undo nothing, and after it a tap
+  still chooses and two fingers tapped still undo; Full's
+  header keeps Redo and every menu it had, Simple in More or "…", in
+  en/de/fr/es. Runs on `simplereview2_probe`'s start (`_start`).
+- `simple3 probe` (`src/dev/simple3_probe.gd`; `PROBE_SIZE=390x844
+  tools/probe.sh simple3_probe -- --pictures=DIR`, `--desktop` at 1280x800,
+  headless with `--headless-ok`; `--case=context,chosen,hover`): Full inside the
+  sub-assembly with Half on the toolbar (so in the prefs), a 45 degree turn,
+  Paint, the part in hand on its side, x-ray; in Simple the model's top
+  (`place_group` ""), the banner away, the studs, a quarter turn, Select, no
+  x-ray, the prefs still Half; a tray brick on a plain red one in the model,
+  upright, joined; back in Full each setting as it was, inside the
+  sub-assembly with its banner and x-ray, or (chosen) at the top with the
+  part chosen in Simple selected. `hover` (a window only): the pointer on a
+  part of a sub-assembly outlines what a click takes in Full, nothing in any
+  of 40 frames into Simple, and the outline again back in Full with the
+  pointer not moved.
+- `simplereview3 probe` (`src/dev/simplereview3_probe.gd`;
+  `PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- --pictures=DIR`,
+  `--desktop` at 1280x800; `--case=subedit,snap,locked,undomid,wayback`):
+  simplereview3's T1-T4 and T6. A tray brick while Full edits inside a
+  sub-assembly goes into the model, a tap selects it and a finger drags it,
+  the sub-model's FILE saved as it came; Full's Half and Free give way to
+  the studs; a locked part tapped says so; Undo by two fingers while a
+  tap's ghost waits takes it down. wayback: 10030-1 and Orthanc in Full with
+  a part selected inside a sub-assembly, the way into Simple and back frame
+  by frame, none over 50 ms on a CPU, back inside it with its count. Its
+  taps reach the layer only in a window: headless, subedit's tap and drag
+  fail by the probe, not the app (simplereview3 FINDINGS T1).
+- `simplep1 probe` (`src/dev/simplep1_probe.gd`; `PROBE_SIZE=390x844
+  tools/probe.sh simplep1_probe -- --pictures=DIR`, `PROBE_SIZE=430x932`,
+  `PROBE_SIZE=820x1180 ... --tablet`, `PROBE_SIZE=1280x800 ... --desktop
+  --walks=0`): the layer's counts (5 groups, 6 shown, 12 colours, 30 parts
+  in the library), 44-point targets on the screen, the tray under a third of
+  it; a tray drag's ghost valid and over the finger, put down in the chosen
+  colour on the stud grid and seated; let go over the tray and a second
+  finger put nothing down; the big Undo and Redo byte for byte; one finger
+  on nothing turns nothing and says so, a part taken 14 points off it, two
+  fingers turn and zoom, Fit; tap then tap; the header's switch both ways,
+  remembered, byte for byte; the sketch's 16 x 16 plate filling the room, a
+  stud 12 points or more pinched out as far as it goes; a placed brick
+  selected, dragged onto the studs, turned, copied, deleted, held (nothing),
+  binned and undone; two- and three-finger taps; a model with a turned
+  brick and a sub-assembly opened in Full, whole in Simple, its three said
+  once and left alone. Then three newcomer walks (careful, hurried, tapper)
+  placing a 10-brick house with no words (each group's tab tapped as
+  needed), moving the round brick, then turning the roof's slope,
+  recolouring a brick, deleting one (the hurried walker by the bin) and
+  undoing it (the careful one's button, the others' two-finger tap): the
+  fingers land with each walker's scatter, the ghost is looked at and put
+  right unless the finger hides it, a wrong drop is fixed by a drag or by
+  Undo found control by control; modelled seconds (Fitts's law, a = 0.10 s,
+  b = 0.15 s, and a 1.35 s think, as `tools/bench/cadtask_klm.py`), drops
+  that land wrong, camera moves not asked for and whether Undo was found,
+  in `DIR/<size>_simple[_tablet].json` with a picture at each moment.
+  `--lifts=0,32,56,80` walks each lift; `--full [--desktop]` pictures the
+  studio in Full (the car and a new model), compared byte for byte with a
+  tree without the layer.
 
 ## How to reach it
 

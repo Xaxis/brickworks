@@ -3128,6 +3128,86 @@ haze on the most handled faces that Played with draws fainter. photoreal29's à-
 yet the desktop's: its raygen would sum the albedo, depth and even samples as page_tracer.js does,
 and the five passes run as a compute shader before the resolve.
 
+## 5af. The browser's denoise on the desktop, and the shadow on white (photoreal31)
+
+**Not merged (NO-GO).** The filter and `floor_rise` below live on branch `photoreal31` (eb8fc82d5) only;
+the app keeps the 7 x 7 and has neither setting. This section is the round's record.
+
+Every arm here is drawn on photoreal30's bench (`tools/photoreal/shots.json` as photoreal30 left it:
+the old sets played with, 6532 framed as its photograph, high-key on paper), at Best's 256 samples,
+fresh draws 21-24 for the sets and 21-23 for the close-ups. Each arm is that file with one key added
+to every shot. The judge is photoreal16's solo judge, 3 trials x 4 rounds (192 verdicts an arm on the
+sets, 216 on the close-ups), base today's desktop Best (t31: pre261 with photoreal30 merged). Results and scripts are in
+`bench/results/photoreal31-2026-11-27/`.
+
+**The denoise built.** The raygen sums what the eye first met (its albedo and depth) and the even
+samples apart, as page_tracer.js does (`path_tracer.glsl`'s `more` and `even`). page_denoise.frag is
+a compute shader, `path_tracer_denoise.glsl`: the light and its variance from the two halves, five
+à-trous passes 1, 2, 4, 8 and 16 apart between two pictures in turn, then the light and coverage,
+seven dispatches. With the filter on, the resolve reads its output in place of `cleaned()`.
+`tools/web/tracer_port.py` swaps the browser's in, and `tests/test_page_tracer.py` holds them. The
+first draws had no filtered light: an untyped list given to a typed `Array[RDUniform]` dropped the
+filter's uniform sets. The lists are typed now.
+
+**Judged against today's 7 x 7** (the light stop is how far apart in the noise's standard
+deviations two neighbours' light may be and still be averaged; the browser's is 8 at its 4 to 8
+samples):
+
+| arm | pool | sets | against t31 | close-ups | against t31 |
+| --- | --- | --- | --- | --- | --- |
+| a31: light stop 8 (the browser's) | p1, p2 | 0.110 | -0.293 (-0.553 .. -0.037) | 0.555 | -0.128 (-0.253 .. -0.019) |
+| l4: light stop 4 | p3 | 0.164 | -0.227 (-0.439 .. -0.021) | | |
+| l2: light stop 2 | p3, p4 | 0.357 | -0.034 (-0.252 .. +0.122) | 0.567 | -0.096 (-0.285 .. +0.049) |
+| l1: light stop 1 | p3, p4 | 0.259 | -0.132 (-0.396 .. +0.007) | 0.579 | -0.083 (-0.288 .. +0.052) |
+| t31: today's desktop Best | | 0.391 to 0.404 | | 0.663 to 0.683 | |
+
+By shot (p3 and p4), l2 against t31:
+
+| | 6512 | 6532 | 6657 | 6660 | black_2x4 | green plate | grey_1x3 | red slope | three_2x2_top | trans round |
+|---|---|---|---|---|---|---|---|---|---|---|
+| t31 | 0.035 | 0.590 | 0.234 | 0.706 | 0.658 | 0.804 | 0.777 | 0.894 | 0.772 | 0.071 |
+| l2 | 0.033 | 0.748 | 0.290 | 0.357 | 0.490 | 0.815 | 0.907 | 0.888 | 0.233 | 0.069 |
+
+At 256 samples the 7 x 7 leaves a faint grain on a flat face, and the judge reads it as a camera's.
+At the browser's stop the filter takes it, and "no sensor noise" rose from 0.43 to 0.76 of the
+verdicts, with the plastic read flatter. A lower stop keeps more of it. At 2 the sets tie within
+the interval, with 6532 and 6657 up, but 6660 loses half (its verdicts name "studs lack logo") and
+three_2x2_top loses two thirds (looked at close, the red top has scratch-like marks and specks the
+7 x 7 draws fainter). No stop met the bar: no worse on the close-ups, and better
+on the sets beyond the interval. So the desktop's Best keeps the 7 x 7 and the filter is a lever:
+`RenderSettings.denoise_light` (`StudioRender.PRODUCT_DENOISE_LIGHT` 0, `PathTracer.denoise_light`).
+At 0 the resolve takes a negative denoise as the 7 x 7's, and the filter's four pictures are a pixel
+each, so a render that does not ask pays nothing for it (they are about 530 MB at 4k). Today's bench
+drawn by default is byte for byte t31's, close-ups and sets, and asked for at 2 byte for byte l2's.
+Asked for, the seven dispatches took 66.3 ms on the card at 4k (`pathtrace_probe`, which holds them
+under 150 ms).
+
+**The shadow on white.** Mapped in bands of lightness beside the photographs
+(`shadow_bands31.py`), a photograph's shade is deepest right under the model and gone a little way
+out. Ours is lighter under the body and a faint grey all round it, because the tent's walls and
+boxes send light in low, from near the floor's horizon. That light reaches under a raised body and
+greys a wide ring. `RenderSettings.floor_rise` (`photo_gloss.z`, `PRODUCT_FLOOR_RISE` 0) fades the
+tent's light on the floor from nothing at the horizon to all of it at `FLOOR_RISE` (a sine of 0.5)
+up, so the floor is lit from above, as the panel lights it. It is general, with no per-set light.
+
+| arm | pool | sets | against |
+| --- | --- | --- | --- |
+| r31: a31 + floor_rise 1 | p1 | 0.115 | a31 +0.005 (twins of 4 identical pictures: -0.011, the pool tells 0.014) |
+| s31: l2 + floor_rise 1 + floor_key 2 | p5 | 0.407 | l2 +0.043 (-0.011 .. +0.140) |
+| t31 in the same pool | p5 | 0.396 | l2 +0.038 (-0.105 .. +0.246) |
+
+The core under the body darkened and the ring cleared, and "shadow idealised" went from 0.69 to 0.64.
+The sets did not move beyond their interval (6660 0.352 to 0.538, 6532 0.761 to 0.749, 6657 0.285
+to 0.307), so floor_rise stays 0, a lever.
+
+The bar's probes and flows are in FINDINGS.txt. Sheets, each photograph beside today's desktop Best and
+this round's arm, in `bench/results/photoreal31-2026-11-27/sheets/`: `set_6532_l2_d21.jpg`,
+`set_6660_l2_d21.jpg`, `set_6660_s31_d21.jpg`, `black_2x4_l2_d21.jpg`, `three_2x2_top_l2_d21.jpg`.
+
+What is left. The tells the judge names on the sets are still the plastic's pristine faces (0.98),
+the seamless white (0.95) and its flat colour (0.66), not the clean. A denoise for the desktop's
+fewer samples (its window's Best while it gathers) may still take the filter, and is unjudged.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

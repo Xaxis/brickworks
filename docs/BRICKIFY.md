@@ -4599,7 +4599,150 @@ count above):
 
 ![Smithsonian-1 at 48 studs, coloured the same way, red the seam: on pre261 (top) 41% turned and 13% seam; this round (bottom) 45% turned and 11%, the head and shoulders greener](brickify/unit6-fourteenth-smithsonian-1-48.png)
 
+### The fifteenth round: a thin wall turned round a core of two-sided studs, held (2026-11-27)
+
+Units `snot14` (from `pre261` at `e8a72622`) and `snot15` (from `pre261`
+at `c91875ee`) turned thin walls on their sides and judged them as snot8
+did on all fourteen. **The lead held the round on its look, and none of
+its code is in `pre261`.** The code is on branch `snot14` (`900c9f6b`, the
+walls; `133d235d`, below) and branch `snot15` (`a3573753`, the walls kept
+only where they stay as near as studs up). Scripts, logs and pictures are
+in `bench/results/snot15-2026-11-27` (`snot14/` holds what `snot14`'s
+runs are cited for here).
+
+**In short: held for a slot a builder can see.** A wall a stud or two
+thick, whose two faces cancel in every cube, was turned as a builder
+turns one: bricks studded on two opposite sides (47905, or 52107 for two
+side by side) in its middle, a shell on its side on their studs each
+way. `snot14` turned the fourteen's steep faces from 49.8% to 51.1%,
+3DBenchy from 39% to 50%, but its walls stood out past the model, and
+3DBenchy came out further from its surface than studs up (nearer than
+studs up +4.4% to -0.1%). `snot15` kept a wall turned only where it stays
+as near as studs up: the fourteen from 49.8% to 50.0% (the fox 52.1% to
+54.0%, 3DBenchy 39.0% to 39.6%), no model further off, every guardrail
+held (one piece, no joint past its load, at least 97.2% in a part, parts
+at most 1.017 times `pre261`'s, same-moment pair medians at most 1.17
+times). The lead held it for what the fox shows from the front: its
+turned back legs stand on the studs of their foot plates, and a slot the
+height of a stud shows through both legs where `pre261`'s are solid. A hole a
+builder can see is worse than a stacked wall, and 0.2 points turned over
+the fourteen, 3DBenchy all but unchanged, does not pay for it.
+
+![The fox's back legs at 48 studs from the front, close: pre261 (left), each leg stacked and solid down to its foot plate; snot15 (right), the turned part of each back leg narrower, standing on the stud of the foot plate under it, the background seen through the slot round the stud](brickify/unit6-fifteenth-fox-legs.png)
+
+![The fox at 48 studs from the front, rendered whole: pre261 (left), the legs stacked; snot15 (right), the back legs turned, over foot plates whose studs show in a slot the height of a stud](brickify/unit6-fifteenth-fox-front.png)
+
+![3DBenchy at 48 studs from the front, rendered: pre261 (left), the chimney's round bricks and the cabin stacked; snot15 (right), the same chimney and cabin, a few walls of the hull turned](brickify/unit6-fifteenth-benchy-front.png)
+
+**The next lever is the seam and the bands, not thin walls.** "Too thin"
+is still 8.7% of the steep faces on `pre261`, but what Brickify could turn
+of it as near the model as studs up came to 0.2 points over the fourteen:
+most walls asked are refused for no core cell five plates up or for the
+round parts studs up lays there, and the walls that turned most stood out
+past the model. The seam (a face in a turned cube whose nearest part is
+upright, 7.5%) and the bands between phases (7.2%), 14.7% together, both
+in cubes already turned, are now the larger part left to reach:
+
+| Why a steep face is left stacked, `pre261` at 48 studs | Mean | Over 5% on |
+|---|---:|---:|
+| **Turned** (the part nearest it on its side) | **49.8%** | |
+| Too thin: its faces cancel in every cube | 8.7% | 9 models |
+| In a turned cube, the part nearest it upright (a seam) | 7.5% | 12 |
+| A band between phases (shelled) | 7.2% | 9 |
+| The whole laid again studs up (the temple) | 6.9% | 1 |
+| Leans too far (60 to 65 degrees) | 4.5% | 4 |
+| Its shell's cover too thin (uncovered) | 3.9% | 4 |
+| Too little core behind (backed) | 3.2% | 2 |
+| A cap on it (capped) | 2.1% | 2 |
+| The model past the cube (beyond) | 1.9% | 1 |
+| The ask moved out and refused (moved) | 1.5% | 1 |
+| Too little surface in a cube | 1.3% | 0 |
+| Too few plates, unsure, no anchor, cut | 1.5% | 0 |
+
+#### Wall by wall: where the turned walls stood out
+
+`stand.py` takes each part a build adds over `pre261`'s, groups the parts
+that touch (a wall, as Shapes laid it), and measures how far the group's
+seen surface stands out past the model (along the nearest model point's
+normal) and what it adds to the steep faces' mean normal error
+(`diag/stand1.txt`, on `snot14`'s build). Three things stood out:
+
+- **A skin of tiles on a core that is the face.** Where a wall was only
+  the core thick on one side, `snot14` covered the core's studs with a
+  plate of tiles, a plate proud of the model: a fox's leg stood out 14.2
+  LDU at the 95th percentile against 9.6 for `pre261`'s parts there.
+- **A flat wall square to x or z** met the stacked parts round it in
+  half-plate steps (3DBenchy's cabin and its side, +0.29 and +0.25
+  degrees on the whole model's steep faces).
+- **Round parts laid square.** 3DBenchy's chimney, round corner bricks
+  stacked, became plates on their sides, its faces 13 degrees further off
+  (+0.49 degrees on the whole model).
+
+`snot15` took each away, measured one at a time on 3DBenchy (`quick/q1`
+to `q5`): skins only where the model's face stands a quarter of a stud
+past the core, 48.5% turned and +0.8% nearer; flat walls left stacked,
+44.5% and +1.5%; no wall where studs up lays round parts or wedges, in a
+plate 41.0% and +3.2%, in a course of bricks too 40.9% and +3.9%; no skin
+at all (the core's plain side the face, a brick studded on the other side
+alone, 87087 or 11211, holding the one shell), 39.6% and +4.4%, as
+`pre261`. What was left turned 4 of 3DBenchy's 592 walls asked, 8 of the
+fox's 96 and 6 of the milk truck's 181; nine of the fourteen lay none and
+are laid part for part as on `pre261` (`diag/walls-q8.txt`, `quick/q8`).
+
+![The fox at 48 studs, its steep faces coloured by why, from the side, the front and a corner, red too thin: on pre261 (top) 52% turned (green) and 13% too thin, the legs red; snot15 (bottom) 54% and 8%, the legs mostly amber](brickify/unit6-fifteenth-fox-48.png)
+
+![3DBenchy at 48 studs, coloured the same way: on pre261 (top) 39% turned and 29% too thin, the cabin's walls and the chimney red; snot15 (bottom) 40% and 28%, the chimney and the cabin left as on pre261](brickify/unit6-fifteenth-benchy-48.png)
+
+**The slot.** A turned wall's shell stands on the plate under its cube.
+Where that plate is the leg's lowest, it keeps its stud (a tile there has
+nothing under it in the plan, `Plan.is_top`), and the turned parts stand
+on it: a slot the stud's height through the leg, the stud showing in it.
+`snot14`'s legs had it too. A tile or a jumper there, or no wall turned
+over a plate that keeps its studs with air beside it, might close it; none
+was tried.
+
+Tried and dropped besides: walls only where the faces are square to x or
+z within 30 or 40 degrees (the fox kept 2 or 6 of its 8 walls); tiles over
+a core only where the model's face is half a plate past it, by the rays
+across (the fox laid none of its walls); flat walls turned again with no
+skins (3DBenchy 40.1% and +4.2%, further off than `pre261`). A thinner
+shell, plates on their sides one deep, 1 x 1 brackets, or two shells
+sharing one core of half-width parts were not tried.
+
+**`133d235d`, a build laid again about a joint past its load.** `pre261`
+lays the cubes round a joint past its load upright again
+(`_upright_about`), and keeps that build without weighing it against the
+build with its sides upright, the comparison every other build that
+leaves a region out goes through. No run here shows it on `pre261`'s own
+builds: with the commit, the nine models no wall reaches, the temple among
+them, are laid part for part as on `pre261` (`quick/q8`). It bit with
+`snot14`'s walls: the temple came back with one joint past its load and
+95.5% in a part, 9,857 parts (`900c9f6b` alone, `snot14`'s `bench1`,
+`snot14/bench1-judge/hold-rest-b.txt`); with the commit it is `pre261`'s,
+10,744 parts, 98.2%, none past (`bench2`). No run lays it alone on
+`pre261`. It is held with the round.
+
 ### Proof
+
+The fifteenth round's runs (`snot15`, 2026-11-27; held), all in
+`bench/results/snot15-2026-11-27`, from the locked snapshot `snot15snap`
+(`a3573753`, docs `5db45184`) against `pre261` at `c91875ee` (`snot14`'s
+base arms for the faces, the same Brickify code):
+
+- **Wall by wall:** `stand.py` and `stand2.py` on `snot14`'s build and each
+  step after it (`diag/stand1.txt`, `quick/q*/stand.txt`); `quick.sh`
+  laid each step (`quick/q1` to `q8`, `shas.txt`, `wip-commits.txt`,
+  `tried-*.patch`), `fine_bar.py` set them side by side
+  (`judge/steps.txt`).
+- **The fourteen:** `quick/q8` and snot8's judge (`quick/q8/judge/`);
+  `causes.sh` and `views2.sh` the pictures (`pics/`, `views/`; the legs
+  close are `pics/fox-legs.png`, cut from `views/*-fox_front.png`);
+  `pairs.sh` the same-moment pairs (`pairs1/`, `pairs2/`). `snot14`'s
+  judged arms, the first commit alone and its final snapshot, are copied
+  into `snot14/`.
+- **The probes the fourteenth round ran,** from `snot15snap`, 0 FAIL
+  (`probes1/`); the Python suite on `5db45184`, 2,401 passed
+  (`statics/`).
 
 The fourteenth round's runs (`snot13`, 2026-11-27), all in
 `bench/results/snot13-2026-11-27`, from the locked snapshot `snot13snap3`
@@ -4850,6 +4993,15 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the fifteenth round (2026-11-27, held):
+
+- **The seam, 7.5%, and the bands between phases, 7.2%,** in cubes
+  already turned, are now the larger lever: thin walls Brickify can turn
+  without standing out past the model came to 0.2 points.
+- **Thin walls, 8.7%,** stay stacked. Turning one needs a foot that leaves
+  no slot (a tile or a jumper under the shell where the plate under it
+  keeps its studs) and a way to keep a round wall round.
 
 After the fourteenth round (2026-11-27):
 

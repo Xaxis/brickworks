@@ -1,5 +1,5 @@
 [
-  {"title": "Getting started", "pages": ["index", "web-and-desktop", "first-model"]},
+  {"title": "Getting started", "pages": ["index", "web-and-desktop", "first-model", "simple"]},
   {"title": "Building", "pages": ["placing-parts", "parts-bin", "selecting", "changing-parts", "the-view", "joints-and-mechanisms", "figures-and-prints", "art-and-brickify", "collection", "saving-and-files", "panels-and-settings", "menus"]},
   {"title": "Instructions and exports", "pages": ["instructions", "booklet-layout", "exports", "render"]},
   {"title": "Connect your AI", "pages": ["connect", "@assistants"]},

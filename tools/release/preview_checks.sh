@@ -820,6 +820,10 @@ declare -A CMD=(
   # 1280 and a phone's width, in its colours; its rows; About from it; and
   # Back to brickworks.diy leaving the app for the site's home page.
   [app_menu]="tools/web/app_menu_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_menu"
+  # Every submenu of File, Edit and View under the pointer (menufix): open
+  # once rested on, kept open on a straight and a slanted way into it, its
+  # third row lit; Open recent with 50 saved models opens one.
+  [submenu]="tools/web/submenu_flow.mjs --url=$P/app $B --saves=50 --out=$S/${TAG}_submenu"
   # Find a command by keys alone (appux371 A9): Ctrl+/, "ren", Return opens
   # Render; Render first when opened again; Mirror with nothing selected
   # says why and runs nothing; Escape puts it away.

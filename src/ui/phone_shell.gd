@@ -69,6 +69,13 @@ var _assistant: Button
 ## for it (_share_top): More, View, Assistant opens it where there is not.
 var _assistant_wanted: bool = false
 var _name: LineEdit
+## Simple | Full (AppHeader.controls_switch), before Menu.
+var _switch: PanelContainer
+## Simple's controls are up (set_simple): only the header is this shell's.
+var simple: bool = false
+## The sheets open when Simple came, each with how it stood: opened again
+## when Full is back.
+var _simple_left_sheets: Dictionary = {}
 var _colour_button: Button
 var _tool_buttons: Dictionary = {}
 var _sheets: Array[Sheet] = []
@@ -174,7 +181,8 @@ func _fingers_tapped(fingers: int) -> void:
 ## finger, a locked part (the tap said so) or a shared model being looked
 ## at: nothing.
 func _double_tapped(at: Vector2) -> void:
-	if shell == null or not str(app.get("_viewing")).is_empty():
+	# In Simple its layer's own turn has it (SimpleLayer).
+	if shell == null or not str(app.get("_viewing")).is_empty() or simple:
 		return
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
@@ -329,6 +337,16 @@ func _build() -> void:
 		button.pressed.connect(func() -> void: shell.run(what))
 		top_row.add_child(button)
 		_tool_buttons[what] = button
+	# Simple | Full, the controls over the model (Main.use_controls), before
+	# Menu as the site's header has its mode switch before its menu.
+	_switch = AppHeader.controls_switch(p(1.0), true, func(layer: StringName) -> void:
+		app.call("use_controls", layer))
+	top_row.add_child(_switch)
+	AppHeader.show_controls(_switch, app.call("controls_layer") if app.has_method("controls_layer") else &"full")
+	# Its words are measured only once it is drawn: the bar shared again
+	# then, or the name kept the room the switch needed, and a phone 390
+	# across that opened in Full had Full cut off at its edge.
+	_switch.minimum_size_changed.connect(_share_top, CONNECT_DEFERRED)
 	if AppHeader.web_layout:
 		_menu = Button.new()
 		_menu.name = "phone_app_menu"
@@ -418,8 +436,53 @@ func _build() -> void:
 	_colours = _sheet("Colour", true)
 	_more = _sheet("More", true)
 	_context = _sheet("This part", true)
+	_show_simple()
 	_lay_pill()
+	_share_top.call_deferred()
 	laid_out.emit()
+
+
+## Simple's controls over the model or the studio's (Main.use_controls): in
+## Simple only the header stays, the mark, Simple | Full and Menu, and the
+## rest is put away, the sheets closed, the row, the line and Fit hidden
+## (SimpleLayer has its own); back in Full, all of it as it was.
+func set_simple(yes: bool) -> void:
+	if yes == simple:
+		return
+	simple = yes
+	if yes:
+		# Put away, each as it stood, and opened again on the way back as it
+		# was (simplereview's phone case: the parts sheet open in Full was
+		# shut on return). Not a part's menu: its part may be gone by then.
+		_simple_left_sheets.clear()
+		for sheet: Sheet in _sheets:
+			if sheet.is_open():
+				if sheet != _context:
+					_simple_left_sheets[sheet] = sheet.state
+				sheet.close(false)
+	else:
+		for sheet: Sheet in _simple_left_sheets:
+			if is_instance_valid(sheet) and not sheet.is_open():
+				sheet.open(str(_simple_left_sheets[sheet]))
+		_simple_left_sheets.clear()
+	_show_simple()
+	_share_top()
+	laid_out.emit()
+
+
+func _show_simple() -> void:
+	if _top == null:
+		return
+	AppHeader.show_controls(_switch, &"simple" if simple else &"full")
+	# In Simple the switch is the way back, on the bar always; in Full the bar
+	# keeps it only where there is room (_share_top).
+	if simple and _switch != null:
+		_switch.visible = true
+	for control: Control in [_row, _pill, _fit, _name, _tool_buttons.get("undo"), _tool_buttons.get("redo")]:
+		if control != null:
+			control.visible = not simple
+	if _assistant != null:
+		_assistant.visible = _assistant_wanted and not simple
 
 
 ## Anchors left, top, right, bottom and the offsets from them, as
@@ -564,7 +627,7 @@ func _row_share() -> float:
 ## the bar wanted 294: Redo stood half off the screen (app_a11y, uifix).
 func _share_top() -> void:
 	var redo: Button = _tool_buttons.get("redo")
-	if _top == null or redo == null:
+	if _top == null or redo == null or simple or _name == null or _name.get_parent() == null:
 		return
 	var row: HBoxContainer = _name.get_parent() as HBoxContainer
 	var gap: float = row.get_theme_constant("separation")
@@ -576,11 +639,20 @@ func _share_top() -> void:
 	var rest: float = 0.0
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		var counted: bool = control == redo or (control == _assistant and _assistant_wanted)
+		var counted: bool = control == redo or (control == _assistant and _assistant_wanted) \
+			or control == _switch
 		if control == _name or (not control.visible and not counted):
 			continue
 		rest += control.get_combined_minimum_size().x + gap + 1.0
 	var room: float = inside - rest
+	# Simple | Full on the bar only where it costs the name none of its width
+	# and Redo its place: at 390 it took Redo into More and 152 units of the
+	# name (simplereview2 A). Otherwise Simple is a tile of More (_fill_more).
+	if _switch != null:
+		var switch_wide: float = _switch.get_combined_minimum_size().x + gap + 1.0
+		_switch.visible = room >= p(WIDE_NAME if wide else NAME)
+		if not _switch.visible:
+			room += switch_wide
 	redo.visible = room >= p(NAME_LEAST)
 	if not redo.visible:
 		room += redo.get_combined_minimum_size().x + gap
@@ -1023,7 +1095,8 @@ func _whole_assembly() -> String:
 
 
 func _lay_pill() -> void:
-	if _pill == null:
+	# In Simple the line and Fit are its layer's own (SimpleLayer).
+	if _pill == null or simple:
 		return
 	var words: String = hint()
 	if _pill_words.text != words:
@@ -1233,6 +1306,10 @@ func _fill_more() -> void:
 	for item: String in shell._shown(QUICK):
 		if shell.command(item) != null:
 			quick.append(item)
+	# Simple, where the bar has no room for Simple | Full (_share_top): the
+	# last tile, in the place the tiles leave empty at 390.
+	if not simple and _switch != null and not _switch.visible and shell.command("simple_mode") != null:
+		quick.append("simple_mode")
 	_more.add_tiles(quick)
 	for menu: Array in Shell.touch_menus():
 		var name: String = str(menu[0])
@@ -1359,6 +1436,9 @@ func controls_by_name() -> Dictionary:
 	if _menu != null:
 		out["app_home"] = _mark
 	out["app_header"] = _top
+	if _switch != null and _switch.is_visible_in_tree():
+		for button: Node in _switch.get_child(0).get_children():
+			out[button.name] = button
 	for sheet: Sheet in _sheets:
 		if not sheet.is_open():
 			continue

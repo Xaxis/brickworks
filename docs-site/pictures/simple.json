@@ -1,0 +1,55 @@
+{
+ "shots": [
+  {
+   "id": "simple-phone",
+   "source": "app",
+   "window": "390x844",
+   "phone": true,
+   "setup": [
+    {"frames": 60},
+    {"key": "Escape", "after": 20},
+    {"call": "clear_model"},
+    {"call": "use_controls", "args": ["simple"]},
+    {"frames": 60}
+   ],
+   "crop": "window",
+   "alt": "Brickworks on a phone in Simple: the header with Simple pressed beside Full, an empty 16 by 16 green plate filling the view, and the tray along the foot: twelve colours in two rows, the tabs Bricks, Plates, Slopes, Tiles and Specials, and six bricks with their pictures, Undo and Redo in the corner.",
+   "caption": "Simple on a phone: a new model starts on a plate that fills the view.",
+   "features": ["ui:simple mode", "ui:simple's controls swapped in live"]
+  },
+  {
+   "id": "simple-selected",
+   "source": "app",
+   "window": "390x844",
+   "phone": true,
+   "setup": [
+    {"frames": 60},
+    {"key": "Escape", "after": 20},
+    {"open": "res://tests/fixtures/docs/simple_house.ldr"},
+    {"call": "use_controls", "args": ["simple"]},
+    {"frames": 40},
+    {"select": {"part": "3039", "nth": 0}},
+    {"frames": 40}
+   ],
+   "crop": "window",
+   "alt": "A little red, yellow and blue house with a white roof in Simple on a phone, one roof slope selected, and the round Turn, Copy and Delete buttons up on the right over the tray.",
+   "caption": "A tap on a part selects it: Turn, Copy and Delete come up beside it.",
+   "features": ["ui:simple mode"]
+  },
+  {
+   "id": "simple-desktop",
+   "source": "app",
+   "window": "1280x800",
+   "setup": [
+    {"call": "clear_model"},
+    {"call": "use_controls", "args": ["simple"]},
+    {"frames": 60}
+   ],
+   "crop": "window",
+   "width": 1000,
+   "alt": "Brickworks on a computer in Simple: the header with the Brickworks mark and Simple pressed beside Full, the empty plate in the middle of the view, and the tray along the foot with its twelve colours in one row, the five group tabs and six bricks.",
+   "caption": "The same Simple on a computer: the mouse is a finger, and Full is one click away.",
+   "features": ["ui:simple's controls swapped in live"]
+  }
+ ]
+}
