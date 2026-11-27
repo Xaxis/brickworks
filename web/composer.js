@@ -413,7 +413,7 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
   }
   const { room, lines } = roomIn(words, { label: say("Replies") });
   const form = makeComposer({ id: onModel ? `reply-c${comment}` : `reply-${thread}`, label: say("Your reply"),
-    placeholder: say("Reply to {name}", { name: card.querySelector(".post-head .who, .talk-row-meta a:not([data-reply-thread]), .what > b")
+    placeholder: say("Reply to {name}", { name: card.querySelector(".post-head .who, .talk-row-meta a:not([data-reply-thread], .talk-row-board), .what > b")
       ?.textContent.trim() || say("them") }) });
   state.form = form;
   (after || acts || room).after(form);
@@ -457,8 +457,17 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
       if (tally) {
         const now = (Number(tally.dataset.replies) || 0) + 1;
         tally.dataset.replies = String(now);
-        const said = tally.querySelector("span") || tally;
-        said.textContent = now === 1 ? say("1 reply") : say("{n} replies", { n: number(now) });
+        // A list's column (api/_talk.js threadLineHtml): the number in <b>,
+        // the word in <small>; else one line saying both.
+        const figure = tally.querySelector("b");
+        const word = tally.querySelector("small");
+        if (figure && word) {
+          figure.textContent = number(now);
+          word.textContent = now === 1 ? say("reply") : say("replies");
+        } else {
+          const said = tally.querySelector("span") || tally;
+          said.textContent = now === 1 ? say("1 reply") : say("{n} replies", { n: number(now) });
+        }
       }
     },
     failed: (shown) => shown?.remove(),

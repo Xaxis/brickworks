@@ -35,8 +35,9 @@ import { talkWorld } from "../../tests/fixtures/talk/world.mjs";
 
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
-const RPC = /\/rest\/v1\/rpc\/([a-z_]+)$/;
-const HERE = /^(talk_[a-z_]*|admin_audit_[a-z_]*)$/;
+const RPC = /\/rest\/v1\/rpc\/([a-z][a-z0-9_]*)$/;
+// talk.sql's, talk2.sql's (talk2_list, talk2_page) and the console's audit.
+const HERE = /^(talk2?_[a-z_]*|admin_audit_[a-z_]*)$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const MODEL = /^[A-Za-z0-9]{10}$/;
@@ -175,6 +176,18 @@ export async function hold() {
   if (inner) return;
   db = await talkWorld();
   inner = globalThis.fetch;
+  // A busy Talk (tests/fixtures/talk/crowd.mjs): Help's 500 threads, a
+  // thread of 200 posts, in the people's pool, round the gallery's models.
+  if (process.argv.includes("--talk-crowd")) {
+    const listed = await rest("shared_models?listed=is.true&published=is.true&barred=is.false&test=is.false"
+      + "&order=listed_at.desc&limit=12&select=id,owner,name,has_image,has_thumb,updated_at");
+    for (const one of listed) models.add(one.id);
+    const [house] = await rest("people?handle=eq.brickworks&select=account");
+    if (house) await copyAccount(house.account);
+    const { crowdTalk } = await import("../../tests/fixtures/talk/crowd.mjs");
+    const made = await crowdTalk(db, { models: listed, house: house?.account || null });
+    console.log(`talk: a crowd of ${made.threads} threads and ${made.posts} posts (Help ${made.help}, the long one t/${made.long})`);
+  }
   globalThis.fetch = async (url, init = {}) => {
     const where = String(url);
     const rpc = where.startsWith(SUPABASE) ? RPC.exec(where.split("?")[0]) : null;

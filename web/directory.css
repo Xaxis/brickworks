@@ -1224,20 +1224,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.list-card-aside > .bio, .list-card-aside > .numbers, .list-card-aside > .acts { grid-column: 1 / -1; }
 }
 
-/* A Talk thread as an object's page (api/_talk.js threadPageHtml): its
-   head, Reply, the model it is about and the boards in the aside; the
-   posts beside it, read from the top. */
-.talk-page.obj-page { padding-top: var(--s-5); }
-.talk-thread-layout.obj-layout { grid-template-columns: minmax(0, 1fr) 340px; }
-.obj-aside.talk-thread-head { margin: 0; }
-.obj-aside.talk-thread-head h2 { font-size: var(--t-h3); }
-.talk-thread-head .talk-crumbs { margin: 0 0 var(--s-2); }
-.talk-thread-head .talk-row-meta { margin: 0; }
-.talk-thread-head .talk-thread-acts { margin: var(--s-4) 0 0; }
-.talk-thread-head .talk-thread-acts > .cta { flex: 1 1 auto; }
-.talk-thread-head .talk-model { margin: var(--s-4) 0 0; }
-.talk-thread-main > .talk-posts { margin-top: 0; }
-.talk-thread-boards { margin-top: var(--s-7); }
+/* A Talk thread's page (api/_talk.js threadPageHtml) is laid out in
+   talk.css, which only Talk's pages load. */
 @media (width < 900px) { .talk-thread-layout.obj-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* Photos of real builds in a tab of their own: any shape, so in columns. */
