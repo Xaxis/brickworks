@@ -2114,6 +2114,24 @@ static func _boot_mark(stage: String) -> void:
 			% JSON.stringify(stage), true)
 
 
+## The search's index let be made ahead of need (PartLibrary.let_search_ahead)
+## once the start's model is laid and every part of it is here, or once
+## [constant SEARCH_AHEAD_AFTER_MS] have gone by whatever the start is doing
+## (a shared model's viewer never lays one here). Made on a worker as the
+## bin first filled, it ran beside the start's last seconds (webstart13).
+func _search_ahead_after_start() -> void:
+	var since: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - since < SEARCH_AHEAD_AFTER_MS:
+		await get_tree().process_frame
+		if _first_open_done and _store.awaited.is_empty() and not _store.laying:
+			break
+	if _library != null:
+		_library.let_search_ahead()
+
+
+const SEARCH_AHEAD_AFTER_MS := 20000
+
+
 ## Loading this script compiles every script it names, and theirs, in one
 ## go, before this runs ("compiled"). Then the scene is made ("made") and
 ## its nodes readied ("ready"). That was all 308 of the app's, 3.6 s of a
@@ -2187,6 +2205,9 @@ func _ready() -> void:
 		get_tree().paused = false
 		_boot_mark("data")
 	_library = PartLibrary.new()
+	# The search's index is made ahead of need once the start's model is laid
+	# (_search_ahead_after_start), not as the bin first fills.
+	_library.search_ahead_held = true
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
 		_boot_mark("stopped")
@@ -2264,6 +2285,7 @@ func _ready() -> void:
 	_ui_at = Time.get_ticks_msec()
 	# The page's fetch of it come since, if it had not then.
 	_ask_early_model()
+	_search_ahead_after_start()
 
 	if not _viewing.is_empty():
 		_enter_view()

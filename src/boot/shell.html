@@ -501,11 +501,26 @@ const brickworksEngine = (function () {
 		load();
 		return { ready: ready, rules: null };
 	}
+	// The switch's last answer on this device, kept (webstart13). A return
+	// whose last answer was off starts the engine with threads at once,
+	// rather than after the question: on WebKit as an iPhone 13 on live a
+	// return asked for the engine's wasm only once op=phone had answered,
+	// 1.4 to 2.1 s into the page, and every phase after it waited as long.
+	// It is asked all the same and its answer kept for the next visit: the
+	// switch turned on reaches such a phone a visit late, with the engine
+	// every page had before the switch; one that last heard on waits for the
+	// answer as before, so off reaches it at once.
+	const KEPT = "brickworks.phoneEngine";
+	let kept = "";
+	try { kept = localStorage.getItem(KEPT) || ""; } catch (e) {}
 	// The same answer the first visit's time to go reads (eta, below), asked once.
 	chosen.asked = true;
 	const rules = fetch("/api/plans?op=phone").then(function (reply) { return reply.ok ? reply.json() : null; })
 		.catch(function () { return null; });
 	rules.then(function (said) {
+		if (said && typeof said.phone_nothreads === "boolean") {
+			try { localStorage.setItem(KEPT, said.phone_nothreads ? "nothreads" : "threads"); } catch (e) {}
+		}
 		if (asked) return;
 		chosen.on = Boolean(said && said.phone_nothreads === true);
 		if (chosen.on) {
@@ -515,7 +530,12 @@ const brickworksEngine = (function () {
 		}
 		load();
 	});
-	setTimeout(load, SWITCH_MS);
+	if (kept === "threads") {
+		chosen.kept = true;
+		load();
+	} else {
+		setTimeout(load, SWITCH_MS);
+	}
 	return { ready: ready, rules: rules };
 })();
 </script>

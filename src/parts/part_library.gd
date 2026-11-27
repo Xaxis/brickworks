@@ -2892,6 +2892,44 @@ const INDEX_WANTED_MS := 12.0
 ## search waits for it.
 var _index_making: PartSearch = null
 var _index_wanted: bool = false
+## While the app's start lays its first model (Main), the index is not made
+## ahead of need: asked so meanwhile ([method prepare_search] without
+## wanted), it is made once [method let_search_ahead] is called. A search
+## typed meanwhile still has it made at once. On WebKit as an iPhone 13 on
+## live, a worker grew the Wasm memory from 360 to 432 MB about 5 s after
+## the window was built, as the start's model was being drawn: every growth
+## the page's own thread asked for stopped at 360 (webstart13). This index,
+## made on a worker from the bin's first fill, is the start's worker task
+## over every part of the catalogue, its words and names and element
+## numbers. A page's Wasm memory never shrinks; made once the start's own
+## work is let go of, it is made in the room that left.
+var search_ahead_held: bool = false
+var _ahead_asked: bool = false
+## The index [method current] reads, made on a worker while the search's
+## waits ([member search_ahead_held]): the index's own worker made it first
+## (_offered_ids), and held with it, the start's open made it on the page's
+## thread instead (ModelStore's current, in its "known" phase), 0.9 to 2.6 s
+## against live's 0.02 (webstart14, 2026-11-27). Its task until collected.
+var _current_task: int = -1
+
+
+## [method _index_current] on a worker, unless it is made or being made.
+## Without threads it is made where it is first read, as before.
+func _current_ahead() -> void:
+	if not index_on_a_worker or _current_task >= 0 or current_here():
+		return
+	_current_task = WorkerTasks.add(func() -> void: superseded_ids(), false, "index the parts' current moulds")
+
+
+## The start is over: the index asked for ahead of need while it was
+## ([member search_ahead_held]) is made now.
+func let_search_ahead() -> void:
+	if not search_ahead_held:
+		return
+	search_ahead_held = false
+	if _ahead_asked:
+		_ahead_asked = false
+		prepare_search()
 
 
 ## Whether the search's index is made, and where there are threads the
@@ -2919,6 +2957,10 @@ func search_ready() -> bool:
 ## when the first is typed (part_of_element), a seventh of a second.
 func prepare_search(wanted: bool = false) -> void:
 	_index_wanted = _index_wanted or wanted
+	if search_ahead_held and not wanted:
+		_ahead_asked = true
+		_current_ahead()
+		return
 	if _preparing >= 0 or _index_making != null or search_ready():
 		return
 	_collect_preparing()
@@ -3042,6 +3084,9 @@ func _collect_preparing() -> void:
 	if _preparing >= 0 and WorkerThreadPool.is_task_completed(_preparing):
 		WorkerTasks.collect(_preparing)
 		_preparing = -1
+	if _current_task >= 0 and WorkerThreadPool.is_task_completed(_current_task):
+		WorkerTasks.collect(_current_task)
+		_current_task = -1
 	for task: int in _stopped.duplicate():
 		if WorkerThreadPool.is_task_completed(task):
 			WorkerTasks.collect(task)

@@ -323,6 +323,96 @@ load 50 to 109):
   asked first, 78% of the first screen. Under 300 needs that cycle cut,
   class by class, so that its parts compile apart: the Next.
 
+### Where live's 432 MB comes from, and a return's seconds (webstart13)
+
+webstart13, 2026-11-22. webstart12 read 360 MB and live reads 432: both
+are right. `tools/web/start_phases.mjs` now keeps every growth of the
+heap the page's own thread asks for (the size asked, the size before and
+after) and holds each visit 30 s past working (`--hold=30`). Live (m318),
+3 visits a config at load 109 to 126
+(`bench/results/webstart13-2026-11-20/live/`):
+
+- **WebKit as an iPhone 13: layered compile is on** (the page took it for
+  an iPhone; the threaded engine, the switch off). Every growth its own
+  thread asked for was 300 MB or under, so the Wasm memory stood at 360 at
+  the scripts', the catalogue's and working's marks in 2 visits of 3. In
+  all 3 it was 432 within 30 s of working: 5 to 6 s after the window was
+  built, from a thread that is not the page's (a worker's growth is its
+  own copy of the import, unseen here). webstart12 read at working only.
+- **Chromium as a phone: the compile itself reaches 432**: the page's own
+  thread asked for 360 MB at the scripts' mark (no layered compile off
+  Apple, webstart12's choice).
+- **Where an iPhone's start goes**, median of 3, s: first visit 23.8 (the
+  engine's files 7.9, wasm compiled 4.6, engine 0.7, scripts 6.2, the data
+  pack 2.4, catalogue 0.7, window 1.2, first part 0.7, to working 4.7); a
+  return 19.5 (files 3.3, wasm 0.5, engine 0.7, scripts 6.5, data 1.0,
+  catalogue 0.7, window 1.5, first part 1.0, to working 5.1). The engine's
+  wasm was asked for only once the switch answered (op=phone), at 1.6 s on
+  a return as on a first visit. The main thread's own CPU to working is
+  12.0 to 12.8 s of it: the bar's 8 s is under the page's own work.
+
+What was done with it (measured at the same moments against live in
+`bench/results/webstart13-2026-11-20/proofs-<sha>/`, queued behind a
+release when written):
+
+- **The search's index waits for the start** (`PartLibrary.
+  search_ahead_held`, let go of by `Main._search_ahead_after_start` once
+  the start's model is laid and every part of it is here, 20 s at most):
+  it was the start's one worker task over the whole catalogue, begun as
+  the bin first fills, and ran beside the model's last seconds. A key typed
+  meanwhile has it made at once, as before (`searchahead_probe`).
+- **A return starts the engine at once on an iPhone or iPad that last
+  heard the switch off** (`brickworks.phoneEngine` in localStorage, the
+  shell's `brickworksEngine`): the question is still asked and its answer
+  kept, so the switch turned on reaches such a device a visit late; one
+  that last heard on waits for the answer, so off reaches it at once.
+
+**Not met, and why**: an iPhone's return at 8 s and Chromium's at 6 need
+the scripts' 6.5 s and the 5 s from the window to working cut, which is the
+124-script cycle (above) and the model's laying, not the start's order;
+300 MB is the same cycle's compile (300 to 360 at its height on an iPhone,
+over 360 on Chromium).
+
+### Start building, and what the timer could not see (webstart14)
+
+webstart14, 2026-11-27 (`bench/results/webstart14-2026-11-27/FINDINGS.txt`,
+every phase before and after).
+
+- **webstart13's proof was a stale page.** `place_build.py` pointed
+  `index.html` at `/e/<hash>/` and `/b/<sha>/` and left export.sh's
+  `index.html.br` of the page before it; `serve.py --compressed` sent that
+  to Chromium (which takes brotli from 127.0.0.1; WebKit does not), so every
+  Chromium visit asked for an `index.js` that was not there: "Engine is not
+  defined". The stale copies now go (`tests/test_place_build.py`).
+- **No timed Chromium return read its cache.** The parts mirror's routes
+  (`page_routes.mjs`) turned each page's HTTP cache off, as Playwright's
+  do, so every return fetched the engine and its pack again (CDP
+  `fromDiskCache` false), 5 s of a desktop return at 20 Mbps that no
+  visitor's return pays. `start_phases` now launches with `keepCache`.
+- **Start building finds the engine here.** The home page prefetches the
+  engine and its pack on intent, on a computer's connection
+  (`web/landing.js` `studioAhead`): 9.7 MB, the 5 s a desktop first visit
+  spent on the files. Intent is a member signed in (at idle after the
+  load), or the pointer within 200 px of a link into the studio, its focus
+  or a press, or the hero band scrolled past. Every visit at idle cost the site 9.7 MB per visitor who
+  never pressed Start. Not on a phone's width, a cellular, slow or
+  Save-Data connection, nor an iPhone or iPad.
+- **Not the car's parts.** Asked for as soon as the catalogue is read,
+  they were read in the open and the time from the first part to working
+  did not shrink: tried and taken out.
+- **webstart13's held search index held the current-mould index too.**
+  The search index's worker made the index `PartLibrary.current` reads
+  first; held, the start's open made it on the page's thread, 0.9 to 2.6 s
+  of its "known" phase against live's 0.02. It is made on a worker while
+  the search's waits (`_current_ahead`, `searchahead_probe`).
+
+**What is left** is the page's own work, which no ordering of the start
+moves: the first screen's GDScript compile (4.3 s on a desktop, 4.6 on a
+phone, 6.5 on an iPhone, every visit, the 124-script cycle above), the
+engine's own start (0.6 to 1.3), the catalogue and the window (2 to 2.5),
+and 1.6 to 3.2 s from the first part to the car drawn, two frames of which
+one is 1 to 2 s of drawing in software.
+
 ## The no-threads export on WebKit
 
 `Web (no threads)` (`build/web-nothreads`, unshared memory) against the
