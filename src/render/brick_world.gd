@@ -1008,6 +1008,12 @@ func brick_count() -> int:
 	return _bricks.size() - _ghosts.size()
 
 
+## The number the next brick made is given: every brick made from now on has
+## this one or a higher (one put back by an undo keeps its own, lower).
+func next_id() -> int:
+	return _next_id
+
+
 func get_brick(brick_id: int) -> Brick:
 	if _ghosts.has(brick_id):
 		return null

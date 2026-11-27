@@ -206,6 +206,8 @@ var _chose_here: bool = false
 ## Full's placing context, set aside on the way in ([method _set_full_aside])
 ## and put back on the way out; empty while Full's is in place.
 var _full_context: Dictionary = {}
+## What Full shows, set aside likewise ([method _set_view_aside]).
+var _full_view: Dictionary = {}
 ## The model as it was when Simple came up: [generation, revision].
 var _full_model: Array = []
 ## The part Simple's tray last put in hand, upright and unturned; "" when the
@@ -591,6 +593,7 @@ func entered() -> void:
 	# Before the selection is cleared: leaving Full's sub-assembly clears it
 	# too, and that is no choice made in Simple.
 	_set_full_aside()
+	_set_view_aside()
 	_pick([])
 	_chose_here = false
 	_lay_out()
@@ -646,6 +649,7 @@ func left() -> void:
 		var see: SeeInside = (app.get("_shell") as Shell).see_inside
 		if xray and not see.seeing_through:
 			see.set_xray(true)
+	_put_view_back()
 	_full_selection = []
 	var camera: CadCamera = app.get("_camera")
 	if _camera_was.is_empty():
@@ -740,6 +744,77 @@ func _put_full_back(where_it_was: bool) -> void:
 	if _model_now() != _full_model and assemblies.ids_under(path).is_empty():
 		return
 	assemblies.enter(path)
+
+
+## What Full shows set aside, so Simple shows the whole model as it is, every
+## part drawn where it stands and in a finger's way. Each carried in made
+## Simple's acts land where a person cannot see why (simplereview4): a brick
+## from the tray put on a part hidden in Full, or cut away, stood on nothing
+## to be seen, and Simple has no Show all (F2). So, while Simple is up:
+##   hidden parts        shown (Hide, Show only the selection, the model
+##                       tree's eyes): Full's hidden again on the way out.
+##   the cut and x-ray   lifted (SeeInside.set_aside); the cut the model's
+##                       file keeps is kept, so a save writes it.
+##   the exploded view   every section drawn where it stands (SectionsUi).
+##   Stress, Stud        off: each tints every part, so Simple's colours and
+##   directions          the bricks put down were not what was drawn.
+## Full's timeline step is put away by Main as Simple comes up, and a brick
+## put down in Simple goes in that step (Main._place_step, F1). Nothing here
+## changes the model, its file or the prefs, and nothing is said: none of it
+## is Simple's to name.
+func _set_view_aside() -> void:
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	_full_view = {"generation": world.generation(), "unseen": builder.lattice.unseen.duplicate()}
+	if not builder.lattice.unseen.is_empty():
+		builder.lattice.unseen.clear()
+		verbs.apply_hidden()
+	shell.see_inside.set_aside(true)
+	var sections: Node = shell.get("_sections")
+	if sections != null:
+		sections.call("set_aside", true)
+	for which: String in ["stress", "stud_map"]:
+		var view: Node = shell.get("_stud_map" if which == "stud_map" else "stress")
+		_full_view[which] = view != null and bool(view.get("on"))
+		if bool(_full_view[which]):
+			_quietly(view, false)
+
+
+## What Full showed back as [method _set_view_aside] found it: the parts it
+## hid that are still there hidden again, the cut on, x-ray and the exploded
+## view as they were on the same model, Stress or Stud directions on again.
+func _put_view_back() -> void:
+	var view: Dictionary = _full_view
+	_full_view = {}
+	if view.is_empty():
+		return
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	var hidden: Dictionary = view["unseen"]
+	if not hidden.is_empty() and int(view["generation"]) == world.generation():
+		for brick_id: Variant in hidden:
+			if world.get_brick(int(brick_id)) != null:
+				builder.lattice.unseen[brick_id] = true
+		verbs.apply_hidden()
+	shell.see_inside.set_aside(false)
+	var sections: Node = shell.get("_sections")
+	if sections != null:
+		sections.call("set_aside", false)
+	for which: String in ["stress", "stud_map"]:
+		if bool(view.get(which, false)):
+			_quietly(shell.stress if which == "stress" else shell.stud_map, true)
+
+
+## [param view] (Stress, Stud directions) turned on or off with nothing said.
+static func _quietly(view: Node, on: bool) -> void:
+	var said: Callable = view.get("say")
+	view.set("say", func(_words: String) -> void: pass)
+	view.call("set_on", on)
+	view.set("say", said)
 
 
 ## The model as it stands, to tell whether it changed: its generation and
@@ -1911,8 +1986,10 @@ func _release(at: Vector2) -> void:
 		_drop_from_tray(_aimed(_ghost_from + (at - _down), _travel), at, "tap")
 		return
 	# A copy in hand: put down where the finger aims, tapped or dragged; off
-	# Simple's world it stays in hand.
-	if builder.is_carrying() and verbs.mode != "place":
+	# Simple's world it stays in hand. Whatever Full's tool: with Place kept
+	# for a part Full had picked, a lift or a paste under way was never put
+	# down, the tap taken for a choice of nothing (simplereview4 F3).
+	if builder.is_carrying():
 		var aim: Vector2 = at if tap else _aimed(at, p(RAMP))
 		last_drop = {"aimed": aim, "put": [], "from": "copy"}
 		_aim(aim)

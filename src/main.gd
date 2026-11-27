@@ -1468,18 +1468,36 @@ func _timeline_left() -> Dictionary:
 		return {}
 	if _steps.is_starting():
 		_steps.cancel_start()
-		return {"mode": _steps.mode(), "number": -1, "inside": 0, "shown": -1}
+		return {"mode": _steps.mode(), "number": -1, "inside": 0, "shown": -1, "from": _world.next_id()}
 	if not _steps.is_playing_back():
 		return {}
 	var at: Instructions.Step = _steps.current_step()
+	# "place": the step a part put down in Simple goes in (_place_step);
+	# "from": the first number a part made in Simple has.
 	var left: Dictionary = {"mode": _steps.mode(), "number": at.number if at != null else -1,
-		"inside": at.callout_step if at != null else 0, "shown": _steps.shown()}
+		"inside": at.callout_step if at != null else 0, "shown": _steps.shown(),
+		"place": _steps.place_where(), "from": _world.next_id()}
 	_steps.stop()
 	return left
 
 
+## The step a part put down by hand goes in (Builder.place_step): the one
+## the timeline shows, in the author's steps; while Simple is up, the one
+## Full's timeline was left on (_timeline_left), as Full's own put would
+## have gone in it. A brick put in Simple went after the last step, and
+## Full came back on its step with the brick ahead of it, out of sight
+## (simplereview4 F1).
+func _place_step(path: String) -> int:
+	if _layer == &"simple":
+		var left: Dictionary = _simple_left.get("steps", {})
+		return StepsBar.step_for(left.get("place", []), _world, path)
+	return _steps.place_step(path)
+
+
 ## The timeline open again on the step [param left] says (_timeline_left),
-## whatever was put down or taken off in Simple meanwhile.
+## whatever was put down or taken off in Simple meanwhile; a part made in
+## Simple that step does not show (one in another model's steps, an order
+## worked out afresh) brought on to, as Full's own put is (_show_put_unseen).
 func _timeline_back(left: Dictionary) -> void:
 	if _world.brick_count() == 0 or _steps.is_playing_back() or _steps.is_starting():
 		return
@@ -1487,9 +1505,23 @@ func _timeline_back(left: Dictionary) -> void:
 		return
 	# Back in Simple before the steps were worked out: put away again.
 	if _layer == &"simple":
-		_simple_left["steps"] = _timeline_left()
+		var again: Dictionary = _timeline_left()
+		if left.has("from"):
+			again["from"] = left["from"]
+		_simple_left["steps"] = again
 		return
 	_steps.show_step(int(left["number"]), int(left["inside"]), int(left["shown"]))
+	var from: int = int(left.get("from", 0))
+	if from <= 0:
+		return
+	var made := PackedInt64Array()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.id >= from and not _store.scenery.has(brick.id):
+			made.append(brick.id)
+	# Worked out afresh just now (start): stepped to, not planned again.
+	var last: Instructions.Step = _last_step_of(made) if not made.is_empty() else null
+	if last != null:
+		_steps.show_step(last.number, last.callout_step if last.callout > 0 else 0)
 
 
 ## The colours of the first few parts selected, for the page.
@@ -7373,7 +7405,7 @@ func _build_ui() -> void:
 	_steps.look_wanted.connect(func(op: String) -> void: _shell.edit_look(op))
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
-	_builder.place_step = _steps.place_step
+	_builder.place_step = _place_step
 	# The step an edit reaches no further than, for what an edit says.
 	_builder.step_showing = func() -> int:
 		var at: Instructions.Step = _steps.current_step()
@@ -10476,19 +10508,26 @@ func _on_model_edited() -> void:
 func _show_put_unseen() -> void:
 	var ids: PackedInt64Array = _builder.put_unseen
 	_builder.put_unseen = PackedInt64Array()
-	if not _steps.is_playing_back() or _builder.shown_only(ids).size() == ids.size():
+	var last: Instructions.Step = _last_step_of(ids)
+	if last == null:
 		return
-	var steps: Array[Instructions.Step] = _steps.steps()
+	_steps.refresh(last.number, last.callout_step if last.callout > 0 else 0, _steps.steps())
+	_bar.say("moved %s to step %d" % [Builder._many(ids.size()), last.number])
+
+
+## The last step that holds any of [param ids], where some of them are past
+## the step the timeline shows; null where it shows them all (or none is in
+## a step).
+func _last_step_of(ids: PackedInt64Array) -> Instructions.Step:
+	if not _steps.is_playing_back() or _builder.shown_only(ids).size() == ids.size():
+		return null
 	var last: Instructions.Step = null
-	for step: Instructions.Step in steps:
+	for step: Instructions.Step in _steps.steps():
 		for brick_id: int in ids:
 			if step.brick_ids.has(brick_id):
 				last = step
 				break
-	if last == null:
-		return
-	_steps.refresh(last.number, last.callout_step if last.callout > 0 else 0, steps)
-	_bar.say("moved %s to step %d" % [Builder._many(ids.size()), last.number])
+	return last
 
 
 ## [method _on_model_edited] at the end of this frame, once however many

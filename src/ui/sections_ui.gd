@@ -305,6 +305,13 @@ func _process(delta: float) -> void:
 		set_process(false)
 		_frame_back()
 		return
+	_draw_apart()
+	if _share >= 1.0 and _goal >= 1.0:
+		set_process(false)
+
+
+## Every section drawn as far apart as it has come.
+func _draw_apart() -> void:
 	# Eased: quick away, slow to settle.
 	var eased: float = 1.0 - pow(1.0 - _share, 3.0)
 	var placed: Dictionary = {}
@@ -313,8 +320,24 @@ func _process(delta: float) -> void:
 		if brick != null:
 			placed[brick_id] = brick.transform.translated((_shifts[brick_id] as Vector3) * eased)
 	shell.world.set_drawn(placed)
-	if _share >= 1.0 and _goal >= 1.0:
+
+
+## Simple's controls are up (SimpleLayer): every section drawn where it
+## stands, as Simple shows the whole model as it is (a brick put on a part
+## drawn apart went down where the part is, not where it was seen); back in
+## Full, drawn apart as it was, or, the model changed meanwhile, together,
+## as any change brings it together.
+func set_aside(on: bool) -> void:
+	if not is_exploded():
+		return
+	if on:
 		set_process(false)
+		shell.world.set_drawn({})
+	elif _revision != shell.world.revision:
+		_close_explode()
+	else:
+		_draw_apart()
+		set_process(_share != _goal)
 
 
 ## Straight to apart or together, unanimated: what a probe draws.
