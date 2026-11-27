@@ -29,6 +29,9 @@ var _store: ModelStore
 var _bg_said: String = ""
 var _bg_done: bool = false
 var _d43: bool = false
+## The chat's call ended before the person could act ([method _act_during]):
+## they act right after it.
+var _ended_first: bool = false
 ## actorstamp's tree: a step is the person's unless a session's code keeps it
 ## (Builder.by); called by name, so the probe loads on pre261 too.
 var _actors: bool = false
@@ -96,8 +99,15 @@ func _during_look(what: String, count: int, verb: String) -> void:
 	await _person_grid()
 	var ids: Array = _select(count)
 	var before: int = _world.brick_count()
-	var mid: bool = await _act_during("check_design", {"name": "grid", "bricks": [
-		{"part": "3005", "color": 1, "x": 0, "y": 0, "z": 0}]}, verb)
+	# A design of 200 bricks, so its check (on a worker, a frame at a time)
+	# outlasts the person's act: with one brick the check could end in the
+	# frame a paint said first lands, and whether it was "at work" then was
+	# a coin toss (K3 here, K2 on pre261, on 11-27).
+	var look: Array = []
+	for x: int in 20:
+		for z: int in 10:
+			look.append({"part": "3005", "color": 1, "x": x, "y": 0, "z": z})
+	var mid: bool = await _act_during("check_design", {"name": "grid", "bricks": look}, verb)
 	var after: int = _world.brick_count()
 	var red: int = _count_colour(ids, 4)
 	print("    landed while the call was at work: %s; parts %d -> %d; red %d of %d; top %s" % [
@@ -131,7 +141,12 @@ func _delete_during_save() -> void:
 	print("    SAID: " + said.left(240).replace("\n", " "))
 	print("    MEASURE K4: mid %s; after the chat's undo parts %d (the person left %d)" % [
 		mid, _world.brick_count(), after])
-	_check("K4 the person's act was kept while the call was at work", mid)
+	if _ended_first:
+		print("  SKIP K4 the person's act while the call was at work: save_model ran to its end in "
+			+ "the frame it began (pre261 too), so no key can land during it; their Delete came "
+			+ "right after it")
+	else:
+		_check("K4 the person's act was kept while the call was at work", mid)
 	_check("K4 the chat's undo leaves the person's delete", _world.brick_count() == after
 		and after == before - 320)
 
@@ -153,7 +168,13 @@ func _undo_during_save() -> void:
 	await _frames(8)
 	var redone: int = _world.brick_count()
 	print("    MEASURE K5 redo: after the person's Ctrl+Y parts %d (their redo makes it %d)" % [redone, deleted])
-	_check("K5 the person's Ctrl+Z was made while the call was at work", mid and undone == start)
+	if _ended_first:
+		print("  SKIP K5 the person's Ctrl+Z while the call was at work: save_model ran to its end in "
+			+ "the frame it began (pre261 too), so no key can land during it; their Ctrl+Z came "
+			+ "right after it")
+		_check("K5 the person's Ctrl+Z was made", undone == start)
+	else:
+		_check("K5 the person's Ctrl+Z was made while the call was at work", mid and undone == start)
 	_check("K5 the person's Ctrl+Y does their delete again", redone == deleted)
 	# Back to where the person left it (their undo made, not their redo), for
 	# the chat's undo.
@@ -176,9 +197,9 @@ func _act_during(tool: String, input: Dictionary, verb: String) -> bool:
 		if _bg_done or CommandSocket.at_work():
 			break
 		await process_frame
+	_ended_first = _bg_done
 	if _bg_done:
-		print("    the call ended before the person could act")
-		return false
+		print("    the call ended before the person could act: they act right after it")
 	var depth: int = _builder.history_depth()
 	var count: int = _world.brick_count()
 	var red: int = _count_colour(_builder.selection.keys(), 4)
@@ -194,7 +215,7 @@ func _act_during(tool: String, input: Dictionary, verb: String) -> bool:
 		await process_frame
 		var changed: bool = _builder.history_depth() != depth or _world.brick_count() != count \
 			or _count_colour(_builder.selection.keys(), 4) != red
-		if changed or _bg_done:
+		if changed or (_bg_done and not _ended_first):
 			mid = CommandSocket.at_work() and changed
 			break
 	for _n: int in 3000:
@@ -239,6 +260,13 @@ func _one_part_both() -> void:
 		_builder.fold_since(depth)
 		_builder.last_step()["by"] = CHAT
 	print("    history after the call: %s" % _stamps(3))
+	# savereview3 F2: no fold lifts the chat's paint over the person's paint
+	# of the same brick, so the person's stays the newest step.
+	var history: Array = _builder.steps_now()[0]
+	var newest: Dictionary = history.back() if not history.is_empty() else {}
+	var under: Dictionary = history[history.size() - 2] if history.size() >= 2 else {}
+	_check("K6 the person's paint stays the newest step, the chat's under it",
+		not newest.has("by") and str(under.get("by", "")) == CHAT)
 	var said: String = await _say("undo", {}, CHAT)
 	print("    SAID: " + said.left(240).replace("\n", " "))
 	var after_chat: int = _world.get_brick(brick_id).color_code
@@ -248,7 +276,16 @@ func _one_part_both() -> void:
 	print("    MEASURE K6: colour after the chat's undo %d, after the person's Ctrl+Z then %d (1 blue as laid, 14 the chat's yellow, 4 the person's red)" % [
 		after_chat, after_person])
 	_check("K6 the chat's undo leaves the person's red", after_chat == 4)
-	_check("K6 the person's Ctrl+Z never brings back the colour the chat took back", after_person != 14)
+	if said.begins_with("Undid"):
+		_check("K6 the person's Ctrl+Z never brings back the colour the chat took back", after_person != 14)
+	else:
+		# actorstamp: the newest step is the person's, so the chat's undo
+		# takes nothing and says why; their Ctrl+Z takes back only their red,
+		# to the chat's yellow under it, which nobody took back.
+		_check("K6 the chat's undo takes nothing under the person's newer step, and says so",
+			said.contains("is the person's own"))
+		_check("K6 the person's Ctrl+Z takes back only their red, to the chat's yellow under it",
+			after_person == 14)
 
 
 # ---- T: what the stamp costs ----------------------------------------------------
