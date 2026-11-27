@@ -144,10 +144,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   footprint stacked, merged (a merge only joins, so never more pieces); a
   bonded build that leaves a region of the model out laid again by the colours
   measured (`Options.bond` false) and the one filling more kept, both times
-  counted (the temple at 48 studs keeps its moon so, at twice the time), but
-  the first kept where the second leaves out every region it did and fills
-  at most half a point more (`_wins_back`: since the eleventh round the
-  temple loses its moon either way and keeps its turned sides);
+  counted (the temple at 48 studs fills 2.5 points more so, at twice the
+  time; its moon on a stick is left out either way), but the first kept
+  where the second leaves out every region it did and fills at most half a
+  point more (`_wins_back`, since the eleventh round);
   every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
   once a round for it, not once a piece tried; its first ways, kept
