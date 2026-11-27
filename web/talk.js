@@ -359,9 +359,6 @@ function answeredSaid(id) {
   const meta = $(".talk-thread-meta");
   const pill = $(".talk-thread-meta .pill.answered");
   $(".talk-jumps [data-jump-answer]")?.remove();
-  for (const one of root.querySelectorAll(".talk-jumps a[href*='#post-']")) {
-    if (one.querySelector(".icon")) one.closest("li")?.remove();
-  }
   if (!id) {
     pill?.remove();
     return;
@@ -413,6 +410,29 @@ function quote(post) {
   answer(post);
   field.setSelectionRange(field.value.length, field.value.length);
   return true;
+}
+
+/// What a reader typed in a thread's reply box, kept in this tab under
+/// [key] while they go to another page of the thread and back (each page a
+/// link of its own since talk2), and let go once it is posted or emptied.
+function keptDraft(field, key) {
+  try {
+    const kept = sessionStorage.getItem(key);
+    if (kept && !field.value) {
+      field.value = kept;
+      field.dispatchEvent(new Event("input"));
+    }
+  } catch {
+    // No storage in this tab: nothing kept.
+  }
+  field.addEventListener("input", () => {
+    try {
+      if (field.value.trim()) sessionStorage.setItem(key, field.value);
+      else sessionStorage.removeItem(key);
+    } catch {
+      // As above.
+    }
+  });
 }
 
 /// [post]'s own address copied, said on [button] a moment.
@@ -618,6 +638,7 @@ function threadPage() {
     });
     $("[data-act='off-part']", form)?.addEventListener("click", () => onPart(null));
     const field = $("textarea", form);
+    keptDraft(field, `talk-draft:${thread}`);
     wireComposer(form, {
       field,
       said: $("[data-said]", form),
@@ -768,6 +789,32 @@ function unreadSaid(n) {
   if (count) count.textContent = n > 0 ? number(n) : "";
 }
 
+/// The list drawn again as [html] says (a signed-in reader's), each row
+/// somebody is already using kept as it is: its reply box open, what they
+/// typed, the caret. Such a row only takes the new one's marks (unread, n
+/// new, its title's link). A reader who presses Reply before the redraw
+/// lands lost the box and what they had typed (talk_flow 8b).
+function redrawn(found, html) {
+  const made = document.createElement("template");
+  made.innerHTML = html;
+  const focused = document.activeElement;
+  const caret = focused instanceof HTMLTextAreaElement || focused instanceof HTMLInputElement
+    ? [focused.selectionStart, focused.selectionEnd] : null;
+  for (const fresh of made.content.querySelectorAll(".talk-row[data-thread]")) {
+    const old = found.querySelector(`.talk-row[data-thread="${Number(fresh.dataset.thread)}"]`);
+    if (!old || !(old.querySelector(".said-room, form.composer") || old.contains(focused))) continue;
+    old.className = fresh.className;
+    const title = fresh.querySelector(".talk-row-title");
+    if (title) old.querySelector(".talk-row-title")?.replaceWith(title);
+    fresh.replaceWith(old);
+  }
+  found.replaceChildren(...made.content.childNodes);
+  if (focused && found.contains(focused) && document.activeElement !== focused) {
+    focused.focus({ preventScroll: true });
+    if (caret && caret[0] !== null) focused.setSelectionRange(caret[0], caret[1]);
+  }
+}
+
 async function listPage() {
   // Reply in a row: the composer opened under it, the reply shown there
   // once posted; the thread's own page for a new tab or window.
@@ -801,7 +848,7 @@ async function listPage() {
   const n = Number(root.dataset.page) || 1;
   const got = await call(asking(n)).catch(() => null);
   if (!got || got.status !== 200 || !found) return;
-  found.innerHTML = got.body.html;
+  redrawn(found, got.body.html);
   keepTests(found);
   unreadSaid(Number(got.body.unread) || 0);
   const list = $("#talk-list");

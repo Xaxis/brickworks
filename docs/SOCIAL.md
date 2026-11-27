@@ -1640,9 +1640,64 @@ made-up members.
   (`?tests=1`), as the gallery's; a preview never writes the real pool's
   house threads.
 
-What it does not do yet: likes on posts, accepted answers in Help, a
-board you follow (Discourse's Watching First Post), and post drafts kept
-across devices. Each is a follow-up for the owner to choose.
+What it does not do yet: likes on posts, a board you follow (Discourse's
+Watching First Post), and post drafts kept across devices. Each is a
+follow-up for the owner to choose. (Accepted answers in Help came in round
+two, below.)
+
+### 10a. Round two: getting around, what is new, answers (2026-11-27)
+
+The owner, 2026-11-27: Talk "doesnt have search or pagination or
+anything and isnt elegant". Unit talk2 read Discourse Meta and BrickLink's
+forum as they are today (Reddit, Eurobricks and Rebrickable refused the
+visit; what their software does is known), walked Talk as a visitor from
+a search engine, a member reading what is new each morning and a member
+asking for help, at 1280 and 390, over a crowd of 500 threads in Help and
+a thread of 200 posts, then built (`supabase/talk2.sql`, only adding;
+`api/_talk.js`, `web/talk.js`, `web/talk.css`). The research and the walks
+with their pictures: `bench/results/talk2-2026-11-27/WALK.md`.
+
+- **Numbered pages, never a cursor.** 30 threads a page, 20 posts a
+  page, each page its own address (`?page=N`) with its canonical, prev
+  and next, so a sent link, a bookmark and a search engine all land on
+  the same posts (Invision's numbered pages, Discourse's `?page=N` for
+  crawlers). Under the list, "31 to 60 of 500" and the numbers; Show more
+  adds the next page in place and keeps the address right
+  (`web/pager.js`). A post's own link is `?post=ID`: it opens whatever
+  page the post is on by then (Discourse's post links).
+- **Sorts a person asks for.** Latest, New threads, Top (this week,
+  month, year or ever: most replies, then most views), Unanswered
+  (BrickLink's Without Replies, Discourse's no-replies filter) and, signed
+  in, Unread. The boards are one row of tabs with counts; sitebold's
+  tiles were two rows of a phone before any thread. A sort, a period or a
+  search is noindex; Latest's pages are what a search engine reads.
+- **Search seen at once**, at the top of every board, its board's or
+  every board's; each thread found shows the post that says the words,
+  the words marked (Discourse's results).
+- **What is new for a member** (Discourse's Unread and New): a dot and
+  "n new" on a row with posts after what they read, "New" on a thread
+  begun since their last visit (`talk_visits`, a visit counted once an
+  hour), the title to the first post not read; in the thread "Not read
+  yet" over it and a way to it from any page. Reading a page marks it
+  read to its last post (`talk_read_to`), never further. A member's own
+  thread counts as unread when others posted in it.
+- **The list as a table** at 1280: Thread, Replies, Views, Activity (when
+  and from whom), the picture first; on a phone one quiet line of numbers
+  under the title. Views count a person once a day by a hash of who they
+  are, never their address, and never a bot (`talk_view`).
+- **Answers in Help** (Discourse's Solved, Invision's Best answer): the
+  asker (or the house) marks the reply that answered, the answer shows
+  under the question with See it in the thread, the board says
+  Answered, and the page is a QAPage with it as the accepted answer for
+  search engines. Only the asker marks it; anybody else is refused.
+- **Quote, a link to each post, the thread's people.** Quote puts the
+  selection or the post in the reply as `>` lines, shown set apart with a
+  line back to where it was said; Copy link and each post's number give
+  its own address; "In this thread" says where you are and goes to the
+  question, the answer, the first not read and the last post; the faces
+  of who takes part over the posts.
+- **Until talk2.sql is applied** the pages are talk.sql's: one page of
+  threads with Older threads, a thread whole; nothing breaks.
 
 ## 11. Work in progress, shared by version (2026-11-23)
 

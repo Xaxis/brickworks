@@ -222,7 +222,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             # Talk, the builders' forum (talk, 2026-11-22): its pages, drawn
             # whole on the server, and what they do in the browser.
             "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
-                             "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
+                             "postHtml", "postsHtml", "talkingHtml", "threadSchema", "rssOf", "listPageHtml",
                              "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell",
                              # Its second round (talk2, 2026-11-27): the list as a
                              # table, its sorts, pages, answers and quotes.

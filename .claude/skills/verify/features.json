@@ -4027,6 +4027,14 @@
       "tests": []
     },
     {
+      "id": "cli:talk2 browser flow",
+      "kind": "cli",
+      "entry": "tools/web/talk2_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/flow.env tools/web/talk2_flow.mjs --url=http://127.0.0.1:PORT --out=DIR over relay_server.mjs PORT --hold=talk --talk-crowd (tests/fixtures/talk/crowd.mjs: Help's 500 threads, a thread of 200 posts; MASTER_EMAIL a throwaway at resend.dev); ends \"talk2: all ok\"",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:technic stress probe",
       "kind": "cli",
       "entry": "src/dev/technic_stress_probe.gd",
@@ -4057,6 +4065,7 @@
       "reach": "python3 tools/minitest.py tests/test_ideas.py; python3 tools/bench/ideas.py list   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... BENCH_PORTS=... python3 tools/bench/ideas.py run --arm A --checkout DIR --via relay --jobs 2 | report --arm A | compare --arms A,B; the recipe is Owner-style ideas in features/assistant.md)",
       "area": "assistant",
       "tests": [
+        "tests/fixtures/talk/crowd.mjs",
         "tests/test_post_kit.py",
         "tests/test_talk.py"
       ]
@@ -5939,6 +5948,7 @@
       "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry --try=tools/talk_try.sql --table=talk_threads   (not applied yet; api/_talk.js; docs/SOCIAL.md section 10; then tools/web/talk_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/test_talk2.py",
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_beta_strip_room.py",
@@ -5946,6 +5956,14 @@
         "tests/test_inbox.py",
         "tests/test_insights.py"
       ]
+    },
+    {
+      "id": "lib:talk's pages unread and answers",
+      "kind": "lib",
+      "entry": "supabase/talk2.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=<db env> tools/apply_sql.mjs supabase/talk2.sql --dry --try=tools/talk2_try.sql --table=talk_threads   (after talk.sql; talk2_list, talk2_page, talk_visit, talk_read_to, talk_view, talk_answer; until applied api/_talk.js falls back to talk.sql's one page; python3 tools/minitest.py tests/test_talk2.py)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:the Admission client",
@@ -8646,12 +8664,44 @@
       ]
     },
     {
+      "id": "ui:talk answered questions",
+      "kind": "ui",
+      "entry": "api/_talk.js",
+      "reach": "https://brickworks.diy/talk/t/<n>/<title> in Help: Mark as the answer (the asker's), the answer under the question, Answered on the board, QAPage JSON-LD   (POST /api/people?op=talk_answer {thread, post|null}; POST ?op=talk_view {thread})",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:talk in the owner's console",
       "kind": "ui",
       "entry": "web/admin-talk.js",
       "reach": "<deployment>/admin#talk as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=talk; POST ?op=talk_act {act, post|thread|account, board, until, reason}, each in the audit log",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "ui:talk pages and sorts",
+      "kind": "ui",
+      "entry": "web/pager.js",
+      "reach": "https://brickworks.diy/talk/b/help?sort=top&in=month&page=2 (?sort=latest|new|top|unanswered|unread, ?in=week|month|year, ?page=N, ?q=; a thread ?page=N or ?post=ID)   (api/_talk.js listPageHtml, threadPageHtml; GET /api/people?op=talk&html=1&page=N, ?op=talk_thread&id=N&page=N&html=1)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:talk unread for members",
+      "kind": "ui",
+      "entry": "web/talk.js",
+      "reach": "https://brickworks.diy/talk signed in (Unread pill and its count, a dot and n new on a row, its title to the first not read; in a thread the Not read yet line and The first you have not read)   (POST /api/people?op=talk_read {thread, post}; talk2.sql talk_visit, talk_read_to)",
+      "area": "web",
+      "tests": [
+        "tests/test_talk2.py",
+        "tests/fixtures/inbox_world.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
+        "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
+        "tests/test_insights.py"
+      ]
     },
     {
       "id": "ui:techniques in the bin",
@@ -9210,6 +9260,7 @@
       "reach": "https://brickworks.diy/talk (/talk/b/<board>, ?q= search, /talk/new, /de|fr|es/talk; ?tests=1 the checks' pool)   (api/_talk.js talkPage; GET /api/people?op=talk, ?op=talk_latest; RSS /talk.rss, /talk/b/<board>.rss)",
       "area": "web",
       "tests": [
+        "tests/test_talk2.py",
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_beta_strip_room.py",

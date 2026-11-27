@@ -197,6 +197,21 @@
      "more": false,
      "searched": false
     },
+    "rest/v1/rpc/talk2_list": {
+     "threads": [
+      {"id": 2, "board": "news", "title": "Welcome to Talk", "by": {"name": "Brickworks", "handle": "brickworks"}, "said": "Talk is where builders on Brickworks talk about anything, not only under one model.", "at": "2026-10-01T08:00:00Z", "last_at": "2026-10-09T17:20:00Z", "last_by": {"name": "Sam Reyes", "handle": "sam-reyes"}, "replies": 7, "views": 412, "answered": false, "links": [], "model": null, "photo": null, "hidden": false, "locked": false, "pinned": true, "unread": false, "following": false, "mine": false, "by_house": true, "challenge": null},
+      {"id": 12, "board": "show", "title": "Sports car and its driver", "by": {"name": "Test builder", "handle": "test-builder"}, "said": "My first car with a driver who fits. Step 3 is where the doors go on.", "at": "2026-10-06T10:00:00Z", "last_at": "2026-10-08T15:40:00Z", "last_by": {"name": "Mira Okafor", "handle": "mira-builds"}, "replies": 2, "views": 96, "answered": false, "links": [], "model": {"id": "DocsSprt01", "name": "Sports car and its driver", "has_image": true, "has_thumb": false, "updated_at": "2026-10-02T09:00:00Z"}, "photo": null, "hidden": false, "locked": false, "pinned": false, "unread": false, "following": false, "mine": false, "by_house": false, "challenge": null},
+      {"id": 9, "board": "help", "title": "How do I make a slope meet a curved wall?", "by": {"name": "Jon Lund", "handle": "jon-lund"}, "said": "The wall is 1 x 4 x 6 curved panels and the roof slopes stop short by half a plate.", "at": "2026-10-05T19:12:00Z", "last_at": "2026-10-07T21:05:00Z", "last_by": {"name": "Test builder", "handle": "test-builder"}, "replies": 4, "views": 133, "answered": true, "links": [], "model": null, "photo": null, "hidden": false, "locked": false, "pinned": false, "unread": false, "following": false, "mine": false, "by_house": false, "challenge": null},
+      {"id": 1, "board": "challenges", "title": "Microscale", "by": {"name": "Brickworks", "handle": "brickworks"}, "said": "Build anything big, small: a city, a ship or a mountain in under 200 parts.", "at": "2026-10-01T00:05:00Z", "last_at": "2026-10-07T12:30:00Z", "last_by": {"name": "Mira Okafor", "handle": "mira-builds"}, "replies": 11, "views": 540, "answered": false, "links": [], "model": null, "photo": null, "hidden": false, "locked": false, "pinned": false, "unread": false, "following": false, "mine": false, "by_house": true, "challenge": {"id": 108, "title": "Microscale", "starts_on": "2026-10-01", "ends_on": "2026-10-31", "test": false}},
+      {"id": 5, "board": "ideas", "title": "What should Brickworks do next?", "by": {"name": "Brickworks", "handle": "brickworks"}, "said": "Tell us what you would like the studio or the site to do, and what gets in your way.", "at": "2026-10-01T08:00:00Z", "last_at": "2026-10-06T09:45:00Z", "last_by": {"name": "Jon Lund", "handle": "jon-lund"}, "replies": 9, "views": 221, "answered": false, "links": [], "model": null, "photo": null, "hidden": false, "locked": false, "pinned": false, "unread": false, "following": false, "mine": false, "by_house": true, "challenge": null},
+      {"id": 4, "board": "show", "title": "What are you building this week?", "by": {"name": "Brickworks", "handle": "brickworks"}, "said": "One thread for whatever is on your table or your screen right now, finished or not.", "at": "2026-10-01T08:00:00Z", "last_at": "2026-10-05T20:10:00Z", "last_by": {"name": "Sam Reyes", "handle": "sam-reyes"}, "replies": 15, "views": 387, "answered": false, "links": [], "model": null, "photo": null, "hidden": false, "locked": false, "pinned": false, "unread": false, "following": false, "mine": false, "by_house": true, "challenge": null}
+     ],
+     "total": 6,
+     "page": 1,
+     "pages": 1,
+     "per": 30,
+     "sort": "latest"
+    },
     "rest/v1/rpc/talk_board_counts": {
      "news": 4,
      "show": 14,
@@ -242,7 +257,7 @@
     ],
     "rest/v1/shared_models?listed=is.true": []
    },
-   "alt": "Talk at brickworks.diy/talk: Start a thread and Search Talk, the six boards as tiles with an icon and a count each, the newest threads each with its model's picture or its board's icon, who started it and who replied last, and beside them what builders said under the models.",
+   "alt": "Talk at brickworks.diy/talk: Search Talk and Start a thread, the boards as tabs with counts, Latest, New threads, Top and Unanswered, then the threads as a table: each its picture, title and starter, replies, views and the last post, a Help question marked Answered; beside them the boards and talk on the models.",
    "caption": "brickworks.diy/talk.",
    "features": [
     "ui:the talk forum"

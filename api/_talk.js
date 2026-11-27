@@ -814,22 +814,6 @@ export function talkingHtml(rows, models = [], now = Date.now()) {
     }).join("")}</ol>`;
 }
 
-/// The boards as a row of tiles (sitebold, 2026-11-23): Latest, then each
-/// board, each its icon, its name and its count of threads once there is
-/// one, the one shown marked; links, as tabs are.
-export function boardsHtml(board, counts = {}, tests = false) {
-  const at = langAt();
-  const query = tests ? "?tests=1" : "";
-  const tile = (id, href) => {
-    const n = id ? Number(counts[id]) || 0 : 0;
-    return `<a class="talk-board-tile b-${id || "latest"}" href="${href}${query}"${board === id ? ' aria-current="page"' : ""}>`
-      + `<span class="talk-tile">${iconHtml(boardIcon(id))}</span><span class="talk-board-name">${asText(boardSaid(id).name)}</span>`
-      + `${n ? ` <span class="n">${escapeHtml(number(n))}</span>` : ""}</a>`;
-  };
-  return `<nav class="talk-boards" aria-label="${asText(say("Boards"))}">${tile(null, `${at}/talk`)}`
-    + `${BOARDS.map((id) => tile(id, `${at}/talk/b/${id}`)).join("")}</nav>`;
-}
-
 /// The boards as tabs on the head's foot (talk2, 2026-11-27: sitebold's
 /// row of tiles was two rows of a phone's screen before any thread): Latest,
 /// then each board with its count of threads, the one shown marked. Each
@@ -1050,7 +1034,9 @@ function hostsOf(origin) {
 /// one page of threads, a thread whole.
 let talk2Missing = 0;
 
-/// A talk2.sql rpc, or null when the file is not applied.
+/// A talk2.sql rpc, or null when the file is not applied (or it said null:
+/// the pages then ask talk.sql's own, which says the same of a thread that
+/// is not there, and is what a world without the file answers).
 async function call2(name, body) {
   if (Date.now() - talk2Missing < 300000) return null;
   const said = await call(name, body, () => ({ missing2: true }));
@@ -1060,7 +1046,6 @@ async function call2(name, body) {
   }
   return said;
 }
-const talk2Absent = () => Date.now() - talk2Missing < 300000;
 
 /// The thread page's data for [viewer], page [page] of [per] posts or the
 /// page [post] is on: talk2_page's (talk_thread_page's whole thread until
@@ -1068,7 +1053,7 @@ const talk2Absent = () => Date.now() - talk2Missing < 300000;
 /// and what they link; null when it is not there.
 async function threadFor(id, tests, viewer, origin, { page: asked = 1, post = null, per = POSTS_PER_PAGE } = {}) {
   let page = await call2("talk2_page", { p_thread: id, p_tests: tests, viewer, p_page: asked, p_per: per, p_post: post });
-  if (page === null && talk2Absent()) {
+  if (page === null) {
     page = await call("talk_thread_page", { p_thread: id, p_tests: tests, viewer }, () => ({ missing: true }));
     if (page && !page.missing) {
       const posts = (page.posts || []).map((one, i) => ({ ...one, n: i + 1 }));
@@ -1117,7 +1102,7 @@ async function listFor({ board, q, sort, period, page, tests, viewer, before = n
   let listed = await call2("talk2_list", { p_board: board, p_tests: tests, viewer, p_sort: sort, p_page: page, p_per: PER_PAGE,
     p_q: q || null, p_in: period });
   let legacy = false;
-  if (listed === null && talk2Absent()) {
+  if (listed === null) {
     legacy = true;
     listed = await call("talk_threads_of", { p_board: board, p_tests: tests, viewer, p_before: before, p_limit: PER_PAGE, p_q: q || null },
       () => ({ missing: true }));
@@ -1372,7 +1357,7 @@ export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) 
   const from = (shownPage - 1) * per + 1;
   const jumps = [
     first ? `<li><a href="${at}${escapeHtml(postPath(thread, first.id, tests))}">${asText(thread.board === "help" ? say("The question") : say("The first post"))}</a></li>` : "",
-    answer ? `<li><a href="${at}${escapeHtml(postPath(thread, answer.id, tests))}">${iconHtml("check")}${asText(say("The answer"))}</a></li>` : "",
+    answer ? `<li data-jump-answer><a href="${at}${escapeHtml(postPath(thread, answer.id, tests))}">${iconHtml("check")}${asText(say("The answer"))}</a></li>` : "",
     '<li data-first-new hidden><a href="#"></a></li>',
     last && last.n > 1 ? `<li><a href="${at}${escapeHtml(postPath(thread, last.id, tests))}">${sayHtml("The last post, {when}", { when: timeHtml(last.at, now) })}</a></li>` : "",
   ].join("");

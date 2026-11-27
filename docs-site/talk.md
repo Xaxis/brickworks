@@ -1,16 +1,16 @@
 ---
-ai: Talk at /talk is the builders' forum: boards (Show and tell, Help, Ideas, Challenges, News), threads and replies like a model's comments, Ask the builders from the studio's Share panel (a Help thread with the model in 3D at the asked step, answers pinned to parts that light in the open studio) and from a set's page (a step of the set, everybody who published a version of it told, the page listing its asks open and answered), a pasted model, step, set or challenge link shown as a card, @handle mentions, one photo a post, Follow, search, an RSS feed per board, Report and Block.
+ai: Talk at /talk is the builders' forum: boards (Show and tell, Help, Ideas, Challenges, News), sorted Latest, New threads, Top (this week, month, year or ever), Unanswered or Unread, numbered pages of 30 threads and of 20 posts with the page in the address, search with the words marked, unread threads and a jump to the first post not read, replies, views and the last poster on each thread, Quote, a link to each post, the thread's people, a Help question's marked answer shown under the question, threads and replies like a model's comments, Ask the builders from the studio's Share panel (a Help thread with the model in 3D at the asked step, answers pinned to parts that light in the open studio) and from a set's page (a step of the set, everybody who published a version of it told, the page listing its asks open and answered), a pasted model, step, set or challenge link shown as a card, @handle mentions, one photo a post, Follow, search, an RSS feed per board, Report and Block.
 rules:
   - Links to sites other than Brickworks stay plain words.
   - Three people's reports hide a post until the site's owner looks.
 title: Talk, the builders' forum
 nav: Talk
-description: The boards, starting a thread and replying, pasting a model or a step, mentions, photos, following a thread, search and RSS, and reporting or blocking.
+description: The boards, sorting and pages, what is new for you, starting a thread and replying, quoting, answers in Help, pasting a model or a step, mentions, photos, following a thread, search and RSS, and reporting or blocking.
 ---
 
 Talk is where builders on Brickworks talk about anything, not only under one model: show what you built, ask for help with a step, share ideas and talk about the month's challenge. It is at [brickworks.diy/talk](/talk), linked from the top of every page. Anybody can read it; you sign in to write.
 
-![Talk at brickworks.diy/talk: Start a thread and Search Talk, the six boards as tiles with an icon and a count each, the newest threads each with its model's picture or its board's icon, who started it and who replied last, and beside them what builders said under the models.](/docs/img/talk-list.webp "brickworks.diy/talk.")
+![Talk at brickworks.diy/talk: Search Talk and Start a thread, the boards as tabs with counts, Latest, New threads, Top and Unanswered, then the threads as a table: each its picture, title and starter, replies, views and the last post, a Help question marked Answered; beside them the boards and talk on the models.](/docs/img/talk-list.webp "brickworks.diy/talk.")
 
 <!-- covers
 ui:the talk forum
@@ -20,7 +20,7 @@ ui:the latest in talk on the home page
 
 ## The boards {#boards}
 
-**Latest** is every board, the newest talk first. The boards are:
+**All boards** is every board together. The boards are:
 
 - **Show and tell**: models you built, photos of real builds and work in progress.
 - **Help**: how to build something, the studio, parts and colours.
@@ -28,7 +28,32 @@ ui:the latest in talk on the home page
 - **Challenges**: each month's [challenge](/docs/challenges) has its own thread, started by Brickworks.
 - **News**: what is new on Brickworks. Only Brickworks starts a thread here; anybody can reply.
 
-Each thread's row shows the picture of the model it is about, or its challenge's (its cover or its top entry), else the challenge's month, or its board's icon, the faces of who started it and who replied last, and how many replies it has and when the last came. Beside the threads, **On the models** shows the newest comments under the gallery's models, each with the model's picture. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
+Each thread's row shows the picture of the model it is about, or its challenge's (its cover or its top entry), else the challenge's month, or its board's icon; who started it; how many replies and views it has; and when the last post came and from whom. A question in Help with a marked answer says **Answered**. On a phone the numbers sit in one line under the title. Beside the threads, **On the models** shows the newest comments under the gallery's models, each with the model's picture. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
+
+## Sorting and pages {#pages}
+
+Over the threads, choose how they are sorted:
+
+- **Latest**: the newest talk first, the pinned threads at the top.
+- **New threads**: the newest threads first, however old their last reply.
+- **Top**: the most replies first, then the most views; choose **This week**, **This month**, **This year** or **All time** beside it.
+- **Unanswered**: only the threads nobody has replied to yet, the newest first. Somebody's question waiting here is the best place to help.
+- **Unread**, once you are signed in: only the threads with posts you have not read, with how many there are.
+
+A board shows 30 threads a page, and a thread 20 posts a page. Under them, the page numbers say where you are: **Show more** adds the next page under this one, and each number goes to its page. Every page has its own address (`/talk/b/help?page=3`, `/talk/t/501/my-first-technic-crane?page=4`), so you can bookmark it, send it, or go back to it, and the search engines find every thread, old ones too.
+
+<!-- covers
+ui:talk pages and sorts
+lib:talk's pages unread and answers
+-->
+
+## What is new for you {#new}
+
+Signed in, Talk keeps where you got to in each thread. A thread with posts you have not read has a dot beside it and says how many are new, as **2 new**, and its title takes you to the first of them. A thread begun since your last visit that you never opened says **New**. In the thread, a line **Not read yet** sits over the first post you have not read, and **The first you have not read** under **In this thread** goes to it from any page. Reading a page marks it read, up to its last post.
+
+<!-- covers
+ui:talk unread for members
+-->
 
 ## Start a thread {#start}
 
@@ -82,13 +107,24 @@ ui:a thread in talk
 
 - **Paste a link** to a model, one version of it (`/m/<id>/v/<n>`), a step of one (open it in the viewer at that step and copy the address), a set or the challenge on Brickworks: it shows as a card with its picture, a version's with that version's. A part number from Rebrickable or BrickLink shows as a part. A link to any other site stays plain words.
 - **Write `@` and a handle** to tell somebody: they see it on their [Notifications](/docs/profiles#notifications). Up to three a post.
+- **Quote** on a post puts its words in your reply, each line begun `>`, and says whom you are answering: the post shows them set apart, with a line to where they were said. Pick some of a post's words first and Quote takes only those.
+- **Copy link** on a post copies its own address. It opens the page the post is on, whatever page that is by then, scrolled to the post. Each post's number (`#12`) is its link too.
+- **In this thread**, beside the posts (under them on a phone), says how many posts there are and which you are reading, and goes to the question or first post, the answer, the first you have not read and the last post. Over the posts, the faces of who takes part and how many people that is.
 - **Reply** answers the whole thread; Reply on a post says whom you are answering. Each row of a board has **Reply** too, which opens the box in the row: your reply shows under it and you stay on the board. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] posts, [[Enter]] is a new line, and signed out, **Post** signs you in and then posts what you wrote.
 - **Edit** and **Remove** are on your own posts. Removing the first post removes the whole thread.
 - **Follow** tells you of every new post in the thread, on your [Notifications](/docs/profiles#notifications) and, where you turned it on, as [this device's notification](/docs/profiles#settings). You follow a thread you started or replied in; press **Following** to stop. Mentions and replies to your own thread reach you either way.
 
+## Answers in Help {#answer}
+
+Whoever asked a question in Help can mark the reply that answered it: **Mark as the answer** on that reply. The answer then shows under the question, with **See it in the thread**, so the next person with the same question finds it at once, and the thread says **Answered** on its board. **Not the answer** takes the mark off again. Only the person who asked marks the answer; anybody can still reply. Search engines are told which reply is the answer too.
+
+<!-- covers
+ui:talk answered questions
+-->
+
 ## Search and feeds {#search}
 
-**Search Talk** finds threads by the words in their titles and posts, the start of a word too. Each board has an RSS feed (**RSS feed** under On the models), and so does all of Talk, at `brickworks.diy/talk.rss`.
+**Search Talk** is at the top of every board. It finds threads by the words in their titles and posts, the start of a word too, and each thread found shows the post that says them, the words marked. It searches the board you are on; **Search every board** looks everywhere. A search's threads come in pages like any board's, sorted as you choose. Each board has an RSS feed (**RSS feed** under On the models), and so does all of Talk, at `brickworks.diy/talk.rss`.
 
 ## Report and block {#report}
 
