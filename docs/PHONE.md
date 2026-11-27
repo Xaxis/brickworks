@@ -397,6 +397,11 @@ every phase before and after).
 - **Not the car's parts.** Asked for as soon as the catalogue is read,
   they were read in the open and the time from the first part to working
   did not shrink: tried and taken out.
+- **webstart13's held search index held the current-mould index too.**
+  The search index's worker made the index `PartLibrary.current` reads
+  first; held, the start's open made it on the page's thread, 0.9 to 2.6 s
+  of its "known" phase against live's 0.02. It is made on a worker while
+  the search's waits (`_current_ahead`, `searchahead_probe`).
 
 **What is left** is the page's own work, which no ordering of the start
 moves: the first screen's GDScript compile (4.3 s on a desktop, 4.6 on a
