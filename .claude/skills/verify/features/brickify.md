@@ -85,7 +85,13 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   Lambrecht's), a cube steeper than about 65 degrees (`STEEP`) facing out along x or z,
   and cut again with its courses started 2, 4, 1 and 3 plates up
   (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
-  where no shell has any of the cube (`_cube_shelled`);
+  where no shell has any of the cube (`_cube_shelled`); and since the thirteenth
+  round cut again a stud across along x and z (`CUBE_ACROSS`, `Brickify._cubes_cut`,
+  `Plan._shift`, a cut's third entry), only over cubes whose faces cancelled, only
+  facing along the cut, so one face of a wall 1.5 to 2 studs thick turns whichever
+  way the lattice fell; such a cube kept only where the wall's other half stands on
+  the model under it (`Plan._stands`, refused `"unstood"`), its refusals not in
+  `cubes_why` (`_why_here`);
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
   `_cube_shell`), and a cube with the one past it at the same height facing
   out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
@@ -103,7 +109,9 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   (`_anchored`; first tier only); its slopes fitted by distance to the side
   (`Grid.side`, rays along x and z at thirds of a stud), one on the core's
   face only where a side stud grips it; a cube its shell covers under
-  `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
+  `CUBE_KEEPS` given back to the core and the shell cut again, up to
+  `CUBE_ROUNDS` (eight since the thirteenth round) times before the group is
+  given up whole; laid once (the
   trial kept where the core kept its side studs); a piece of the core of 16
   parts or fewer a shell cuts off joined to the rest first, a plate of it and
   one of the rest side by side laid again across, a brick beside it laid again
