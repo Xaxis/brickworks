@@ -691,7 +691,8 @@ plan with Claude as the client.
   `bench/results/tabpair-2026-10-17/claude_pair2`). Undo per chat: each step a
   chat's call makes carries `by` (`CommandSocket.CHAT_KEY`, `_mark`), and the
   `undo` tool stops at a step another chat made, saying so
-  (`AppTools._undo`, `AppTools.chat`).
+  (`AppTools._undo`, `AppTools.chat`), and at one with no `by`, the person's own
+  (`saved_without_attack_probe` C1: "is the person's own, made in the tab, so it was left").
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
   Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):

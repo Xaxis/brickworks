@@ -75,7 +75,7 @@ Through the connector, a chat that opens on the model already in its tab, with a
 
 ## Each call {#calls}
 
-- **One undo step a change.** Whatever a call changes, Undo takes back in one step; your own Undo takes back any step, and the assistant's `undo` stops at a step another chat made.
+- **One undo step a change.** Whatever a call changes, Undo takes back in one step; your own Undo takes back any step, and the assistant's `undo` stops at a step another chat made, and at one you made yourself.
 - **Parts by number.** `look_at_model` lists the parts with a number each, and later calls name parts by those numbers (`brick`, `bricks`).
 - **Seeing.** A change is answered with a close look at what changed. `view_model` looks from any side; `view_board` from up to six sides in one picture, with chosen parts picked out, parts made see-through, or the model as built to a step; `booklet_page` shows a page of the booklet as it prints; `in_view` says what the person sees: their step, the part in their hand, what they have selected. Looking changes nothing.
 - **Long work is a job.** A client waits about three minutes for an answer, so a render, a turntable, a booklet, a Studio file, a picture, a brickify or a recording answers at once with a job number and goes on in the window. `job` waits up to 45 seconds a call and gives the answer, picture and all, once it is done.
