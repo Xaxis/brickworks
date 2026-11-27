@@ -297,9 +297,11 @@ func _case_model(tag: String, path: String) -> void:
 ## it is joined to: looked for a slice a frame after the click, not on it
 ## (10030's held the way back 1.2-1.7 s), and what a look on the spot finds.
 func _joined_line(tag: String, id: int) -> void:
+	# Down the right, worked out whether or not its column is open; folded to
+	# its header it says nothing.
 	var inspector: Inspector = (_main.get("_shell") as Shell).inspector
-	if inspector.compact or not inspector.is_visible_in_tree():
-		print("    (%s: no joined count in a compact or hidden properties panel)" % tag)
+	if not inspector.is_open():
+		print("    (%s: no joined count in a folded properties panel)" % tag)
 		return
 	var joined: int = SelectBy.connected(_world, _builder.lattice, [id], _store.scenery,
 		Inspector.JOINED_MOST + 1).size() - 1

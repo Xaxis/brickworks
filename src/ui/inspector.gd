@@ -35,6 +35,16 @@ var wanted: bool = false:
 		if to != wanted:
 			wanted = to
 			_refresh(true)
+## Put away with the rest of the studio while Simple's controls are shown
+## (Main.use_controls): nothing shown, nothing worked out, and what it
+## showed kept, so Full's selection put back on the way out is what it
+## shows already. Redrawn for nobody, the part's view and its Hinge's
+## joint were 6-15 ms of the way back (simple2b).
+var put_away: bool = false:
+	set(to):
+		if to != put_away:
+			put_away = to
+			_refresh(true)
 var _more: LinkButton
 
 var _open: bool = true
@@ -444,7 +454,7 @@ func _process(_delta: float) -> void:
 
 
 func _refresh(_now: bool) -> void:
-	if shell == null or _body == null:
+	if shell == null or _body == null or put_away:
 		return
 	var ids: Array = shell.builder.selection.keys()
 	var bricks: Array[BrickWorld.Brick] = []

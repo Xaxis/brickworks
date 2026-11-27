@@ -1400,6 +1400,7 @@ func use_controls(layer: StringName) -> bool:
 			_bar.set_simple(true)
 		_simple.visible = true
 		_layer = layer
+		_properties_put_away(true)
 		_simple.call("entered")
 	else:
 		_layer = layer
@@ -1412,6 +1413,7 @@ func use_controls(layer: StringName) -> bool:
 		for child: Control in put_away:
 			if is_instance_valid(child):
 				child.visible = bool(put_away[child])
+		_properties_put_away(false)
 		if _phone != null:
 			_phone.call("set_simple", false)
 		else:
@@ -1423,6 +1425,15 @@ func use_controls(layer: StringName) -> bool:
 	_show_notices()
 	_hover_again()
 	return true
+
+
+## Both properties panels, down the right and under the bin, put away with
+## the studio while Simple is shown (Inspector.put_away): the selection Simple
+## sets aside going in and puts back coming out is then no work for them.
+func _properties_put_away(away: bool) -> void:
+	for panel: Variant in [_shell.inspector if _shell != null else null, _bin_props]:
+		if panel != null:
+			(panel as Inspector).put_away = away
 
 
 ## Simple wanted from the start: this device was left in it (the header's

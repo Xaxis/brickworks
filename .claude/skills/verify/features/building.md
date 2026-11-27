@@ -4081,7 +4081,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   library lacks), each edited in Simple and undone across the switch, saved
   byte for byte as the same edits in Full alone and every untouched line
   kept; a drag, a part in hand, a lift and the name being typed through the
-  switch.
+  switch. The switch each way within a frame (the least of three), a part
+  selected in Full included: both properties panels are put away with the
+  studio while Simple shows (`Inspector.put_away`), so Full's selection put
+  back on the way out is what they show already (redrawn for nobody, the
+  part's view and its Hinge's joint were 6-15 ms of the way back), and
+  back in Full the properties' joined count says what a look finds.
 - `simple mode` (`src/ui/simple_layer.gd`; Simple mode phase 1, simple1,
   2026-11-26; docs-site/simple.md): on every device once the header's Simple is
   picked, the model not a viewer's. A tray along the foot: 12 solid colours
