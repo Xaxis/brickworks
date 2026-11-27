@@ -475,6 +475,7 @@ func _refresh(_now: bool) -> void:
 	if state == _shown:
 		return
 	_shown = state
+	_stop_joining()
 	var assembly: String = shell.assemblies.selected_assembly() \
 		if shell.assemblies != null and not bricks.is_empty() else ""
 	_buttons_for(not assembly.is_empty())
@@ -613,13 +614,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	# a while on a big model.
 	if compact:
 		return
-	# Counted up to a point: on a big model all of it is joined to all of it.
-	var joined: int = Later.script(&"SelectBy").connected(shell.world, shell.builder.lattice,
-		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
 	var lines := PackedStringArray()
-	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (
-		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
-			% ("%d" % joined if joined < JOINED_MOST else "%d or more" % JOINED_MOST)))))
 	lines.append("Faces: studs %s" % _face_of(brick.transform.basis))
 	if not brick.group.is_empty():
 		lines.append("In %s" % _chain(Assemblies.path_of(brick)))
@@ -630,6 +625,44 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		lines.append(Keymap.filled("Locked — {unlock|unlocks everything}"))
 	_facts.text = "\n".join(lines)
 	_facts.visible = true
+	_count_joined(brick.id, lines)
+
+
+## The count of what the part shown is joined to, put first among its facts
+## once looked for: from the next frame, a slice a frame (FramePace), so a
+## click on a part answers at once. Counted on the click itself it held the
+## window 1.7 s at each click on a part of 10030, and as long at Simple's
+## way back to Full with one selected (simple2b).
+var _joining: Working.Job = null
+
+
+func _count_joined(brick_id: int, rest: PackedStringArray) -> void:
+	var job := Working.Job.new()
+	job.can_cancel = true
+	_joining = job
+	await get_tree().process_frame
+	if _joining != job:
+		return
+	# Counted up to a point: on a big model all of it is joined to all of it.
+	var found: Array = await Later.script(&"SelectBy").connected_paced(shell.world,
+		shell.builder.lattice, [brick_id], shell.store.scenery, job, JOINED_MOST + 1)
+	if _joining != job or job.cancelled:
+		return
+	_joining = null
+	var joined: int = found.size() - 1
+	var lines := PackedStringArray([("Joined to %s" % ("nothing" if joined <= 0 else (
+		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
+			% ("%d" % joined if joined < JOINED_MOST else "%d or more" % JOINED_MOST)))))])
+	lines.append_array(rest)
+	_facts.text = "\n".join(lines)
+
+
+## Whatever count was being looked for, given up: the part it was for is no
+## longer the one shown.
+func _stop_joining() -> void:
+	if _joining != null:
+		_joining.cancel()
+		_joining = null
 
 
 func _show_many(bricks: Array[BrickWorld.Brick]) -> void:

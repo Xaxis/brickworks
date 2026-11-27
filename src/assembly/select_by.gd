@@ -156,6 +156,7 @@ static func inverse(world: BrickWorld, selection: Dictionary,
 static func connected(world: BrickWorld, lattice: BrickLattice,
 		seeds: Array, scenery: Dictionary, most: int = 1 << 30) -> Array:
 	var search := _Search.new(world, lattice, seeds, scenery)
+	search.whole = most >= search.everything
 	most = mini(most, search.everything)
 	while not search.queue.is_empty() and search.found.size() < most:
 		search.step()
@@ -163,11 +164,13 @@ static func connected(world: BrickWorld, lattice: BrickLattice,
 
 
 ## [method connected], a slice at a time (FramePace), [param job] counting
-## what it has found; nothing when it was cancelled.
+## what it has found; nothing when it was cancelled. [param most] as there.
 static func connected_paced(world: BrickWorld, lattice: BrickLattice,
-		seeds: Array, scenery: Dictionary, job: Working.Job) -> Array:
+		seeds: Array, scenery: Dictionary, job: Working.Job, most: int = 1 << 30) -> Array:
 	var search := _Search.new(world, lattice, seeds, scenery)
-	while not search.queue.is_empty() and search.found.size() < search.everything:
+	search.whole = most >= search.everything
+	most = mini(most, search.everything)
+	while not search.queue.is_empty() and search.found.size() < most:
 		search.step()
 		if job.due():
 			job.count(search.found.size(), search.everything)
@@ -193,9 +196,13 @@ class _Search extends RefCounted:
 	## [constant SIDEWAYS_AFTER].
 	var across: Array = []
 	var asked: int = 0
+	## Whether the look may go on to every part: only then is [member
+	## across], a walk of the whole model, worth working out. The properties
+	## panel's count stops at 501 and found the same parts without it on
+	## 10030, the table alone 120-140 ms of a click there (simple2b).
+	var whole: bool = true
 
-	## Worked out once a look has gone this far: a click's count in the
-	## properties panel stops long before, and pays nothing for it.
+	## Worked out once a look that may find everything has gone this far.
 	const SIDEWAYS_AFTER := 256
 
 	func _init(on: BrickWorld, cells: BrickLattice, seeds: Array, scene: Dictionary) -> void:
@@ -215,7 +222,7 @@ class _Search extends RefCounted:
 
 	## Ask the next brick what it is joined to.
 	func step() -> void:
-		if across.is_empty() and asked == SIDEWAYS_AFTER:
+		if whole and across.is_empty() and asked == SIDEWAYS_AFTER:
 			across = SelectBy.sideways(world, lattice)
 		asked += 1
 		var here: int = queue.pop_back()

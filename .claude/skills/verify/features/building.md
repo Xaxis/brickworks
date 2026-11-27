@@ -464,7 +464,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Probe: `columns_probe`. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
-  it (refused and put back where there is no room); what it is joined to,
+  it (refused and put back where there is no room); what it is joined to
+  (up to 500, counted a slice a frame from the frame after the click and given
+  up when another part is shown, `Inspector._count_joined`: on the click it held
+  10030's window 1.2-1.7 s, and Simple's way back to Full as long;
+  `simple_switch_probe --case=models` reads the line against a look on the spot),
   which way its studs face, its sub-model, its step in the instructions (models
   of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's

@@ -262,6 +262,7 @@ func _case_model(tag: String, path: String) -> void:
 	_ok(into.min() < 16.0 and back.min() < 16.0,
 		"%s: the switch in %.1f ms and back in %.1f ms (the least of %s and %s)"
 		% [tag, into.min(), back.min(), into, back])
+	await _joined_line(tag, int(plan["p1"]))
 	# Saved with no edit after the switch: the file as it came, byte for byte.
 	var plain_at: String = ProjectSettings.globalize_path(PROBE_DIR + tag + "-unedited.mpd")
 	_ok(bool(_main.call("save_model", plain_at)), "%s: saved unedited after a switch" % tag)
@@ -290,6 +291,28 @@ func _case_model(tag: String, path: String) -> void:
 	_untouched(tag, original, b_text)
 	await _open(b_at)
 	_exact("%s: reopened, every part where it was" % tag, b_marks["after"], _records_all())
+
+
+## Back in Full with a part selected, the properties panel's count of what
+## it is joined to: looked for a slice a frame after the click, not on it
+## (10030's held the way back 1.2-1.7 s), and what a look on the spot finds.
+func _joined_line(tag: String, id: int) -> void:
+	var inspector: Inspector = (_main.get("_shell") as Shell).inspector
+	if inspector.compact or not inspector.is_visible_in_tree():
+		print("    (%s: no joined count in a compact or hidden properties panel)" % tag)
+		return
+	var joined: int = SelectBy.connected(_world, _builder.lattice, [id], _store.scenery,
+		Inspector.JOINED_MOST + 1).size() - 1
+	var want: String = "Joined to %s" % ("nothing" if joined <= 0 else (
+		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
+			% ("%d" % joined if joined < Inspector.JOINED_MOST else "%d or more" % Inspector.JOINED_MOST))))
+	var frames: int = 0
+	while not inspector._facts.text.begins_with("Joined to") and frames < 3000:
+		await process_frame
+		frames += 1
+	var line: String = inspector._facts.text.get_slice("\n", 0)
+	_ok(line == want, "%s: back in Full, the properties say \"%s\" %d frames on (a look on the spot: \"%s\")"
+		% [tag, line, frames, want])
 
 
 ## 6685-1's timeline on its fifth step, through the switch.
