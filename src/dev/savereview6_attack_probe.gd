@@ -253,10 +253,15 @@ func _saved_path(said: String) -> String:
 	return found.get_string(1) if found != null else ""
 
 
-## The model, part for part: part, colour, place and step of each, sorted.
+## The model, part for part: part, colour, place and step of each, sorted. Not
+## the floor's baseplate (scenery, never saved): it is laid again under the
+## model as the model's footprint changes, the same on pre261 (3811 at the
+## origin before, at -860,-780 after, both trees).
 func _snap() -> PackedStringArray:
 	var out := PackedStringArray()
 	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
 		var o: Vector3 = brick.transform.origin
 		out.append("%s|%d|%.1f,%.1f,%.1f|%s|%s|%d" % [brick.part_id, brick.color_code, o.x, o.y, o.z,
 			brick.group, brick.unit, brick.step])
