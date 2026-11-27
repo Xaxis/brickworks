@@ -347,7 +347,9 @@ func _joined_line(tag: String, id: int) -> void:
 		"1 other part" if joined == 1 else ("%s other parts, directly or through others"
 			% ("%d" % joined if joined < Inspector.JOINED_MOST else "%d or more" % Inspector.JOINED_MOST))))
 	var frames: int = 0
-	while not inspector._facts.text.begins_with("Joined to") and frames < 3000:
+	# "Joined to … other parts" holds the line while the count is under way.
+	while (not inspector._facts.text.begins_with("Joined to")
+			or inspector._facts.text.begins_with(Inspector.JOINED_COUNTING)) and frames < 3000:
 		await process_frame
 		frames += 1
 	var line: String = inspector._facts.text.get_slice("\n", 0)

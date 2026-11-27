@@ -304,7 +304,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with its find to type into (`SelectBy.wanted`: "3004", "3023" for 3023b,
   "brick 1x2" with every word as the parts bin searches, a colour of the
   model's by name, or both, "blue 1x2 brick"); Enter selects every row it
-  kept. In the list each row shows its part's picture in its colour
+  kept. The find is shown and has the keys in Ctrl-F's own press
+  (`Shell.TYPED_AFTER`), before the list is taken: what is typed while the
+  rows come is kept and found in them, and an Enter meanwhile chooses once
+  they are in (`InventoryPanel._fill_finding`); typed ten frames on, the
+  hotel's find had lost "30" of "3004" and C painted the selection.
+  In the list each row shows its part's picture in its colour
   (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
   every piece (a hose's every segment), frames them and says how many, with I
   for a buried one; the list opens again where it was. Parts inside
@@ -465,12 +470,31 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to
-  (up to 500, counted a slice a frame from the frame after the click and given
-  up when another part is shown, `Inspector._count_joined`: on the click it held
-  10030's window 1.2-1.7 s, and Simple's way back to Full as long;
-  `simple_switch_probe --case=models` reads the line against a look on the spot),
+  (up to 500, counted 4 ms a frame, `FramePace.LIGHT_US`, the first 2 ms on
+  the click, and given up when another part is shown, `Inspector._count_joined`;
+  at half a frame from 12 ms a slice it held frames of up to 97 ms; a part of many
+  boxes is asked a piece of its faces at a time, `SelectBy._joined_to_paced`,
+  since 10030's 6 x 12 plate asked whole was one frame of 130-370 ms, and the
+  sideways table a count that may reach every part builds is built between
+  slices, `SelectBy.sideways_paced` (20 ms in one frame on 6685-1); "Joined to …
+  other parts, directly or through others" holds its line until then, wrapped
+  as most counts are, so Joined, Lock and Hide stay put: on
+  the click it held 10030's window 1.2-1.7 s, and Simple's way back to Full as
+  long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1,
+  5972-1 and Orthanc to the next frame under one, reads the line against a whole
+  look on the spot, holds every frame after the click's, of the count and of the
+  steps, to one (16.7 ms of the main thread's time on a CPU, from
+  /proc/thread-self/schedstat, each said beside its time in all and the load)
+  and the buttons where they were, and switches parts
+  mid-count; `simple_switch_probe --case=models` reads it after the switch),
   which way its studs face, its sub-model, its step in the instructions (models
-  of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
+  of 600 parts or fewer, worked out 4 ms a frame from once the click's frame is
+  drawn, `Inspector._plan_steps`: on the click, the first click after each edit
+  held 6685-1 and 5972-1 80-110 ms. `Instructions.plan_paced` plans a copy
+  taken a slice at a time, `BrickWorld.copy_paced`: read from the model itself
+  across frames, a part deleted under it was a script error, and so was a
+  cancel, an untyped [] handed to an Array[Step]) and whether it is locked;
+  Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs. Asked for from a part's actions or its More
@@ -1480,11 +1504,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   New a frame into each.
   Publish is the model's from the press to the server's answer (pubbind):
   its link, remix and moves are taken with its text, and the model is
-  checked again after the steps and tests and after the answer. Opened
-  before the send, nothing is sent ("Not published: another model was
-  opened."); after, the model open now is given nothing and the status
-  names where the first went ("Published “A” at …, but another model was
-  opened meanwhile"). wholereview3 F1 had 10030-1 sent as the other's next
+  checked again after every wait. Opened before the send, nothing is sent
+  ("“A” was not published: another model was opened."); after, the model
+  open now is given nothing and the status names where the first went
+  ("Published “A” at …, but another model was opened meanwhile"). wholereview3 F1 had 10030-1 sent as the other's next
   version and the other given its link. The same binding: Ask in Talk,
   Enter (the entry goes to the link published), Take down (the link pressed
   on), Clear (asked about one model, never empties another), Save's
@@ -1494,9 +1517,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   stream and next tool never build on a model opened meanwhile). The share
   panel shows the model on the baseplate while it is open
   (`SharePanel._show_model`, `_follow_model`): nothing typed for one model
-  is published with another. `pubbind_probe` (headless) drives each with
-  the server stubbed; wholereview3's p3 (`wholereview3_probe
-  --cases=publish_during,publish_small`, branch wholereview3) both ways.
+  is published with another. Every act of the panel (Publish, Share
+  progress, Enter, Ask in Talk, Take down) runs between `_begin_act` and
+  `_end_act` (pubbind2): the panel holds the pressed model while any runs,
+  and every way out (done, refused, signed out, failed, another opened)
+  ends with the model open shown, the status naming the pressed model
+  ("“A” was published at … but not entered", "The question about “A” was
+  not asked: …"), in de/fr/es too. pubreview F1-F3 were exits that skipped
+  it. `pubbind_probe` (headless) drives each with the server stubbed
+  (`ask_fail`, `ask_moved`, `enter_server`, `enter_enter` are F1-F3);
+  pubreview's own probe (branch pubreview e4c8e004c); wholereview3's p3
+  (`wholereview3_probe --cases=publish_during,publish_small`, branch
+  wholereview3) both ways.
   The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
   fails a command over 250 ms of its own work in one frame that was not
   said first): every command in the shell's table on Orthanc and the car,
@@ -4227,7 +4259,9 @@ tools/probe.sh tooltip_fit_probe
 godot --headless --path . --script src/dev/select_probe.gd
 # a part found in the Boutique Hotel: the list's pictures, a row clicked (57
 # selected, framed, said), Select by, Part number or name… typed key by key
-# ("blue 1x2 brick", "3004"), Escape, look_at_model part=; then Orthanc's
+# ("blue 1x2 brick"; "3004" and Enter, and "no such part zzq", typed the moment
+# Find is asked, the list still coming: every key the find's, the parts
+# selected not painted or moved), Escape, look_at_model part=; then Orthanc's
 # 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
 # --rounds=N; on a base checkout only Select all). shots/findpart_*.png
 tools/probe.sh find_part_probe

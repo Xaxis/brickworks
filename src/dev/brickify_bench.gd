@@ -192,6 +192,10 @@ func _size(mesh: MeshFile, up: String, studs: int, dir: String, slug: String,
 			# Each [x / 2, its foot plate, z / 2], and the way it faces.
 			var asked: Array = []
 			for cut: Array in [[0, grid.cubes]] + grid.cube_phases:
+				# Not the cuts a stud across: their cubes are not on this lattice,
+				# and what they turn is in cubes_turned by the cubes of it they lie in.
+				if cut.size() > 2:
+					continue
 				for key: Variant in cut[1]:
 					var c: Vector3i = key
 					var way: Vector2i = (cut[1] as Dictionary)[key]

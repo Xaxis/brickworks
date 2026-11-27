@@ -863,8 +863,29 @@ static var laps: Array = []
 ## happening (2026-10-12). The same work as [method plan], in the same
 ## order; only where it gives the frame back differs. Returns no steps when
 ## the job was cancelled.
+##
+## Of a copy of the model taken first (BrickWorld.copy_paced), which nothing
+## changes while the plan goes on: read from the model itself across frames,
+## a part deleted meanwhile stopped the plan on a script error (clickfast,
+## modelinfo's Delete), and HeldSteps read it on a worker as it changed.
 static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		regions: Dictionary, job: Working.Job, authored: bool = false) -> Array[Step]:
+	var none: Array[Step] = []
+	var still: BrickWorld = await world.copy_paced(job)
+	if still == null:
+		return none
+	var steps: Array[Step] = await _planned_paced(still, library, skip.duplicate(), regions,
+		job, authored)
+	still.free()
+	return steps
+
+
+static func _planned_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		regions: Dictionary, job: Working.Job, authored: bool) -> Array[Step]:
+	# Typed: an untyped [] handed back from here, once a frame has been given
+	# back, reached the caller's Array[Step] as a script error (assembly's
+	# cancel, clickfast).
+	var none: Array[Step] = []
 	laps.clear()
 	# The author's steps are read, not worked out, from what holds what.
 	if authored and AuthorSteps.any(world, skip):
@@ -879,14 +900,14 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	await _survey_into(nodes, world, library, skip, job)
 	lap.call("survey")
 	if nodes.is_empty() or job.cancelled:
-		return []
+		return none
 	var count: String = Working.comma(nodes.size())
 	job.say("Finding what %s parts rest on…" % count)
 	job.count(0, nodes.size())
 	await _supports_of(nodes, world, library, job)
 	lap.call("supports")
 	if job.cancelled:
-		return []
+		return none
 	job.say("Finding the joints between %s parts…" % count)
 	job.count(0, 0)
 	await job.next()
@@ -897,28 +918,27 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	lap.call("joints")
 	await job.next()
 	if job.cancelled:
-		return []
+		return none
 	job.say("Finding what hangs off %s parts…" % count)
 	await _hangers_of(nodes, job)
 	lap.call("hangers")
 	await job.next()
 	if job.cancelled:
-		return []
-	# Kept only when nothing moved while it was read, a slice a frame.
-	if _shape_of(world, library, skip) == shape:
-		_keep_read(shape, nodes)
+		return none
+	# Read from a copy nothing moved while it was read (plan_paced).
+	_keep_read(shape, nodes)
 	job.say("Finding what is built on the side…")
 	var assemblies: Array[Assembly] = []
 	await _find_assemblies_into(assemblies, nodes, world, library, job)
 	await job.next()
 	if job.cancelled:
-		return []
+		return none
 	await _find_bundles_into(nodes, world, library, assemblies, job)
 	await _frame_turned(assemblies, world, library, job)
 	lap.call("assemblies")
 	await job.next()
 	if job.cancelled:
-		return []
+		return none
 	var built: Array[Node2] = []
 	await _contract_into(built, nodes, assemblies, job)
 	await job.next()
@@ -928,7 +948,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	if job.cancelled:
 		for made: Assembly in assemblies:
 			made.node = null
-		return []
+		return none
 	job.say("Laying out %s parts in steps…" % count)
 	job.count(0, nodes.size())
 	var raw: Array = []
@@ -3779,24 +3799,25 @@ static func _kept_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 ## was read.
 static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		steps: Array[Step], job: Working.Job, read: Dictionary = {}) -> Array[Step]:
+	var none: Array[Step] = []
 	if steps.is_empty() or not _of_sub_models(world, skip):
 		return steps
 	var kept: Array[Step] = await _authored_plan_paced(world, library, skip, job,
 		AuthorSteps.adopted(world, steps, skip))
 	if job.cancelled:
-		return []
+		return none
 	if kept.is_empty():
 		return steps
 	var held: GDScript = Later.script(&"HeldSteps")
 	var well: Variant = await WorkerTasks.awaited(func() -> bool:
 		return _builds_as_well(kept, read, library, held), "judge the steps a model can keep", library)
 	if job.cancelled:
-		return []
+		return none
 	if not bool(well):
 		kept = await _authored_plan_paced(world, library, skip, job,
 			AuthorSteps.adopted(world, steps, skip, true))
 		if job.cancelled:
-			return []
+			return none
 		if kept.is_empty():
 			return steps
 	_carry(steps, kept)
@@ -4093,6 +4114,8 @@ static func _keep_assemblies(shape: Array, given: PackedByteArray, found: Array[
 ## model changed while it was read.
 static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary, job: Working.Job, numbers: Dictionary = {}) -> Array[Step]:
+	# Typed, as in [method _planned_paced].
+	var none: Array[Step] = []
 	var steps := PackedInt32Array()
 	var shape: Array = _shape_of(world, library, skip, steps)
 	if not numbers.is_empty():
@@ -4104,13 +4127,13 @@ static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
 	var nodes: Array[Node2] = []
 	await _survey_into(nodes, world, library, skip, job)
 	if nodes.is_empty() or job.cancelled:
-		return []
+		return none
 	var count: String = Working.comma(nodes.size())
 	job.say("Finding what %s parts rest on…" % count)
 	job.count(0, nodes.size())
 	await _supports_of(nodes, world, library, job)
 	if job.cancelled:
-		return []
+		return none
 	job.say("Finding the joints between %s parts…" % count)
 	job.count(0, 0)
 	await job.next()
@@ -4120,17 +4143,17 @@ static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
 	_tidy_needs(nodes)
 	await job.next()
 	if job.cancelled:
-		return []
+		return none
 	job.say("Finding what hangs off %s parts…" % count)
 	await _hangers_of(nodes, job)
 	await job.next()
 	if job.cancelled:
-		return []
+		return none
 	# Kept only when nothing moved while it was read, a slice a frame.
 	var now := PackedInt32Array()
 	if _shape_of(world, library, skip, now) != shape or (numbers.is_empty() and now != steps):
 		if not numbers.is_empty():
-			return []
+			return none
 		return await _authored_paced_from([], steps, nodes, PackedStringArray(), world, library,
 			skip, job)
 	var paths: PackedStringArray = _paths_of(nodes)
@@ -4162,7 +4185,8 @@ static func _authored_paced_from(shape: Array, steps: PackedInt32Array, nodes: A
 	if job.cancelled:
 		for made: Assembly in found:
 			made.node = null
-		return []
+		var none: Array[Step] = []
+		return none
 	# Read again after the frames it took: its steps as they are now.
 	var now := PackedInt32Array()
 	var same: bool = not shape.is_empty() and _shape_of(world, library, skip, now) == shape

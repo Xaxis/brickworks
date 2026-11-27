@@ -937,6 +937,28 @@ def _tab_open(origin: str, token: str) -> bool:
     return not result.get("isError") and ("tab is open" in text or "tabs are open" in text)
 
 
+def _save_end(port: int, name: str) -> dict:
+    """The bench's own save of what the session left, which no gate may lose.
+
+    A session's save on a bench run waits on the app's gates (CommandSocket.bench_run): the
+    features not settled, the parts BrickBench would count as pieces. The harness's save after
+    the session is not the session's, and a refusal there measured nothing and kept no model at
+    all: 8 sessions of design32-35 over features not settled, design42's 42061-1 over one gear
+    (the app now saves without what the exact check finds at fault, design43). So: the features
+    are skipped, which lays nothing and takes off any piece the gate laid, and the save asked
+    again; the pieces gate saves at its third asking."""
+    saved = _ask_app(port, "save_model", {"name": name})
+    for _ in range(3):
+        said = json.dumps(saved.get("content") or saved.get("error") or "")
+        if "Not saved yet" not in said:
+            break
+        if "not settled" in said:
+            _ask_app(port, "settle_feature", {"feature": "all", "verdict": "skip",
+                                               "reason": "the bench saves the model the session left"})
+        saved = _ask_app(port, "save_model", {"name": name})
+    return saved
+
+
 def _ask_app(port: int, tool: str, arguments: dict) -> dict:
     """One call on the app's own port (src/net/command_socket.gd), as tools/brick.py makes one."""
     with socket.create_connection(("127.0.0.1", port), timeout=180) as sock:
@@ -1166,7 +1188,7 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
         name = f"realset-{subject.id}-{app_port}.ldr"
         saved: dict = {}
         try:
-            saved = _ask_app(app_port, "save_model", {"name": name})
+            saved = _save_end(app_port, name)
         except (OSError, ValueError) as trouble:
             bench.say(f"design {subject.id}: the tab would not save: {trouble}")
         kept = user_dir / "models" / name

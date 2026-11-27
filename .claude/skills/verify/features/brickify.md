@@ -43,9 +43,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   thinner than a stud or a plate (`_thin`): a cell the surface passes through
   (`_touched`, triangle against cell by separating axes) counts where nothing
   measured is in the 26 round it, the cells it passes through between such a
-  part and the body join them, and a part one plate thick is made two, so a
-  fox's legs, a spout or a wing claim their cells at the size chosen and a
-  thick body comes out no fatter. Then join, don't drop (`_join`): each piece
+  part and the body join them, so a fox's legs, a spout or a wing claim their
+  cells at the size chosen and a thick body comes out no fatter; then any
+  part one plate thick, measured or thin, made two and its columns laid plain
+  (`_two_plates`: the Bell X-1's wing tip at 48 studs held so). Then join, don't drop (`_join`): each piece
   apart is joined to the rest by the cheapest way (`_reach`: through the
   model free, along its thin surface cheaply, through air a plate up or down
   2 and a stud across 5), a floating largest piece is stood on the ground by
@@ -84,13 +85,22 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   Lambrecht's), a cube steeper than about 65 degrees (`STEEP`) facing out along x or z,
   and cut again with its courses started 2, 4, 1 and 3 plates up
   (`CUBE_PHASES`, `Grid.cube_phases`, `Plan._phase`), each later cut tried only
-  where no shell has any of the cube (`_cube_shelled`);
+  where no shell has any of the cube (`_cube_shelled`); and since the thirteenth
+  round cut again a stud across along x and z (`CUBE_ACROSS`, `Brickify._cubes_cut`,
+  `Plan._shift`, a cut's third entry), only over cubes whose faces cancelled, only
+  facing along the cut, so one face of a wall 1.5 to 2 studs thick turns whichever
+  way the lattice fell; such a cube kept only where the wall's other half stands on
+  the model under it (`Plan._stands`, refused `"unstood"`), its refusals not in
+  `cubes_why` (`_why_here`);
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
   `_cube_shell`), and a cube with the one past it at the same height facing
   out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
   `"depth"`), each cube the side's outermost with a stud of core behind it
   (`CUBE_BACK`; where less than three, `CUBE_HOLDS`, only where that core runs
-  on into the model past the cube, `_runs_on`, `CUBE_REACH`), its plates none
+  on into the model past the cube, `_runs_on`, `CUBE_REACH`), the cube past
+  it faced out instead only where the model fills a cube's least of it
+  (`CUBE_LEAST`, `_cube_plates`), less than that (a sliver) laid by this
+  cube's shell, its air kept by the shell too (since the twelfth round), its plates none
   that a side-stud brick's studs stand into (every one in the column,
   `stud_tops`), and no cap or ledge a plate or two thick on it unless the
   cap runs on back over the core behind the cube, on the core there, laid as a design's
@@ -99,15 +109,19 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   (`_anchored`; first tier only); its slopes fitted by distance to the side
   (`Grid.side`, rays along x and z at thirds of a stud), one on the core's
   face only where a side stud grips it; a cube its shell covers under
-  `CUBE_KEEPS` given back to the core and the shell cut again; laid once (the
+  `CUBE_KEEPS` given back to the core and the shell cut again, up to
+  `CUBE_ROUNDS` (eight since the thirteenth round) times before the group is
+  given up whole; laid once (the
   trial kept where the core kept its side studs); a piece of the core of 16
   parts or fewer a shell cuts off joined to the rest first, a plate of it and
   one of the rest side by side laid again across, a brick beside it laid again
-  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), and what
-  that leaves taken out before the check (`Plan.cut_off`,
-  `Shapes.last["cut_off"]`; what the cubes came to in `Shapes.last["cubes"]`;
-  what the shells took, gave back and cut off in `Shapes.last["shelled"]`,
-  `"given_back"`, `"cut_cells"`, `"shell_frames"`); a side-stud brick never
+  as plates (`Plan.join_cut_off`, `Shapes.last["joined_cut_off"]`), what
+  that leaves given to the stitch (since the eleventh round none of it
+  taken out before the stitch), and what the stitch leaves apart taken out
+  before the check (`Plan.cut_off`, `Shapes.last["cut_off"]`; what the cubes
+  came to in `Shapes.last["cubes"]`; what the shells took, gave back and cut
+  off in `Shapes.last["shelled"]`, `"given_back"`, `"cut_cells"`,
+  `"shell_frames"`); a side-stud brick never
   plain to the stitch (`Plan._plain`); a stud joint past its working load
   left after the props, beside a shell, has the cubes about it and what it
   hangs from laid again upright in the build itself, as a wall is patched
@@ -141,7 +155,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   footprint stacked, merged (a merge only joins, so never more pieces); a
   bonded build that leaves a region of the model out laid again by the colours
   measured (`Options.bond` false) and the one filling more kept, both times
-  counted (the temple at 48 studs keeps its moon so, at twice the time);
+  counted (the temple at 48 studs fills 2.5 points more so, at twice the
+  time; its moon on a stick is left out either way), but the first kept
+  where the second leaves out every region it did and fills at most half a
+  point more (`_wins_back`, since the eleventh round);
   every piece kept (`keep_pieces`: no prune, nothing
   left off unsaid) and, once the grid's own stitch is spent (the plan mapped
   once a round for it, not once a piece tried; its first ways, kept

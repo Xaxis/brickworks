@@ -90,7 +90,10 @@ static func pictures(shot: ModelShot, of: BrickWorld, skip: Dictionary,
 	for view: Array in [["corner", AABB()], ["front", AABB()], ["corner", close]]:
 		var image: Image = await shot.take(of, view[0], skip, view[1])
 		if image == null:
-			return []
+			# Typed: an untyped [] handed back after an await reaches the
+			# caller's Array[Image] as a script error (Instructions._planned_paced).
+			var none: Array[Image] = []
+			return none
 		taken.append(image)
 	return taken
 

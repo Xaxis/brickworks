@@ -691,7 +691,8 @@ plan with Claude as the client.
   `bench/results/tabpair-2026-10-17/claude_pair2`). Undo per chat: each step a
   chat's call makes carries `by` (`CommandSocket.CHAT_KEY`, `_mark`), and the
   `undo` tool stops at a step another chat made, saying so
-  (`AppTools._undo`, `AppTools.chat`).
+  (`AppTools._undo`, `AppTools.chat`), and at one with no `by`, the person's own
+  (`saved_without_attack_probe` C1: "is the person's own, made in the tab, so it was left").
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
   Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
@@ -2554,7 +2555,12 @@ plan with Claude as the client.
   it), what was pressed is done first and First steps are offered after it in a
   snackbar (`offerFirstSteps`, kept in localStorage
   `brickworks.first_steps_due` until offered, also on the next page if that
-  one went; checkdrift 2026-11-23): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
+  one went; checkdrift 2026-11-23). It waits for two quiet looks in a row:
+  no `call()` on its way (20 s at most after the last dialog closed) and no
+  dialog open (however long a person takes in it); `age()` and `nameFirst` (its look-up, its script and
+  its Make your profile) count as calls, so after a comment the offer comes
+  once the comment is posted, never under its name step (firststeps,
+  2026-11-26: homefeed 9 failed so on 11-25/26): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
   name until typed in, the `.face-row` avatar from it, `#first-make` posts
   `?op=profile`; left out with a profile already), `kinds` (the gallery's
   kinds from `?op=list&sort=top` as `button.pill[data-kind]`,

@@ -617,7 +617,10 @@ const HINTS := {
 	# keys it had, one step to undo (camreview M1: said to change nothing, it
 	# replaced three hand-made keys, its step unmarked).
 	"render_motion": ["Render a motion", "remove"],
-	"simulate_mechanism": ["Simulate the mechanism", "file"],
+	# program= puts a program in place of the model's, one step to undo: said
+	# to leave the model as it was, its step went unmeasured and unmarked, and
+	# the session's own undo then left it as the person's (d43save).
+	"simulate_mechanism": ["Simulate the mechanism", "remove"],
 	"undo": ["Undo or redo", "remove"],
 	# In place of the model, and with discard_changes its unsaved changes.
 	"open_model": ["Open a model", "remove"],
@@ -1353,9 +1356,11 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 	# A bench's save waits on what its judge is told, as it did: BrickBench
 	# reads the file at once and scores it (Assistant.BRICKBENCH_FLAG), and
 	# realset saves each held-out session's model at its end and scores that
-	# ([method bench_run]). A person's save is never refused (below).
+	# ([method bench_run]). A person's save is never refused, and the gate
+	# asked after its file is written only speaks (below): parts come off
+	# only here, before a bench's file is written.
 	if tool == "save_model" and assistant != null and bench_run():
-		var held: Variant = await assistant.save_gate()
+		var held: Variant = await assistant.save_gate(true)
 		if not (held is String and (held as String).is_empty()):
 			return held
 	if app == null:

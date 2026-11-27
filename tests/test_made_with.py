@@ -89,7 +89,9 @@ def test_the_ways_are_the_same_words_in_the_app_the_card_the_server_and_the_sql(
     assert "made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null," in DIRECTORY
     # The app sends it only when it knows.
     assert 'if store.made_with in ModelStore.MADE_WAYS:\n\t\tsaid["made_with"] = store.made_with' in PANEL
-    assert "body.merge(made_fields())" in PANEL
+    # Taken at the press with the text (pubbind), then sent with it.
+    assert "var made_by: Dictionary = made_fields()" in PANEL
+    assert "body.merge(made_by)" in PANEL
 
 
 def test_the_column_is_the_server_s_alone() -> None:

@@ -1226,9 +1226,16 @@ brickworksEngine.ready.then(function (chosen) {
 	// Godot passes anything after "--" to the project, which is how the
 	// app takes --model= and friends. Carry the query string through so a
 	// link can open a particular model.
+	// Never a bench's: a link with ?brickbench or ?held-out= made the
+	// person's tab one, whose save takes parts off (savereview2 G1). The
+	// benches start desktop builds; the app ignores these on the web too.
 	const query = new URLSearchParams(location.search);
+	const benchKeys = new Set(["brickbench", "held-out", "held-out-name"]);
 	const args = [];
 	for (const [key, value] of query) {
+		// By the name before any "=": ?held-out%3D7634-1 is the key
+		// "held-out=7634-1", which would be the argument --held-out=7634-1.
+		if (benchKeys.has(key.split("=")[0])) continue;
 		args.push(value === "" ? "--" + key : "--" + key + "=" + value);
 	}
 	if (args.length) GODOT_CONFIG.args = ["--", ...args];

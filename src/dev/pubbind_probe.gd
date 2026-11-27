@@ -7,7 +7,8 @@
 ## leaves the box:
 ##   steps      Publish on A (160 parts, its own link), B (its own link) opened
 ##              while the steps are worked out and tested: nothing is sent, B
-##              keeps its link, "Not published: another model was opened."
+##              keeps its link, "“pb wall” was not published: another model
+##              was opened."
 ##   server     the same, B opened while the server answers: A is sent under
 ##              its own link, B is given nothing, the status says so with the
 ##              link; and again with a B that has no link
@@ -17,7 +18,20 @@
 ##   follows    A's words typed in the panel, C opened: the panel shows C's name
 ##              and no words of A's, and Publish sends C under C's name
 ##   ask        Ask in Talk on A, which publishes first; B opened while the
-##              server answers: nothing is asked
+##              server answers: nothing is asked, and the status says where A
+##              was published
+##   ask_fail   Ask in Talk on A, published as it is, with words typed for A;
+##              B opened while Talk answers, Talk refuses (pubreview F1): the
+##              panel shows B with none of A's words, the status names A, and
+##              Publish then sends B as B
+##   ask_moved  the same, Talk takes it: the status names A and says where
+##              its question is; Open the thread is not shown with B
+##   enter_server  Enter on A, B opened while the publish is answered
+##              (pubreview F2): A is published, nothing is entered, and the
+##              status says so of A by name
+##   enter_enter  Enter on A, B opened while the entry is answered (pubreview
+##              F3): A's link is entered, B is not shown as entered, and the
+##              status says it of A alone, none of B's words glued on
 ##   unpublish  Take down on A, B opened while the server answers: A's link is
 ##              taken down, B's state and link are untouched
 ##   clear      Clear asked on A, B opened while the question is up: B is not
@@ -25,8 +39,12 @@
 ##   assistant  a design run's reply arriving after its world was cleared (as an
 ##              open clears it): nothing is built, the run ends saying so; and
 ##              the same reply with no clear builds
+## Each status said of A once B is open is drawn in German, French and
+## Spanish too, with nothing left in English but names and links.
 ##
 ##   godot --headless --path . --script src/dev/pubbind_probe.gd -- [--cases=a,b]
+## In a window (godot --path . --resolution 1280x800 ...), --pictures=DIR
+## keeps the window as each line said of A shows, as DIR/<case>.png.
 extends SceneTree
 
 const PROBE_DIR := "user://pubbind_probe/"
@@ -59,6 +77,8 @@ class FakeShared extends SharedModels:
 	var bodies: Array = []
 	var asks: Array = []
 	var downs: Array = []
+	var enters: Array = []
+	var ask_code: int = 201
 	var hold: Callable = Callable()
 	var hold_on: String = ""
 
@@ -79,7 +99,15 @@ class FakeShared extends SharedModels:
 
 	func talk_ask(_token: String, body: Dictionary) -> Dictionary:
 		asks.append(body.duplicate())
+		await _held("talk_ask")
+		if ask_code != 201:
+			return {"code": ask_code, "body": {"error": "Talk is down"}}
 		return {"code": 201, "body": {"thread": {"id": 1}, "path": "/talk/t/1"}}
+
+	func enter(_token: String, model: String, way: String) -> Dictionary:
+		enters.append([model, way])
+		await _held("enter")
+		return {"code": 201, "body": {}}
 
 	func talk_asks(_token: String, _model: String) -> Dictionary:
 		return {"code": 200, "body": {"asks": []}}
@@ -107,6 +135,8 @@ var _builder: Builder
 var _panel: Node
 var _fake: FakeShared
 var _paths: Dictionary = {}
+## Where the window is kept as each line said of A shows (--pictures=DIR).
+var _pictures: String = ""
 
 
 func _initialize() -> void:
@@ -127,10 +157,12 @@ func _run() -> void:
 	# Anything not stubbed fails at once rather than reaching a server.
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
 	var cases: PackedStringArray = PackedStringArray(["steps", "server", "author", "normal", "follows", "ask",
-		"unpublish", "clear", "assistant"])
+		"ask_fail", "ask_moved", "enter_server", "enter_enter", "unpublish", "clear", "assistant"])
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--cases="):
 			cases = arg.trim_prefix("--cases=").split(",", false)
+		elif arg.begins_with("--pictures="):
+			_pictures = arg.trim_prefix("--pictures=")
 	DirAccess.make_dir_recursive_absolute(PROBE_DIR)
 	_paths["a"] = _write("pb_a.ldr", _wall_text())
 	_paths["b"] = _write("pb_other.ldr", B_TEXT)
@@ -150,12 +182,15 @@ func _run() -> void:
 		quit(1)
 		return
 	_fake = FakeShared.new()
+	# In the tree, as Main's own: what it does not stub asks 127.0.0.1:9 and
+	# is refused. Main's too, so the month's challenge line is made (a run's
+	# line is made only with a probe's own SharedModels) and an ask's pins
+	# are asked of it.
+	root.add_child(_fake)
 	_panel.set("shared", _fake)
-	var account: Account = _panel.get("account")
-	account.state = Account.State.SIGNED_IN
-	account.set("_access", "pb-token")
-	account.set("_expires_at", Time.get_unix_time_from_system() + 3600.0)
-	account.renewing = false
+	_main.set("_shared", _fake)
+	_main.call("_make_challenge_line")
+	_sign_in()
 	if "steps" in cases:
 		await _case_steps()
 	if "server" in cases:
@@ -169,6 +204,14 @@ func _run() -> void:
 		await _case_follows()
 	if "ask" in cases:
 		await _case_ask()
+	if "ask_fail" in cases:
+		await _case_ask_talk(false)
+	if "ask_moved" in cases:
+		await _case_ask_talk(true)
+	if "enter_server" in cases:
+		await _case_enter("publish")
+	if "enter_enter" in cases:
+		await _case_enter("enter")
 	if "unpublish" in cases:
 		await _case_unpublish()
 	if "clear" in cases:
@@ -203,8 +246,10 @@ func _case_steps() -> void:
 	_ok(opened_during and during.begins_with("Working out its steps"), "B was opened while the steps were worked out")
 	_ok(_fake.bodies.is_empty(), "nothing was sent (%d publish(es))" % _fake.bodies.size())
 	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
-	_ok(status.text.begins_with("Not published: another model was opened."),
-		"the status says so: \"%s\"" % status.text.left(120))
+	_ok(status.text == "“pb wall” was not published: another model was opened.",
+		"the status says so of A by name: \"%s\"" % status.text.left(120))
+	_in_languages(status.text, ["pb wall"])
+	await _picture("steps")
 	_ok((_panel.get("_name") as LineEdit).text == _store.title,
 		"the panel shows B's name (\"%s\")" % (_panel.get("_name") as LineEdit).text)
 	_ok(str(_panel.get("state")) != "publishing" and not (_panel.get("_publish") as Button).disabled,
@@ -245,8 +290,8 @@ func _case_author() -> void:
 	_ok(_fake.hold_on.is_empty(), "B was opened while the name was asked for")
 	_ok(_fake.bodies.is_empty(), "nothing was sent (%d)" % _fake.bodies.size())
 	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
-	_ok(status.text.begins_with("Not published: another model was opened."), "the status says so: \"%s\""
-		% status.text.left(120))
+	_ok(status.text == "“pb wall” was not published: another model was opened.",
+		"the status says so of A by name: \"%s\"" % status.text.left(120))
 	credit.button_pressed = false
 
 
@@ -289,8 +334,131 @@ func _case_ask() -> void:
 	_ok(_fake.hold_on.is_empty(), "B was opened while A was published")
 	_ok(_fake.asks.is_empty(), "nothing was asked (%d)" % _fake.asks.size())
 	_ok(str(_panel.get("ask_state")) == "failed", "the question failed (%s)" % _panel.get("ask_state"))
-	_ok(status.text == "Not asked: another model was opened.", "the status says so: \"%s\"" % status.text.left(120))
+	_ok(status.text == ("“pb wall” was published at example.invalid/m/%s, but the question about it was not asked: "
+		+ "another model was opened.") % ANSWER_LINK, "the status says so of A by name, and where it went: \"%s\""
+		% status.text.left(160))
+	_in_languages(status.text, ["pb wall", "example.invalid/m/" + ANSWER_LINK])
 	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
+
+
+## Ask in Talk on A, published as it is, with A's words typed in the panel;
+## B opened while Talk answers. Talk refuses ([param taken] false) or takes it.
+func _case_ask_talk(taken: bool) -> void:
+	print("\nask_%s: Ask in Talk on A, B opened while Talk answers, which %s" % ["moved" if taken else "fail",
+		"takes the question" if taken else "refuses; then Publish"])
+	await _start_on_a()
+	(_panel.get("_about") as TextEdit).text = "words typed for A"
+	(_panel.get("_tags") as LineEdit).text = "for-a"
+	_panel.set("state", "published")
+	_panel.set("_published_for", A_LINK)
+	_panel.set("_published_revision", _world.revision)
+	_panel.set("_checked_for", A_LINK)
+	_panel.set("ask_state", "idle")
+	var status: Label = _panel.get("_status")
+	_fake.asks.clear()
+	_fake.ask_code = 201 if taken else 500
+	_fake.hold = func() -> void: await _open("b")
+	_fake.hold_on = "talk_ask"
+	await _panel.call("ask_builders")
+	await _frames(5)
+	var ask: Dictionary = _fake.asks[0] if not _fake.asks.is_empty() else {}
+	var named: String = (_panel.get("_name") as LineEdit).text
+	print("  asked %d about %s; the panel names \"%s\", its words \"%s\"; ask_state %s; status \"%s\""
+		% [_fake.asks.size(), str(ask.get("model", "(none)")), named, (_panel.get("_about") as TextEdit).text,
+			_panel.get("ask_state"), status.text.left(160)])
+	_ok(_fake.hold_on.is_empty(), "B was opened while Talk answered")
+	_ok(_fake.asks.size() == 1 and str(ask.get("model", "")) == A_LINK, "the question went about A's link only")
+	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
+	_ok(named == _store.title, "the panel shows B's name (\"%s\")" % named)
+	_ok((_panel.get("_about") as TextEdit).text.is_empty() and (_panel.get("_tags") as LineEdit).text.is_empty(),
+		"and none of A's words or tags")
+	_ok(not (_panel.get("_ask_open") as Control).visible, "Open the thread is not shown for B")
+	var ask_button: Button = _panel.get("_ask")
+	_ok(not ask_button.disabled and ask_button.text == "Ask in Talk", "Ask in Talk can be pressed for B")
+	if taken:
+		_ok(str(_panel.get("ask_state")) == "asked", "the question is asked (%s)" % _panel.get("ask_state"))
+		_ok(status.text.begins_with("The question about “pb wall” is in Talk's Help at ")
+			and status.text.ends_with("/talk/t/1. Another model was opened meanwhile."),
+			"the status says where A's question is: \"%s\"" % status.text.left(160))
+		_in_languages(status.text, ["pb wall", status.text.get_slice(" at ", 1).get_slice(". ", 0)])
+		await _picture("ask_moved")
+	else:
+		_ok(status.text == "The question about “pb wall” was not asked: Talk is down",
+			"the status says so of A by name, with Talk's words: \"%s\"" % status.text.left(160))
+		_in_languages(status.text, ["pb wall", "Talk is down"])
+		await _picture("ask_fail")
+		# Publish pressed next, on B: B as B, never under A's name or words.
+		_fake.bodies.clear()
+		await _panel.call("publish")
+		var body: Dictionary = _fake.bodies[0] if not _fake.bodies.is_empty() else {}
+		print("  Publish then sent %d: name \"%s\", words \"%s\", tags \"%s\", link %s"
+			% [_fake.bodies.size(), str(body.get("name", "")), str(body.get("description", "")),
+				str(body.get("tags", "")), str(body.get("id", "(none)"))])
+		_ok(_fake.bodies.size() == 1 and str(body.get("id", "")) == B_LINK
+			and str(body.get("model", "")).contains("pubbind other"), "Publish sends B under B's link")
+		_ok(str(body.get("name", "")) in [_store.title, _store.title.get_basename()]
+			and str(body.get("description", "")).is_empty()
+			and str(body.get("tags", "")).is_empty(), "under B's name, with none of A's words or tags")
+	_fake.ask_code = 201
+	_panel.set("ask_state", "idle")
+
+
+## Enter on A, B opened while the server answers [param during]: the
+## publish ("publish") or the entry ("enter").
+func _case_enter(during: String) -> void:
+	print("\nenter_%s: Enter on A, B opened while the %s is answered" % ["server" if during == "publish" else "enter",
+		"publish" if during == "publish" else "entry"])
+	await _start_on_a()
+	# Made a moment after the studio starts (Later.make): waited for.
+	var line: Node = null
+	for _n: int in 2000:
+		line = _panel.get("challenge_line")
+		if line != null:
+			break
+		await process_frame
+	if not _ok(line != null, "the challenge line is made"):
+		return
+	line.set("challenge", ChallengeRules.rules_in({"code": 200, "body": {"challenge": {"id": 9,
+		"title": "Probe Challenge", "page": "https://example.invalid/c/probe", "entering": true,
+		"starts_on": "2026-11-01", "ends_on": "2026-12-31", "entries_until": "2026-12-31", "rules": {}}}}))
+	_panel.set("entry", {})
+	(_panel.get("_author") as LineEdit).text = "Probe Person"
+	(_panel.get("_enter_row") as Control).visible = true
+	(_panel.get("_enter") as Button).disabled = false
+	var status: Label = _panel.get("_status")
+	_fake.enters.clear()
+	_fake.hold = func() -> void: await _open("b")
+	_fake.hold_on = during
+	await _panel.call("publish_and_enter")
+	await _frames(5)
+	var body: Dictionary = _fake.bodies[0] if not _fake.bodies.is_empty() else {}
+	print("  sent %d publish(es) %s, entries %s; on the baseplate %s, its link %s; entry %s; status \"%s\""
+		% [_fake.bodies.size(), str(body.get("id", "(none)")), str(_fake.enters), _store.title, _store.share_id,
+			str(_panel.get("entry")), status.text.left(220)])
+	_ok(_fake.hold_on.is_empty(), "B was opened while the %s was answered" % during)
+	_ok(_fake.bodies.size() == 1 and str(body.get("id", "")) == A_LINK
+		and str(body.get("model", "")).contains("pubbind wall"), "A is published under its own link")
+	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
+	_ok((_panel.get("entry") as Dictionary).is_empty(), "B is not shown as entered (%s)" % str(_panel.get("entry")))
+	_ok((_panel.get("_name") as LineEdit).text == _store.title,
+		"the panel shows B's name (\"%s\")" % (_panel.get("_name") as LineEdit).text)
+	_ok(str(_panel.get("entering")).is_empty(), "Enter is not left Entering…")
+	if during == "publish":
+		_ok(_fake.enters.is_empty(), "nothing is entered (%s)" % str(_fake.enters))
+		_ok(status.text == "“pb wall” was published at example.invalid/m/%s but not entered: another model was opened."
+			% ANSWER_LINK, "the status says A was published and not entered, by name: \"%s\"" % status.text.left(200))
+		_in_languages(status.text, ["pb wall", "example.invalid/m/" + ANSWER_LINK])
+	else:
+		_ok(_fake.enters.size() == 1 and str(_fake.enters[0][0]) == ANSWER_LINK,
+			"A's link as published is entered, once (%s)" % str(_fake.enters))
+		_ok(status.text == "“pb wall” was entered in Probe Challenge, built by hand. It is on the challenge's page: "
+			+ "example.invalid/c/probe. Another model was opened meanwhile.",
+			"the status says A was entered, by name, with none of B's words: \"%s\"" % status.text.left(220))
+		_in_languages(status.text, ["pb wall", "Probe Challenge", "example.invalid/c/probe"])
+	await _picture("enter_" + during)
+	line.set("challenge", {})
+	_panel.set("entry", {})
+	(_panel.get("_author") as LineEdit).text = ""
 
 
 func _case_unpublish() -> void:
@@ -304,7 +472,10 @@ func _case_unpublish() -> void:
 	_ok(_fake.downs == [A_LINK], "A's link was taken down (%s)" % str(_fake.downs))
 	_ok(str(_panel.get("state")) != "unpublished", "B is not shown as taken down (%s)" % _panel.get("state"))
 	_ok(_store.share_id == B_LINK, "B keeps its own link (%s)" % _store.share_id)
-	_ok(status.text.ends_with("Another model was opened meanwhile."), "the status says so: \"%s\"" % status.text.left(140))
+	_ok(status.text == "“pb wall” was taken down: its link now says it is no longer shared. Another model was opened meanwhile.",
+		"the status says so of A by name: \"%s\"" % status.text.left(140))
+	_in_languages(status.text, ["pb wall"])
+	await _picture("unpublish")
 
 
 func _case_clear() -> void:
@@ -369,11 +540,55 @@ func _case_assistant() -> void:
 # -- helpers ----------------------------------------------------------------
 
 
+## The window as it is now, as [param name].png in --pictures=DIR, in a run
+## with a window; and the status line's words in German drawn the same.
+func _picture(name: String) -> void:
+	if _pictures.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	DirAccess.make_dir_recursive_absolute(_pictures)
+	for code: String in ["en", "de"]:
+		Language.apply(code)
+		await _frames(4)
+		await RenderingServer.frame_post_draw
+		var path: String = _pictures.path_join("%s_%s.png" % [name, code])
+		root.get_texture().get_image().save_png(path)
+		print("  picture: %s" % path)
+	Language.apply("en")
+
+
+## [param text] drawn in German, French and Spanish, with nothing left in
+## English but [param names] (a model's, a link, a challenge's, a server's
+## words); then English again.
+func _in_languages(text: String, names: Array) -> void:
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var drawn: String = Language.says(text)
+		var stray: Array = Language.left_in_english(text).filter(func(words: Variant) -> bool:
+			return not str(words).strip_edges().trim_suffix(".") in names)
+		_ok(not drawn.is_empty() and drawn != text and stray.is_empty(), "in %s: \"%s\"%s" % [code, drawn.left(160),
+			"" if stray.is_empty() else " (left in English: %s)" % str(stray)])
+	Language.apply("en")
+
+
+## Signed in, as the panel and Main hold the account, with a token good for
+## an hour: afresh each case, for the account's own start, answered late
+## with nothing kept on this device, signs it out partway through a run.
+func _sign_in() -> void:
+	for held: Variant in [_panel.get("account"), _main.get("_account")]:
+		if held is Account:
+			var account: Account = held
+			account.state = Account.State.SIGNED_IN
+			account.set("_access", "pb-token")
+			account.set("_expires_at", Time.get_unix_time_from_system() + 3600.0)
+			account.renewing = false
+
+
 ## A on the baseplate with its own link, the panel open on it, the server's
 ## record emptied.
 func _start_on_a() -> void:
 	_fake.hold = Callable()
 	_fake.hold_on = ""
+	_sign_in()
 	await _open("a")
 	_fake.bodies.clear()
 	_fake.asks.clear()

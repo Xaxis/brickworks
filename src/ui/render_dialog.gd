@@ -127,6 +127,7 @@ var _turntable_button: Button
 var _animation_button: Button
 var _building_button: Button
 var _cancel_button: Button
+var _finish_button: Button
 var _again_button: Button
 var _close_button: Button
 
@@ -493,6 +494,11 @@ func _build() -> void:
 		"The model built up step by step, as the timeline builds it, kept as a video")
 	_cancel_button = _button(actions, "Cancel", _cancel, "Stop rendering (Escape)")
 	_cancel_button.visible = false
+	# A path-traced picture gets cleaner while it is watched (photoreal28): it
+	# can be stopped where it is and kept.
+	_finish_button = _button(actions, "Finish now", _finish,
+		"Keep the picture being drawn as clean as it is now")
+	_finish_button.visible = false
 	_again_button = _button(actions, "Download again", _again, "")
 	_again_button.visible = false
 
@@ -1016,10 +1022,8 @@ func _describe() -> void:
 	if settings.plastic == "played":
 		_plastic_note.text = ("A set played with for years: whites a little yellowed, dust on the tops, "
 			+ "each part seated its own way. Drawn so at Best, in the Product look.")
-		# It is drawn by the path tracer alone: where there is none, say so
-		# rather than offer a change that never shows.
-		if not PathTracer.available():
-			_plastic_note.text += " " + PathTracer.why_not()
+		# Path traced or not (photoreal27): where nothing traces rays, Best's
+		# frames draw the same wear (StudioRender._raster_wear).
 	else:
 		_plastic_note.text = "Straight from the box."
 	var fov: float = settings.fov_degrees()
@@ -1440,6 +1444,17 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 			_last = {"kind": "picture", "width": image.get_width(),
 				"height": image.get_height(), "bytes": output.last_bytes,
 				"name": took, "output": output, "image": image}
+			# Best that was to be path traced in a browser and could not be
+			# (photoreal28): the result says it was frames averaged, and why.
+			if chosen.quality == RenderSettings.Quality.BEST and chosen.traced \
+					and not chosen.transparent and not renderer.traced_last() \
+					and OS.has_feature("web") and not PathTracer.why_not().is_empty():
+				lines.append(PathTracer.why_not())
+				_describe()
+			elif renderer.kept_frames:
+				# Stopped while the traced picture was still grainier than the
+				# frames' (photoreal29): those were kept, and it says so.
+				lines.append("Kept the frames averaged: the path-traced picture was still grainier.")
 	else:
 		output.begin_turntable(model, chosen)
 		var looped: Array[ImageTexture] = []
@@ -1598,6 +1613,8 @@ func _set_working(on: bool) -> void:
 	_turntable_button.disabled = on
 	_building_button.disabled = on
 	_cancel_button.visible = on
+	_finish_button.visible = on and _working == "picture" and settings.traced_here()
+	_finish_button.disabled = false
 	_again_button.visible = false if on else _again_button.visible
 	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras + _lengths + _kept_as:
 		button.disabled = on
@@ -1611,6 +1628,13 @@ func _cancel() -> void:
 	if renderer != null and renderer.is_busy():
 		renderer.cancel()
 		_status.text = "Cancelling…"
+
+
+## The path-traced picture kept as clean as it is now.
+func _finish() -> void:
+	if renderer != null and renderer.can_finish():
+		renderer.finish_now()
+		_finish_button.disabled = true
 
 
 func _again() -> void:
@@ -1680,6 +1704,10 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_" + _quality[n].text.to_lower()] = _quality[n]
 	for n: int in _sizes.size():
 		named_controls["render_size_" + _sizes[n].text.to_lower()] = _sizes[n]
+	# Custom's own width and height (photoreal28: a browser check draws Best
+	# small, where a software renderer traces it).
+	named_controls["render_width"] = _width.get_line_edit()
+	named_controls["render_height"] = _height.get_line_edit()
 	for n: int in _backgrounds.size():
 		named_controls["render_bg_" + str(BACKGROUNDS[n][0]).to_lower()] = _backgrounds[n]
 	for n: int in _looks.size():
@@ -1701,6 +1729,7 @@ func controls_by_name() -> Dictionary:
 	named_controls["render_animation"] = _animation_button
 	named_controls["render_motion"] = _motion
 	named_controls["render_cancel"] = _cancel_button
+	named_controls["render_finish"] = _finish_button
 	named_controls["render_again"] = _again_button
 	named_controls["render_close"] = _close_button
 	named_controls["render_light"] = _light
@@ -1736,6 +1765,14 @@ func _tell_page() -> void:
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step
+		# Path traced or not, and its samples so far (photoreal28).
+		state["traced"] = renderer.traced_last()
+		state["samples"] = renderer.samples_traced() if renderer.is_busy() else renderer.last_samples
+		state["finish"] = _finish_button.visible and not _finish_button.disabled
+		# Never worse (photoreal29): the frames' picture kept, and the traced
+		# picture's grain as last measured.
+		state["kept_frames"] = renderer.kept_frames
+		state["noise"] = renderer.last_noise
 	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion", "parts", "steps"]:
 		if _last.has(key):
 			state[key] = _last[key]

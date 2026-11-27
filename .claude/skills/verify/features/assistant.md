@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:place designs on a ladder of each real set, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe, cli:photostep bench, cli:photostep reading -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:place designs on a ladder of each real set, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, cli:save_whole probe, cli:saved_without_attack probe, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe, cli:photostep bench, cli:photostep reading -->
 
 ## Sub-features
 ### A step checked from a photo: the photostep bench
@@ -3313,6 +3313,40 @@ connector probe says so (scratch `verify_probe.py` in the 2026-10-15 run;
 docs/BRICKBENCH.md). The poses BrickAgent printed come from its own `attach` in the
 BrickBench venv, `python -I`, BRICKNET_DATA set; to make more, call
 `brickagent.Assembly.attach` the same way and print `parts(model)`.
+
+### A bench's save never loses the model to one part
+
+```sh
+tools/probe.sh save_whole_probe                        # one unheld gear: the rest saved, the gear named and taken off as one undo
+tools/probe.sh saved_without_attack_probe              # savereview's attacks: a person's Claude's save never changes their model
+```
+
+Proves it when they end "save_whole_probe: PASS" and "saved_without_attack_probe:
+PASS". On BrickBench (or a held design memory), and only there, save_model on a
+model with a part the exact check finds unheld or colliding no longer refuses the
+whole save: before the file is written (`save_gate(true)`), `Assistant._saved_without`
+takes off the design's own parts at fault, never a locked one, and of a collision with
+someone else's part the design's side, then asks the check again (up to three) so what
+a removed part held goes too; one step, undo puts them back, the file holds everything
+else, and the answer says "Saved without number N" and why, so the harness's one end
+save keeps the model (42061-1 on design42 lost its whole frame to one gear). Anywhere
+else the gate runs after the file is written whole and only speaks ("Not finished
+yet ... not held (1): #N"), twice a design at most: the gear stays on the person's
+baseplate, no step is added, nothing is left unsaved (savereview F1-F4 found it taken
+off there). A chat's undo leaves the person's own step, as it leaves another chat's
+("is the person's own, made in the tab, so it was left"). The gear is counted among the
+assistant's placed parts (the check answers only for the design's own) and stood on
+its edge beside the rail, where the check finds it not held; the probe prints each spot
+it tried, and "(not held)" on the one it kept is the case 42061-1 met. A browser is
+never a bench (savereview2 G1): its arguments are the address's query, so
+`Assistant.brickbench_of` and `DesignMemory.bench_arguments` read no --brickbench,
+--held-out or --held-out-name under the web feature (save_whole_probe's "...a browser
+(the web feature) reads none of them"), and `src/boot/shell.html` passes no such key
+from the address, even one spelled ?held-out%3D (`tools/minitest.py
+tests/test_shell_bench_keys.py`, 9 passed; 8 fail on the page before it). The
+harness's end save (`realset._save_end`) skips features not settled and asks the
+pieces gate again, so no gate loses a session's model (8 lost in design32-35):
+`tools/minitest.py tests/test_realset.py`, "the bench's own save is never lost".
 
 ### Figures on joints
 

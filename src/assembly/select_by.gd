@@ -171,12 +171,18 @@ static func connected_paced(world: BrickWorld, lattice: BrickLattice,
 	search.whole = most >= search.everything
 	most = mini(most, search.everything)
 	while not search.queue.is_empty() and search.found.size() < most:
-		search.step()
+		# Asked before a brick, not after: one brick can be a slice on its
+		# own (a 6 x 12 plate of 3,720 boxes on 10030, 130-220 ms), and a
+		# job begun on a click may have no time to give it (Working.Job
+		# .first_slice).
 		if job.due():
 			job.count(search.found.size(), search.everything)
 			await job.next()
 			if job.cancelled:
 				return []
+		await search.step_paced(job)
+		if job.cancelled:
+			return []
 	return search.found.keys()
 
 
@@ -220,15 +226,33 @@ class _Search extends RefCounted:
 				found[seed_id] = true
 				queue.append(seed_id)
 
-	## Ask the next brick what it is joined to.
+	## Ask the next brick what it is joined to. What is found already is not
+	## asked about again: from one part of Orthanc, seven of every ten parts
+	## a question came near were.
 	func step() -> void:
+		_take(SelectBy._joined_to(world, lattice, _next(), across, found))
+
+	## [method step], a part of many boxes asked a piece at a time between
+	## [param job]'s slices, and [member across] worked out between them too
+	## (SelectBy.sideways_paced): in one go it was a frame of 20 ms on
+	## 6685-1's 315 parts, of Properties' count (clickfast). Nothing taken
+	## when the job is cancelled.
+	func step_paced(job: Working.Job) -> void:
+		if whole and across.is_empty() and asked == SIDEWAYS_AFTER:
+			across = await SelectBy.sideways_paced(world, lattice, job)
+			if job.cancelled:
+				return
+		var here: int = _next()
+		_take(await SelectBy._joined_to_paced(world, lattice, here, across, found, job))
+
+	func _next() -> int:
 		if whole and across.is_empty() and asked == SIDEWAYS_AFTER:
 			across = SelectBy.sideways(world, lattice)
 		asked += 1
-		var here: int = queue.pop_back()
-		# What is found already is not asked about again: from one part of
-		# Orthanc, seven of every ten parts a question came near were.
-		for other: int in SelectBy._joined_to(world, lattice, here, across, found):
+		return queue.pop_back()
+
+	func _take(joined: Array) -> void:
+		for other: int in joined:
 			if found.has(other) or scenery.has(other):
 				continue
 			found[other] = true
@@ -243,20 +267,38 @@ class _Search extends RefCounted:
 static func sideways(world: BrickWorld, lattice: BrickLattice) -> Array:
 	var out: Array = [{}, {}]
 	for brick: BrickWorld.Brick in world.bricks():
-		var axis: int = _axis_of(brick)
-		if axis < 0:
-			continue
-		var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick.id))
-		if bound.is_empty():
-			continue
-		var grown: PackedInt32Array = bound.duplicate()
-		grown[axis] -= 1
-		grown[axis + 3] += 1
-		var these: Dictionary = out[axis / 2]
-		these[brick.id] = true
-		for other: int in lattice.near_bounds(grown, brick.id):
-			these[other] = true
+		_sideways_of(brick, lattice, out)
 	return out
+
+
+## [method sideways] between [param job]'s slices; as far as it got when the
+## job is cancelled.
+static func sideways_paced(world: BrickWorld, lattice: BrickLattice, job: Working.Job) -> Array:
+	var out: Array = [{}, {}]
+	var bricks: Array = world.bricks()
+	for n: int in bricks.size():
+		if n % 32 == 31 and job.due():
+			await job.next()
+			if job.cancelled:
+				return out
+		_sideways_of(bricks[n], lattice, out)
+	return out
+
+
+static func _sideways_of(brick: BrickWorld.Brick, lattice: BrickLattice, out: Array) -> void:
+	var axis: int = _axis_of(brick)
+	if axis < 0:
+		return
+	var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick.id))
+	if bound.is_empty():
+		return
+	var grown: PackedInt32Array = bound.duplicate()
+	grown[axis] -= 1
+	grown[axis + 3] += 1
+	var these: Dictionary = out[axis / 2]
+	these[brick.id] = true
+	for other: int in lattice.near_bounds(grown, brick.id):
+		these[other] = true
 
 
 ## The bricks one brick is held to: anything resting on its top or
@@ -289,6 +331,42 @@ static func _joined_to(world: BrickWorld, lattice: BrickLattice,
 		for other: int in lattice.blockers_boxes(_shell(mine, axis), brick_id, known):
 			if own == axis or _stud_axis(world, other) == axis:
 				out[other] = true
+	return out.keys()
+
+
+## How many boxes of a face [method _joined_to_paced] asks the lattice
+## about at once: well inside a light slice (FramePace.LIGHT_US). A 6 x 12
+## plate on 10030 has 3,720 boxes, and its three faces asked whole were one
+## frame of 130-220 ms of Properties' count.
+const PIECE := 128
+
+
+## [method _joined_to] between [param job]'s slices: a part with more boxes
+## than a [constant PIECE] has its faces asked a piece at a time, since what
+## a face meets is what its pieces meet. Nothing when the job is cancelled.
+static func _joined_to_paced(world: BrickWorld, lattice: BrickLattice, brick_id: int,
+		across: Array, known: Dictionary, job: Working.Job) -> Array:
+	var mine: PackedInt32Array = lattice.boxes_of(brick_id)
+	# A face has two boxes for each of the part's.
+	if mine.size() * 2 <= PIECE * 6:
+		return _joined_to(world, lattice, brick_id, across, known)
+	var own: int = _stud_axis(world, brick_id)
+	var out: Dictionary = {}
+	for axis: int in [1, 0, 2]:
+		if axis != 1 and not (across.is_empty() or (across[axis / 2] as Dictionary).has(brick_id)):
+			continue
+		var face: PackedInt32Array = _shell(mine, axis)
+		var at: int = 0
+		while at < face.size():
+			if job.due():
+				await job.next()
+				if job.cancelled:
+					return []
+			for other: int in lattice.blockers_boxes(face.slice(at, at + PIECE * 6), brick_id, known):
+				# Above and below always a joint; across the sides as _joined_to.
+				if axis == 1 or own == axis or _stud_axis(world, other) == axis:
+					out[other] = true
+			at += PIECE * 6
 	return out.keys()
 
 

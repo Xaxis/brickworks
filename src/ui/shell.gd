@@ -785,8 +785,8 @@ func attend(name: String, work: Callable) -> void:
 	# and on a slow phone the tap's leave to open the booklet's tab had gone.
 	var tab: bool = name in OPENS_A_TAB and OS.has_feature("web")
 	var first: bool = _makes_its_feature(name)
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow or first,
-		size, first)
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or name in TYPED_AFTER or asks
+		or tab, slow or first, size, first)
 
 
 ## The commands that load their feature the first time they run (Later):
@@ -857,6 +857,13 @@ const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "impor
 	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window",
 	"import_into"]
 
+## The commands that open a field the person types into straight away:
+## run in the press as well, never put off a frame or two to say so first,
+## so the keys typed next go to the field (InventoryPanel._fill_finding).
+## Said first on a big model, Find was a frame or two away after Ctrl-F,
+## and the keys typed meanwhile were the app's own keys (clickfast2).
+const TYPED_AFTER: Array[String] = ["select_find"]
+
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
 const OPENS_A_TAB: Array[String] = ["instructions"]
@@ -901,7 +908,7 @@ const SLOW_FROM: Dictionary = {
 	# Everything connected walks the model from the part: 464 ms on the
 	# 536-part station, unsaid on a device that had not timed it before.
 	"stability": 300, "select_connected": 300, "select_all": 2000, "select_colour": 2000, "select_part": 2000,
-	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "select_find": 2000,
+	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000,
 	"reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
 	"export_pickabrick": 3000,

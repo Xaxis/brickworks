@@ -3483,6 +3483,22 @@
       "tests": []
     },
     {
+      "id": "cli:save_whole probe",
+      "kind": "cli",
+      "entry": "src/dev/save_whole_probe.gd",
+      "reach": "tools/probe.sh save_whole_probe   (headless: in a bench run, as realset's last save is, a beam frame on wheels saves whole with nothing said; a 24-tooth gear in the air beside it, not held, and save_model is not refused: the file holds the frame's every part and not the gear, the answer names the gear by its number and why, the gear is taken off as one edit and undo puts it back; locked, the gear stays and is written as it stands; a person's Claude's save writes it whole and leaves it on the baseplate, no step taken, the gear named)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:saved_without_attack probe",
+      "kind": "cli",
+      "entry": "src/dev/saved_without_attack_probe.gd",
+      "reach": "tools/probe.sh saved_without_attack_probe   (headless, savereview's attacks: through the command socket as a person's own Claude and as the bench: a clean frame saved twice each way, the same bytes; one gear not held and the person's Claude saves: the gear stays on the baseplate and in their next Save, nothing unsaved, no \"Saved without\" over a file that has it; the person places a brick and the session undoes: the brick stays; the person's locked beam overlapping Claude's rail stays; on the bench two gears come off as one edit, both named, one undo puts every part back exactly)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:savedviews probe",
       "kind": "cli",
       "entry": "src/dev/savedviews_probe.gd",
@@ -5611,6 +5627,14 @@
       "kind": "lib",
       "entry": "src/render/path_tracer.gd",
       "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: Best path traced where the card has Vulkan ray tracing; the car at 1280x720 and 256 samples timed, its noise against 4,096 samples, a column's shadow widening along its length and an orange floor tinting a white wall, at three points each, against Best frames averaged)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:path tracer in a browser",
+      "kind": "lib",
+      "entry": "src/render/page_tracer.gd",
+      "reach": "node tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js [--width=256 --samples=8]   (photoreal28, docs/RENDERING.md 5ac: the desktop's tracer as WebGL2 shaders (tools/web/tracer_port.py) in page_tracer.js, on a set photoreal_probe --pt-capture=DIR wrote, in Chromium on SwiftShader; frame gaps and samples timed)  /  python3 tools/minitest.py tests/test_page_tracer.py",
       "area": "view",
       "tests": []
     },
@@ -8080,7 +8104,7 @@
       "id": "ui:plastic new or played with",
       "kind": "ui",
       "entry": "src/ui/render_dialog.gd",
-      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (photoreal26, docs/RENDERING.md 5aa: Render's Plastic row, New unless picked, Played with drawing photoreal25's wear and age at Best in the Product look; RenderSettings.plastic, StudioRender.PLAYED_*)  /  tools/probe.sh photoreal_probe -- --shots=FILE with \"plastic\": \"played\" per shot",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (photoreal26, docs/RENDERING.md 5aa: Render's Plastic row, New unless picked, Played with drawing photoreal25's wear and age at Best in the Product look, path traced or in Best's raster frames (photoreal27, docs/RENDERING.md 5ab: StudioRender._raster_wear, plastic_body.gdshaderinc wear_*); RenderSettings.plastic, StudioRender.PLAYED_*)  /  tools/probe.sh photoreal_probe -- --shots=FILE with \"plastic\": \"played\" per shot",
       "area": "view",
       "tests": []
     },

@@ -2863,6 +2863,9 @@ msgstr "Mit %d anderen Teilen verbunden, direkt oder über andere"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Mit %d oder mehr anderen Teilen verbunden, direkt oder über andere"
 
+msgid "Joined to … other parts, directly or through others"
+msgstr "Mit … anderen Teilen verbunden, direkt oder über andere"
+
 msgid "Faces: studs up"
 msgstr "Ausrichtung: Noppen oben"
 
@@ -5845,8 +5848,20 @@ msgstr "%d gemittelte Bilder: weiche Schatten einer Flächenleuchte, glatte Kant
 msgid "With nothing behind the model it is not path traced."
 msgstr "Ohne etwas hinter dem Modell wird es nicht mit Pathtracing gerendert."
 
-msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
-msgstr "Pathtracing braucht die Desktop-App, die bald kommt: Ein Browser kann keine Strahlen verfolgen."
+msgid "Path tracing stopped in this browser, so Best is frames averaged."
+msgstr "Das Pathtracing ist in diesem Browser abgebrochen, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser draws without a graphics card, too slowly to path trace, so Best is frames averaged."
+msgstr "Dieser Browser zeichnet ohne Grafikkarte, zu langsam für Pathtracing, daher werden für Beste Bilder gemittelt."
+
+msgid "Path tracing is turned off for this page, so Best is frames averaged."
+msgstr "Pathtracing ist für diese Seite ausgeschaltet, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser would freeze the page while it readies path tracing, so Best is frames averaged."
+msgstr "Dieser Browser würde die Seite anhalten, während er das Pathtracing vorbereitet, daher werden für Beste Bilder gemittelt."
+
+msgid "This browser's graphics cannot path trace, so Best is frames averaged."
+msgstr "Die Grafik dieses Browsers kann kein Pathtracing, daher werden für Beste Bilder gemittelt."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Pathtracing braucht den vollen Grafikmodus, und dieses Fenster zeichnet im einfacheren."
@@ -5878,12 +5893,6 @@ msgstr "Frisch aus der Schachtel."
 
 msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
 msgstr "Ein Set, mit dem jahrelang gespielt wurde: Weiß leicht vergilbt, Staub auf den Oberseiten, jedes Teil sitzt auf seine eigene Weise. So gezeichnet bei Beste, im Produktfoto-Aussehen."
-
-msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
-msgstr "Ein Set, mit dem jahrelang gespielt wurde: Weiß leicht vergilbt, Staub auf den Oberseiten, jedes Teil sitzt auf seine eigene Weise"
-
-msgid "Drawn so at Best, in the Product look"
-msgstr "So gezeichnet bei Beste, im Produktfoto-Aussehen"
 
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d Bilder, %s s bei %d pro Sekunde, als animiertes WebP."
@@ -5956,6 +5965,24 @@ msgstr "Modell wird vorbereitet"
 
 msgid "fetching the photographed light"
 msgstr "fotografiertes Licht wird geladen"
+
+msgid "fetching the path tracer"
+msgstr "Pathtracing wird geladen"
+
+msgid "readying the path tracer for this graphics card"
+msgstr "Pathtracing wird für diese Grafikkarte vorbereitet"
+
+msgid "metering the light"
+msgstr "Licht wird gemessen"
+
+msgid "Path tracing behind this picture: %d of %d samples"
+msgstr "Pathtracing hinter diesem Bild: %d von %d Samples"
+
+msgid "Path traced, still refining: %d of %d samples"
+msgstr "Mit Pathtracing, wird noch verfeinert: %d von %d Samples"
+
+msgid "Kept the frames averaged: the path-traced picture was still grainier."
+msgstr "Die gemittelten Bilder wurden behalten: das Bild mit Pathtracing war noch körniger."
 
 msgid "the contact shadow"
 msgstr "der Kontaktschatten"
@@ -18057,9 +18084,6 @@ msgstr "%s nicht geschrieben: ein anderes Modell wurde geöffnet"
 msgid "not exported: another model was opened"
 msgstr "nicht exportiert: ein anderes Modell wurde geöffnet"
 
-msgid "Not published: another model was opened."
-msgstr "Nicht veröffentlicht: ein anderes Modell wurde geöffnet."
-
 msgid "could not copy “%s”"
 msgstr "„%s“ konnte nicht kopiert werden"
 
@@ -18418,23 +18442,57 @@ msgstr "Einfacher Modus"
 msgid "Put it on the plate or on a brick"
 msgstr "Setz ihn auf die Grundplatte oder auf einen Stein"
 # pubbind: an act begun on one model, another opened before it ended
-msgid "Not entered: another model was opened."
-msgstr "Nicht eingereicht: ein anderes Modell wurde geöffnet."
-
 msgid "Another model was opened meanwhile."
 msgstr "Inzwischen wurde ein anderes Modell geöffnet."
 
 msgid "Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
 msgstr "„%s“ unter %s veröffentlicht, aber inzwischen wurde ein anderes Modell geöffnet: Es hat den Link nicht bekommen."
 
-msgid "Not asked: another model was opened."
-msgstr "Nicht gefragt: ein anderes Modell wurde geöffnet."
+# pubbind2: what an act became, said of the model it was pressed on, by name
+msgid "“%s” was not published: another model was opened."
+msgstr "„%s“ wurde nicht veröffentlicht: ein anderes Modell wurde geöffnet."
 
-msgid "Not taken down: another model was opened."
-msgstr "Nicht zurückgezogen: ein anderes Modell wurde geöffnet."
+msgid "“%s” was not entered: another model was opened."
+msgstr "„%s“ wurde nicht eingereicht: ein anderes Modell wurde geöffnet."
 
-msgid "Taken down: the link now says the model is no longer shared."
-msgstr "Zurückgezogen: Der Link sagt jetzt, dass das Modell nicht mehr geteilt wird."
+msgid "The question about “%s” was not asked: another model was opened."
+msgstr "Die Frage zu „%s“ wurde nicht gestellt: ein anderes Modell wurde geöffnet."
+
+msgid "“%s” was not taken down: another model was opened."
+msgstr "„%s“ wurde nicht zurückgezogen: ein anderes Modell wurde geöffnet."
+
+msgid "“%s” was published at %s but not entered: another model was opened."
+msgstr "„%s“ wurde unter %s veröffentlicht, aber nicht eingereicht: ein anderes Modell wurde geöffnet."
+
+msgid "“%s” was published at %s, but the question about it was not asked: another model was opened."
+msgstr "„%s“ wurde unter %s veröffentlicht, aber die Frage dazu wurde nicht gestellt: ein anderes Modell wurde geöffnet."
+
+msgid "“%s” was not published: %s"
+msgstr "„%s“ wurde nicht veröffentlicht: %s"
+
+msgid "“%s” was entered in %s, %s. It is on the challenge's page: %s. Another model was opened meanwhile."
+msgstr "„%s“ wurde bei %s eingereicht, %s. Es steht auf der Seite der Challenge: %s. Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "“%s” was entered in %s, %s. Another model was opened meanwhile."
+msgstr "„%s“ wurde bei %s eingereicht, %s. Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "“%s” is in %s already. Another model was opened meanwhile."
+msgstr "„%s“ ist schon bei %s dabei. Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "“%s” was published but not entered: %s"
+msgstr "„%s“ wurde veröffentlicht, aber nicht eingereicht: %s"
+
+msgid "The question about “%s” is in Talk's Help at %s. Another model was opened meanwhile."
+msgstr "Die Frage zu „%s“ steht in der Hilfe von Talk unter %s. Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "The question about “%s” was not asked: %s"
+msgstr "Die Frage zu „%s“ wurde nicht gestellt: %s"
+
+msgid "“%s” was taken down: its link now says it is no longer shared. Another model was opened meanwhile."
+msgstr "„%s“ wurde zurückgezogen: Sein Link sagt jetzt, dass es nicht mehr geteilt wird. Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "“%s” was not taken down: %s"
+msgstr "„%s“ wurde nicht zurückgezogen: %s"
 
 msgid "“%s” was not copied into your models: another model was opened"
 msgstr "„%s“ wurde nicht in deine Modelle kopiert: ein anderes Modell wurde geöffnet"
