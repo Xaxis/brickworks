@@ -5286,6 +5286,14 @@
       "tests": []
     },
     {
+      "id": "lib:high-key exposure on white",
+      "kind": "lib",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T  (photoreal30, docs/RENDERING.md 5ae: at Best in the Product look on a paper backdrop (PAPER_WHITE or lighter), the white card metered half a stop brighter (RenderSettings.high_key, StudioRender.PRODUCT_HIGH_KEY 0.5, _meter_card), so a white part's lit side is nearly the paper's white; on a coloured backdrop the card as metered; --without=high_key draws the card at PHOTO_EV alone. RenderSettings.clearance (PathTracer.clearance, _narrower; PRODUCT_CLEARANCE 0) draws each part that many LDU under its grid only when asked)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "lib:hoses follow a grab",
       "kind": "lib",
       "entry": "src/assembly/flex_follow.gd",

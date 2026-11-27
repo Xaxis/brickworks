@@ -53,7 +53,7 @@ lib:path tracer in a browser
 
 ### Product {#product-look}
 
-**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true. At Best it is finished as a camera finishes a photograph: white-balanced on a white card where the model stands, with a camera's gentle tone curve.
+**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true. At Best it is finished as a camera finishes a photograph: white-balanced on a white card where the model stands, with a camera's gentle tone curve. On white or paper it is exposed bright, as a product photograph on white is, so white parts are nearly as white as the paper; on a table or a desk the light is kept as measured.
 
 ![The car rendered at Best in the Product look on white, path traced: glossy red and black plastic, clear windows, a soft shadow under it.](/docs/img/render-product.webp "Quality › Best, Look › Product: the car as a set's box shows it.")
 
@@ -64,6 +64,7 @@ lib:path tracer in a browser
 lib:product look
 lib:no two parts alike
 lib:moulded edges
+lib:high-key exposure on white
 -->
 
 ### New or played with {#plastic}

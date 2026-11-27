@@ -3033,6 +3033,95 @@ focus is softer than raw but still not smooth. Both show only at twice the judge
 desktop's Best still has only the 7x7 pass. It traces at 256 on a card that traces rays, so it
 does not need this, but it could use the same filter for Finish now.
 
+## 5ae. A whole set beside its photograph: the scene first, then a high-key exposure (photoreal30)
+
+**The tells.** photoreal16's solo judge on the four sets, today's desktop Best (pre261) over four
+draws, 192 verdicts (pool p1, `bench/results/photoreal30-2026-11-27/scripts/tells30.py`). The share of
+verdicts naming each, render tells:
+
+| tell | share |
+| --- | --- |
+| plastic pristine, no wear or dust | 0.99 |
+| shadow soft, idealised | 0.95 |
+| backdrop a seamless white | 0.94 |
+| plastic one flat colour and gloss | 0.94 |
+| seams between parts too even | 0.74 |
+| no sensor noise | 0.63 |
+| edges crisp, bevels identical | 0.58 |
+| light even, CG | 0.52 |
+| clear parts glassy | 0.48 |
+| focus, depth of field | 0.44 |
+| minifigs | 0.40 |
+
+Looked at beside the photographs, three things were wrong before any look: 6532's model stood 6%
+too large and to the left of where its photograph has it; 6657's photograph is lit by a hard sun
+from behind and to the right, its shadow falling to the left, where ours came from the other side;
+and every white part was darker than the photographs'. On 6660's door the photograph reads 254, 249,
+237 and ours 215, 213, 200 (the card metered at `PHOTO_EV` draws a white part's lit side at L 86; the
+photographs have theirs at the paper's own white, as a high-key product photograph does). Two tells
+are the models' own and left: 6660's antennas stand up where the photograph's lie back, and the
+photographed minifigs face the camera.
+
+**The scene first.** `tools/photoreal/shots.json` now has the photographed sets (thirty years old)
+played with (`"plastic": "played"`, Render's own Played with) and 6532 framed as its photograph (zoom
+1.461, shift -0.023, 0.008, from the model's box in both). 6512's picture is a render and stays New.
+6657's daylight turned to 230 degrees cast its shadow to the left as the photograph's falls, but the
+daylight's sun is low where the photograph's is high: the shadow came out long, a glare ran along
+the nose, and the judge put 6657 lower in both pools that had it (pool p5, the same draws with and
+without: 0.16 against 0.23; p4, fresh draws: 0.147 against today's 0.219). So its light stays as it
+was.
+
+**Then the looks** (pool p2: 3 trials x 3 rounds, four draws an arm, the photographs and
+photoreal29's tracer at 256 in the same pool; the sets, mean p):
+
+| arm | sets | against the scene matched |
+| --- | --- | --- |
+| photoreal29's tracer at 256 (g29: 0.057) | 0.059 | |
+| today's desktop Best, today's bench | 0.161 | -0.066 (-0.192 .. +0.007) |
+| c: the scene matched | 0.227 | |
+| c + parts moulded 0.5 LDU under the grid | 0.190 | -0.037 (-0.130 .. +0.022) |
+| **c + half a stop high-key** | **0.316** | **+0.089 (+0.015 .. +0.177)** |
+| c + a whole stop | 0.176 | -0.052 (-0.225 .. +0.067) |
+
+- **High-key** (`RenderSettings.high_key`, `StudioRender.PRODUCT_HIGH_KEY` 0.5, `_meter_card`): the
+  card where the model stands is metered half a stop past `PHOTO_EV`. 6660's door draws 227, 226, 221.
+  It took "plastic one flat colour" from 0.98 to 0.77 and "shadow idealised" from 0.97 to 0.76. A
+  whole stop washed the colours out and lost what half had gained.
+- **Only on paper.** Beside the close-ups (pool p3), half a stop greyed the black 2x4 on leather in
+  every draw (0.64, 0.50, 0.77 to 0.15, 0.08, 0.17) and held the parts on white. A product
+  photograph on a table is exposed for the table, so high-key is a paper backdrop's (`PAPER_WHITE`
+  or lighter): on a coloured one the card is kept, and the three table close-ups draw byte for byte
+  as pre261's.
+- **Moulded under the grid** (`RenderSettings.clearance`, `PathTracer.clearance`, `_narrower`): a real
+  brick is 7.8 mm on an 8 mm grid, so each part was drawn 0.5 LDU narrower across, about its middle,
+  each instance's own transform (parts under 10 LDU across untouched). The slot showed, the judge
+  did not move ("seams too even" stayed at 0.74), so `PRODUCT_CLEARANCE` is 0, a lever for asking.
+
+**The bar** (fresh draws 21-24, 3 trials x 4 rounds, today's tracer at 256 as base; sets from pool
+p6 on the final tree and bench, close-ups from p4, which 6657's light does not touch):
+
+| | sets | 6512 | 6532 | 6657 | 6660 | close-ups |
+|---|---|---|---|---|---|---|
+| today's tracer at 256 (photoreal29's g29) | 0.061 | 0.036 | 0.090 | 0.079 | 0.041 | 0.651 |
+| today's desktop Best (pre261) | 0.173 | 0.035 | 0.201 | 0.212 | 0.242 | 0.652 |
+| photoreal30 | **0.399** | 0.036 | 0.633 | 0.233 | 0.694 | 0.669 |
+
+Sets against today's tracer +0.337 (95% +0.076 .. +0.609), against today's desktop +0.226 (+0.008 ..
++0.444). Close-ups against today's tracer +0.018 (-0.056 .. +0.101), against today's desktop +0.017
+(-0.008 .. +0.047): within. 6512's photograph is itself a render and nothing reads it as a
+photograph, so it holds every column at about 0.036.
+
+Sheets, each set's photograph beside today's tracer at 256, today's desktop Best and this round's
+(draw 22), in `bench/results/photoreal30-2026-11-27/sheets/`: `set_6532.jpg`, `set_6660.jpg`,
+`set_6657.jpg`. The first screen is
+the same 220 scripts and 7,399,110 bytes.
+
+What is left. The plastic is still read as pristine in nearly every verdict, played with or not,
+and the shadow on white as soft. The photographs' sets show dust in the studs' corners and a matt
+haze on the most handled faces that Played with draws fainter. photoreal29's à-trous filter is not
+yet the desktop's: its raygen would sum the albedo, depth and even samples as page_tracer.js does,
+and the five passes run as a compute shader before the resolve.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
