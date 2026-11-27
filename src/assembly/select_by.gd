@@ -233,8 +233,15 @@ class _Search extends RefCounted:
 		_take(SelectBy._joined_to(world, lattice, _next(), across, found))
 
 	## [method step], a part of many boxes asked a piece at a time between
-	## [param job]'s slices; nothing taken when the job is cancelled.
+	## [param job]'s slices, and [member across] worked out between them too
+	## (SelectBy.sideways_paced): in one go it was a frame of 20 ms on
+	## 6685-1's 315 parts, of Properties' count (clickfast). Nothing taken
+	## when the job is cancelled.
 	func step_paced(job: Working.Job) -> void:
+		if whole and across.is_empty() and asked == SIDEWAYS_AFTER:
+			across = await SelectBy.sideways_paced(world, lattice, job)
+			if job.cancelled:
+				return
 		var here: int = _next()
 		_take(await SelectBy._joined_to_paced(world, lattice, here, across, found, job))
 
@@ -260,20 +267,38 @@ class _Search extends RefCounted:
 static func sideways(world: BrickWorld, lattice: BrickLattice) -> Array:
 	var out: Array = [{}, {}]
 	for brick: BrickWorld.Brick in world.bricks():
-		var axis: int = _axis_of(brick)
-		if axis < 0:
-			continue
-		var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick.id))
-		if bound.is_empty():
-			continue
-		var grown: PackedInt32Array = bound.duplicate()
-		grown[axis] -= 1
-		grown[axis + 3] += 1
-		var these: Dictionary = out[axis / 2]
-		these[brick.id] = true
-		for other: int in lattice.near_bounds(grown, brick.id):
-			these[other] = true
+		_sideways_of(brick, lattice, out)
 	return out
+
+
+## [method sideways] between [param job]'s slices; as far as it got when the
+## job is cancelled.
+static func sideways_paced(world: BrickWorld, lattice: BrickLattice, job: Working.Job) -> Array:
+	var out: Array = [{}, {}]
+	var bricks: Array = world.bricks()
+	for n: int in bricks.size():
+		if n % 32 == 31 and job.due():
+			await job.next()
+			if job.cancelled:
+				return out
+		_sideways_of(bricks[n], lattice, out)
+	return out
+
+
+static func _sideways_of(brick: BrickWorld.Brick, lattice: BrickLattice, out: Array) -> void:
+	var axis: int = _axis_of(brick)
+	if axis < 0:
+		return
+	var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick.id))
+	if bound.is_empty():
+		return
+	var grown: PackedInt32Array = bound.duplicate()
+	grown[axis] -= 1
+	grown[axis + 3] += 1
+	var these: Dictionary = out[axis / 2]
+	these[brick.id] = true
+	for other: int in lattice.near_bounds(grown, brick.id):
+		these[other] = true
 
 
 ## The bricks one brick is held to: anything resting on its top or
