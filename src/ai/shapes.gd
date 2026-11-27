@@ -3036,6 +3036,14 @@ class Plan extends RefCounted:
 	## less than [constant CUBE_KEEPS] of its plates goes back to the core.
 	const CUBE_LEAST := 4
 	const CUBE_KEEPS := 0.6
+	## And one whose plates neither its parts cover nor the core takes back
+	## (_returned) are more than this share of them: those are holes in the
+	## model. Under [constant CUBE_KEEPS] alone, what a kept cube left was
+	## mostly the rows between side studs, which the core took back; laid
+	## with the rows beside them (Plan._rows_paired), a cube that came up to
+	## the share kept holes in the rest, and the Bell X-1 at 48 studs fell
+	## from 97.6% to 96.5% in a part.
+	const CUBE_HOLES := 0.2
 	## How many times a group's shell is laid again without the cubes it left
 	## uncovered before the group is given up whole. Each lay drops at least
 	## one cube, and laid again, its parts can leave the next one short. Given
@@ -3194,17 +3202,19 @@ class Plan extends RefCounted:
 					break
 				lay_shell(shell, kind, true)
 				var covered: Dictionary = shell.get("covered_at", {})
-				var count: Dictionary = {}    ## cube -> [plates, covered]
+				var returned: Dictionary = _returned(shell)
+				var count: Dictionary = {}    ## cube -> [plates, covered, neither covered nor given back]
 				for plate: Variant in shell["cells"]:
 					var p: Vector3i = plate
 					var c := Vector3i(floori((p.x - _shift.x) / float(CUBE_STUDS)),
 						floori((p.y - _phase) / float(CUBE_PLATES)), floori((p.z - _shift.y) / float(CUBE_STUDS)))
-					var was: Vector2i = count.get(c, Vector2i.ZERO)
-					count[c] = was + Vector2i(1, 1 if covered.has(p) else 0)
+					var was: Vector3i = count.get(c, Vector3i.ZERO)
+					count[c] = was + Vector3i(1, 1 if covered.has(p) else 0,
+						1 if not covered.has(p) and not returned.has(p) else 0)
 				var kept: Array = []
 				for c: Vector3i in shell["cubes"]:
-					var n: Vector2i = count.get(c, Vector2i.ZERO)
-					if n.x > 0 and float(n.y) >= CUBE_KEEPS * n.x:
+					var n: Vector3i = count.get(c, Vector3i.ZERO)
+					if n.x > 0 and float(n.y) >= CUBE_KEEPS * n.x and float(n.z) <= CUBE_HOLES * n.x:
 						kept.append(c)
 				if kept.size() == (shell["cubes"] as Array).size():
 					break
@@ -3234,9 +3244,20 @@ class Plan extends RefCounted:
 	## part of the shell is in that row and lane at any depth: a plate given
 	## back beside one, or over a plate of it whose studs face out, ran into it.
 	func _give_back(shell: Dictionary) -> void:
+		var mine: Dictionary = shell["cells"]
+		for plate: Variant in _returned(shell):
+			mine.erase(plate)
+			taken.erase(plate)
+			shelled.erase(plate)
+			given_back[plate] = true
+
+	## The plates [method _give_back] gives back to the core: in a row of a
+	## lane where no part of the shell is.
+	func _returned(shell: Dictionary) -> Dictionary:
+		var out: Dictionary = {}
 		var sub: Plan = shell.get("_sub")
 		if sub == null:
-			return
+			return out
 		var used: Dictionary = {}
 		for one: Dictionary in sub.made:
 			for cell: Vector2i in one.get("_cells", []):
@@ -3259,10 +3280,8 @@ class Plan extends RefCounted:
 					floori((top - p.y) / Shapes.PLATES_PER_STUD - 0.001) + 1):
 				free = free and not used.has(Vector2i(u, w))
 			if free:
-				mine.erase(plate)
-				taken.erase(plate)
-				shelled.erase(plate)
-				given_back[plate] = true
+				out[plate] = true
+		return out
 
 	## Whether the model's core behind the cube of [param cells] (from plate
 	## [param j0] up a cube's height, facing [param facing]) runs on into the
@@ -5398,8 +5417,10 @@ class Plan extends RefCounted:
 				var m: int = kind_of.call(mate)
 				if k < 0 or m < 0 or not held.has(mate):
 					continue
-				var colour: int = int((kinds[k] as Dictionary)[cell])
-				if int((kinds[m] as Dictionary)[mate]) != colour:
+				# In one colour, or both hidden under the layers over them: then
+				# in the colour of the row the stud holds.
+				var colour: int = int((kinds[m] as Dictionary)[mate])
+				if int((kinds[k] as Dictionary)[cell]) != colour and (k != 0 or m != 0):
 					continue
 				var group := Vector3i(mini(cell.y, mate.y), colour, 1 if k > 0 and m > 0 else 0)
 				if not groups.has(group):
