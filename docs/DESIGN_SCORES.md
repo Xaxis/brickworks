@@ -8374,6 +8374,102 @@ panels, fairings and bent liftarms fitted to the kit's named sockets, with
 studded bricks kept off a Technic body. Results:
 `bench/results/design43-2026-11-26/` (FINDINGS.txt, pictures/).
 
+### A judge that compares the two arms, and a studded ceiling for Technic bodies (2026-11-27, design44, `6b5bbe7d9`, NO-GO)
+
+**Why.** Against the set, design43's Technic verdicts were 0% in both arms, so
+the measure could not see a difference. And every studded part of design43's
+bodies came in through `edit_model`, where nothing said the studded share.
+
+**The judge** (`bench/results/design44-2026-11-27/pair44.py`). Each subject's
+lever design is put beside its base design, with the real set's three views as
+references. It uses `tools/bench/pairwise.py`'s prompt, schema and seven
+dimensions. It asks 4 verdicts in each order, every verdict's pictures under
+fresh random names in a fresh folder. Bradley-Terry ELO is computed per subject.
+Over subjects, `pairwise.effect` gives the judge's 95% interval and one that
+adds the run-to-run spread of one design, 194 ELO. "Beyond" means the second
+interval excludes 0.
+
+**Step 1: design43's saved designs, judged this way.** 96 of 96 verdicts.
+
+| design43, kit minus base | preferred | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| Technic overall | 65% | +152 | (-173, +422) | no |
+| Technic creativity | 83% | +405 | (+30, +620) | better |
+| Technic buildability | 77% | +318 | (-34, +543) | no |
+| System overall | 56% | +87 | (-231, +351) | no |
+
+The kit alone is NO-GO. Within a pair the judge is consistent: most subjects
+went 8 of 8 one way. But pairs swung both ways, even on System, where design43's
+kit changes nothing. 7630 and 40148 went 100% to the kit arm, and 7634 and 7636
+went 0%. Most of a subject's outcome is which session happened to build the
+better model. That is the 194 ELO spread, and a lever has to move whole
+sessions to clear it.
+
+**The lever** (on design43's kit plus pre261, not merged). The target comes from
+the sets' own inventories (`sets_studded44.py`, 92 Technic sets from 2008 on).
+Studded / (studded + Technic) is 4.0% at the median, the quartiles are 1.3-7.9%,
+and the 90th percentile is 22.5%. The old words, "9% in nine sets of ten", were
+wrong and are corrected.
+
+Once a Technic build stands, a change that lays studded parts and takes the
+build past 8% studded is not applied at first. The answer gives the share, how
+many studded parts still fit, and the studless parts by number for each kind of
+part laid. For walls that is panels 71709/15458/64782 on 2780 pins; for slopes,
+fairing pairs and bent liftarms.
+
+After the lead's review, the person has the last word:
+- The same change sent again is made.
+- Words or a brief asking for studs or a studded look turn the ceiling and the
+  first build's send-back off.
+- A person's own edits never pass it.
+
+`technic_ceiling_probe` 22/0 and `technic_way_probe` 60/0 prove these.
+
+**Step 3: the bench.** design43's subjects, Technic first, d44lev (ceiling)
+against d44base (kit). The Technic six finished in both arms, and so did 21051.
+The bench was stopped once Technic could not be a GO. No session lost its
+model. No held-out set was named in any tool answer, and no session hit a
+limit.
+
+| Technic, lever minus base | preferred | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall | 33% (6-67) | -168 | (-454, +131) | no |
+| likeness | 29% | -239 | (-498, +59) | no |
+| buildability | 27% | -290 | (-522, +48) | no |
+| creativity | 58% | +65 | (-207, +330) | no |
+
+- The ceiling holds the share. The lever's Technic finals are 0-5.0% studded
+  (mean 1.6%); the base's are 0-20.8% (mean 6.0%).
+- It fired in only 1 of 6 sessions: 42061, an edit laying 82 studded parts
+  (79%). That session rebuilt in beams and panels and ended 0% studded with 220
+  parts against the base's 164. The judge took the base there 8 of 8.
+- In the other five sessions the ceiling never fired, so those pairs are two
+  sessions of the same code. They swung from 100% to 0%.
+- With the kit and pre261, most Technic sessions already stay studless, so
+  there is little for the ceiling to catch.
+- Against the set, the realset screen is still 0% in both arms.
+- Advice alone (the share said, nothing refused) was not measured. If anything
+  is kept, it is that form.
+
+**Verdict.** NO-GO: Technic was not better beyond its interval.
+
+**What the pictures taught.**
+- **Best (9393):** the lever's session built a real tractor stance, with big
+  rear wheels and a cab over them. The base's was a long flatbed that reads as
+  a truck. The judge was right 8 of 8, and the ceiling never spoke in that
+  session.
+- **Worst (42073):** the lever's session spelled the set's name, "BASH!", in
+  liftarms on a beam, with no vehicle at all. The base built a buggy. A set
+  named by a word, read as the word to spell, is a general failure with its own
+  cause: the session must know what the subject is and its recognisable
+  features, and check its own render against them.
+- **Worst (42061):** the one session the ceiling turned is bigger and studless,
+  but loose. Its boom and forks hang off a frame.
+
+**Next.** Pairwise judging is the measure. A lever has to change what most
+sessions build. Results: `bench/results/design44-2026-11-27/` (FINDINGS.txt,
+pair43_score.txt, pair44_score.txt, pictures/, pictures43/).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
