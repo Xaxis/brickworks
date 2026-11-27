@@ -110,7 +110,9 @@
 // --hold=talk holds supabase/talk.sql in a Postgres of this machine's own,
 // the file itself answering every talk_* function and the console's audit,
 // a person's Notifications joined with their Talk (tools/web/talk_stand_in.mjs),
-// for tools/web/talk_flow.mjs.
+// for tools/web/talk_flow.mjs. With --talk-crowd as well, a busy Talk there
+// (tests/fixtures/talk/crowd.mjs: Help's 500 threads, one of 200 posts), for
+// tools/web/talk_pages_check.mjs.
 import http from "node:http";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Readable } from "node:stream";
