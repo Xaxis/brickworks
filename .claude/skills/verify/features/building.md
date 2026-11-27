@@ -304,7 +304,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with its find to type into (`SelectBy.wanted`: "3004", "3023" for 3023b,
   "brick 1x2" with every word as the parts bin searches, a colour of the
   model's by name, or both, "blue 1x2 brick"); Enter selects every row it
-  kept. In the list each row shows its part's picture in its colour
+  kept. The find is shown and has the keys in Ctrl-F's own press
+  (`Shell.TYPED_AFTER`), before the list is taken: what is typed while the
+  rows come is kept and found in them, and an Enter meanwhile chooses once
+  they are in (`InventoryPanel._fill_finding`); typed ten frames on, the
+  hotel's find had lost "30" of "3004" and C painted the selection.
+  In the list each row shows its part's picture in its colour
   (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
   every piece (a hose's every segment), frames them and says how many, with I
   for a buried one; the list opens again where it was. Parts inside
@@ -4109,7 +4114,9 @@ tools/probe.sh tooltip_fit_probe
 godot --headless --path . --script src/dev/select_probe.gd
 # a part found in the Boutique Hotel: the list's pictures, a row clicked (57
 # selected, framed, said), Select by, Part number or name… typed key by key
-# ("blue 1x2 brick", "3004"), Escape, look_at_model part=; then Orthanc's
+# ("blue 1x2 brick"; "3004" and Enter, and "no such part zzq", typed the moment
+# Find is asked, the list still coming: every key the find's, the parts
+# selected not painted or moved), Escape, look_at_model part=; then Orthanc's
 # 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
 # --rounds=N; on a base checkout only Select all). shots/findpart_*.png
 tools/probe.sh find_part_probe

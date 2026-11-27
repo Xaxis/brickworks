@@ -9,8 +9,11 @@
 ## number or name…, which opens the list's find, and "blue 1x2 brick" typed
 ## into it key by key (none of them taken by the app's own keys) keeps the
 ## blue bricks 1 x 2, the hotel's one among them, and Enter selects them;
-## "3004" every 1 x 2 brick; Escape closes the list over a selection. The
-## MCP's look_at_model finds the blue one by part= and color=.
+## "3004" and Enter, typed the moment the find is asked for while the list
+## is still being taken, every 1 x 2 brick once it is, none of the keys the
+## app's own (the parts selected are as they were); Escape closes the list
+## over a selection. The MCP's look_at_model finds the blue one by part=
+## and color=.
 ##
 ## Then Orthanc (10,094 parts): the longest frame after a click on the row
 ## of its 1,074 black 1 x 1 bricks with a stud on one side against the
@@ -98,7 +101,13 @@ func _hotel() -> void:
 	var from: int = Time.get_ticks_usec()
 	_main.call("_toggle_parts")
 	print("     the list made in %.0f ms" % ((Time.get_ticks_usec() - from) / 1000.0))
+	# Its rows go in a slice a frame: 254 of 683 were in ten frames on.
+	var frames: int = 0
+	while _list.is_filling() and frames < 600:
+		await process_frame
+		frames += 1
 	await _frames(10)
+	print("     its rows in %d frames on" % frames)
 	var made: Array = _list._made
 	var stock: Inventory = _list._stock
 	_check("one row per lot (%d)" % made.size(), _list.visible and made.size() == stock.lot_count()
@@ -198,24 +207,42 @@ func _hotel() -> void:
 	await _frames(90)
 	await _shot("findpart_found")
 
+	# Typed at once, as a person types after Ctrl-F, while the list is still
+	# being taken: the hotel's 683 lots are frames of it. Every key goes to
+	# the find and none to the app's own: typed 10 frames on, the find had
+	# "04" of "3004", and the C of "no such part" painted the four blue parts
+	# selected red, so look_at_model found no blue brick (clickfast2).
+	var held: Dictionary = _as_they_are(picked)
 	_shell.run("select_find")
-	await _frames(10)
+	_check("the find has the keys at once, the list still coming (%s)"
+		% ("coming" if _list.is_filling() else "in"), _list.visible and find.has_focus())
 	await _type("3004")
+	_check("...and keeps every key typed: '%s'" % find.text, find.text == "3004")
 	await _key(KEY_ENTER)
+	await _until_away()
 	var bricks_1x2: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not scenery.has(brick.id) and brick.part_id.begins_with("3004") \
 				and not brick.part_id.substr(4, 1).is_valid_int():
 			bricks_1x2 += 1
-	_check("\"3004\" selects every brick 1 x 2: %d of %d" % [_builder.selection.size(), bricks_1x2],
+	_check("\"3004\" and Enter at once select every brick 1 x 2 once the list is in: %d of %d"
+		% [_builder.selection.size(), bricks_1x2],
 		bricks_1x2 > 50 and _builder.selection.size() == bricks_1x2)
+	_check("...and the parts selected before are as they were (%s)" % _changed(held),
+		_changed(held) == "none changed")
 
+	held = _as_they_are(_builder.selection.keys())
 	_shell.run("select_find")
-	await _frames(10)
 	await _type("no such part zzq")
+	for _n: int in 600:
+		if not _list.is_filling():
+			break
+		await process_frame
 	_check("words nothing answers say so: %s" % _list._heading.text,
-		_list._heading.text.begins_with("Nothing in this model answers")
+		_list._heading.text == "Nothing in this model answers “no such part zzq”"
 		and _list._rows.get_child_count() == 0)
+	_check("...none of their keys the app's: the parts selected are as they were (%s)"
+		% _changed(held), _changed(held) == "none changed")
 	await _key(KEY_ESCAPE)
 	_check("...and Escape puts the list away", not _list.visible)
 
@@ -310,6 +337,44 @@ static func _list_ms(values: Array) -> String:
 
 
 ## The rows of Edit's Select by, as the menu shows them.
+## Each part's colour and place: [colour, transform] by id.
+func _as_they_are(ids: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		if brick != null:
+			out[id] = [brick.color_code, brick.transform]
+	return out
+
+
+## What of [param was] ([method _as_they_are]) is not so now: "none changed",
+## or how many were painted, moved or gone.
+func _changed(was: Dictionary) -> String:
+	var painted: int = 0
+	var moved: int = 0
+	var gone: int = 0
+	for id: int in was:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		if brick == null:
+			gone += 1
+			continue
+		painted += 1 if brick.color_code != int(was[id][0]) else 0
+		moved += 1 if not brick.transform.is_equal_approx(was[id][1]) else 0
+	if painted + moved + gone == 0:
+		return "none changed"
+	return "%d painted, %d moved, %d gone of %d" % [painted, moved, gone, was.size()]
+
+
+## Until the list has gone, as a row or Enter puts it away: at most 600
+## frames.
+func _until_away() -> void:
+	for _n: int in 600:
+		if not _list.visible:
+			break
+		await process_frame
+	await _frames(6)
+
+
 func _select_by_items() -> PackedStringArray:
 	var out := PackedStringArray()
 	var menu: PopupMenu = _named_popup(root, "select_by")
