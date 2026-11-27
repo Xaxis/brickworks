@@ -101,8 +101,14 @@ func _model(name: String, path: String) -> void:
 		playback.stop()
 	_stress.set_on(true)
 	await _until_laid()
-	# Weighed again with Stress on, so the tints are of this weighing.
+	# Weighed again with Stress on, so the tints are of this weighing: once
+	# a weighing begun before it was on has ended, as one begun with it off
+	# tints nothing.
+	var began: int = Time.get_ticks_msec()
+	while bool(_main.get("_weighing")) and Time.get_ticks_msec() - began < WAIT_MS:
+		await process_frame
 	_main.set("_stability_revision", -1)
+	_main.set("_weighed_revision", -1)
 	_main.set("_stability_at", 0)
 	if not await _until_weighed(name, "opened"):
 		return
@@ -186,7 +192,7 @@ func _until_weighed(name: String, step: String) -> bool:
 		if not bool(_main.get("_weighing")) and int(_main.get("_weighed_revision")) == _world.revision \
 				and not _world.is_being_laid():
 			await _frames(3)
-			if int(_main.get("_weighed_revision")) == _world.revision:
+			if not bool(_main.get("_weighing")) and int(_main.get("_weighed_revision")) == _world.revision:
 				print("    %s: weighed in %d ms" % [step, Time.get_ticks_msec() - began])
 				return true
 	_check("%s %s: weighed within %d s" % [name, step, WAIT_MS / 1000], false)
