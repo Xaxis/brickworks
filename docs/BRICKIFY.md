@@ -3983,7 +3983,149 @@ fourteen were not laid again: twelve are unchanged by construction, and the
 temple is unchanged. No time pairs or probes were run, since nothing ships.
 The patch costs 5.4 to 9.1 s on the Bell X-1.
 
+### The eleventh round: what a shell cuts off goes to the stitch, and a part a plate thick is laid two (2026-11-26)
+
+This round finds why a turned build leaves cells unfilled beside its cubes,
+on the two models it is thrown away for, and fixes the root. Unit `snot10`,
+from `pre261` at `9d63bb90`. Scripts, logs and pictures are in
+`bench/results/snot10-2026-11-26`.
+
+**In short: GO.** The Bell X-1 at 48 studs keeps its sides turned (35
+cubes, 98.4% of it in a part, no region lost) where `pre261` threw them
+away and laid it again studs up. Over the fourteen, turned rises from
+44.8% to 45.5%, and every model has more of it in a part (up to 1.5 points
+more). One guardrail is missed on its letter: the Bell X-1 has 1.10 times
+`pre261`'s parts, because `pre261`'s build of it was laid studs up (its
+own turned build has 1.12 times its studs-up build's parts; the other
+thirteen models have 1.08 to 1.29 times).
+
+#### Why the cells are left
+
+`diag10.gd` lays a model as `snot_gaps.gd` does and names, for each region
+of cells no part fills after the mend, what took its cells: a cut before
+the check, a shell's plate with no part, the mend, or nothing.
+
+The Bell X-1 (3,187 cells; turned, 92.75% in a part and three regions out):
+
+- **Its two wings beside the turned flanks** (67 and 47 cells) **and its
+  tail** (38 cells). These were pieces of the core lying wholly beside a
+  shell, and `Shapes.lay` took them out before the stitch ran
+  (`cut_off(true)`). The stitch never saw them. Given to the stitch, it
+  joins all of them but one wing's tip.
+- **That wing's tip** (42 cells), which the build laid again studs up also
+  leaves out. It is measured one plate thick. `_thin` made a part two
+  plates thick only where the surface passed through cells it had not
+  measured. A cell measured one plate thick stayed one plate thick, its
+  plates side by side in one layer held nothing, and the check took them
+  out.
+- What is left once both are fixed: 26 plates of shells that no part fills,
+  22 tiles under a shell's foot with air under them, and a dozen single
+  cells.
+
+The temple (31,631 cells; turned 94.63%, laid again studs up 97.47%):
+
+- **The moon on its stick** (456 to 475 cells) is lost by every build,
+  turned or upright.
+- **The rest of the gap** is pieces that the cuts after the stitch
+  (`cut_off`, `caps_apart`) take out before the check, among them bricks
+  standing on the ground at its base. Kept for the mend, it ties them back:
+  97.20% with every cut kept, but 35 joints past their load.
+
+Keeping every cut for the mend is too blunt. The cuts after the stitch take
+out what the mend would take out anyway, one check sooner:
+
+- the hollow sphere at 24 studs loses the same 16 parts either way, and
+  `brickify_probe`'s "nothing taken out" fails when the mend does it;
+- on Bob, the bunny and 3DBenchy at 48 the mend then takes out 31 to 36
+  parts where `pre261` takes out 1, at 1.38 to 1.63 times the time.
+
+| Variant (turned, not laid again) | Bell X-1 in a part | Regions out | Temple in a part | Temple's joints past load |
+|---|---:|---|---:|---:|
+| `pre261` | 92.75% | 67, 47, 38 | 94.63% | 4 |
+| every cut kept for the mend | 96.17% | 42 (wing tip) | 97.20% | 35 |
+| every cut kept, a part a plate thick laid two | 98.24% | none | 97.93% | 0 |
+| a part a plate thick laid two only | 97.04% | 42 (the tail) | | |
+| **no cut before the stitch, a part a plate thick laid two (this round)** | **98.36%** | **none** | **95.69%** | **0** |
+
+#### The change
+
+1. **No cut before the stitch.** `Shapes.lay` still joins at once what a
+   shell cuts off where it meets the core (`join_cut_off`). It no longer
+   takes out what lies wholly beside a shell before the stitch runs. What
+   the stitch leaves apart is taken out before the check as before
+   (`cut_off`, `caps_apart`).
+2. **A part a plate thick is laid two** (`Brickify._two_plates`). Every
+   cell with nothing over or under it, measured or thin, gets the cell
+   under it (over it on the ground), and its column is laid plain, as only
+   the thin parts' were.
+3. **Laid again only to win something back** (`Brickify._wins_back`). A
+   build laid again studs up and unbonded, because the first left a region
+   out, is kept only if it wins back a region the first left out, or fills
+   more than half a point more. It changes nothing on the fourteen today:
+   the temple's turned build is 2.5 points short of its upright one.
+
+**The fourteen at 48 studs**, `pre261` against this, each set of models
+laid by both at once (snot8's judge):
+
+| Model | Steep faces turned | Nearer than studs up | Parts (x `pre261`) | In a part | Mended |
+|---|---|---|---|---|---|
+| Bob | 56% → 55% | +9.7% → +9.5% | 4,104 (1.009) | 99.3% → 99.5% | 1 → 1 |
+| Stanford bunny | 60% → 60% | +9.5% → +9.5% | 6,631 (1.000) | 99.5% → 99.5% | 1 → 1 |
+| 3DBenchy | 31% → 31% | +3.3% → +3.1% | 3,164 (1.002) | 99.5% → 99.5% | 1 → 1 |
+| Armadillo | 51% → 50% | +6.4% → +6.5% | 3,752 (1.015) | 98.2% → 98.6% | 4 → 0 |
+| Avocado | 59% → 58% | +6.3% → +7.3% | 4,411 (1.009) | 99.2% → 99.5% | 0 → 0 |
+| Figure | 31% → 31% | -2.7% → -2.5% | 2,733 (1.021) | 98.3% → 99.1% | 7 → 3 |
+| Fox | 53% → 51% | +15.3% → +15.4% | 1,049 (1.021) | 97.8% → 98.3% | 8 → 8 |
+| Milk truck | 69% → 68% | +23.7% → +25.2% | 3,895 (1.003) | 99.5% → 99.6% | 0 → 0 |
+| Objaverse (the temple) | 4% → 4% | +0.0% → -0.3% | 10,744 (0.988) | 97.5% → 98.2% | 221 → 179 |
+| Smithsonian-1 | 40% → 40% | +6.0% → +5.7% | 6,286 (1.013) | 97.4% → 98.4% | 0 → 1 |
+| **Smithsonian-2 (the Bell X-1)** | **14% → 31%** | +0.0% → +0.4% | **697 (1.101)** | 98.4% → 98.4% | 18 → 0 |
+| Spot | 64% → 64% | +12.9% → +12.8% | 5,270 (1.006) | 99.1% → 99.2% | 0 → 0 |
+| Toy car | 47% → 47% | +8.3% → +8.4% | 3,267 (1.043) | 97.5% → 99.0% | 20 → 2 |
+| Utah teapot | 47% → 46% | +7.0% → +7.1% | 3,625 (1.004) | 99.4% → 99.4% | 0 → 0 |
+| **The fourteen** | **44.8% → 45.5%** | **+7.0% → +7.1%** | 1.144 → 1.152 x studs up | | |
+
+Every model is one piece, with no joint past its load, and at least 98.2%
+of it in a part (`pre261`: 97.4%). Timed in same-moment pairs, two for each
+of the six models that took longest in the bench, it takes 1.07 to 1.41
+times as long: 3DBenchy 1.07, the bunny 1.16, Bob 1.17, the avocado 1.20,
+Spot 1.40 and Smithsonian-1 1.41. The other eight took at most 0.99 times
+as long in the bench, the Bell X-1 0.36 (it is no longer laid twice).
+
+The extra time is the stitch's, which now gets the pieces once cut before
+it. On Smithsonian-1 its rejoining goes from 25 to 48 s and the mend from
+16 to 29 s; on Spot the rejoining goes from 4 to 21 s.
+
+- **It turns less on seven models**, by one or two points. The same cubes
+  are turned: the fox 105 against 104, the milk truck 529 against 529
+  (`why.txt`). The judge counts a steep face as turned when the part
+  nearest it lies on its side. The pieces once cut before the stitch are
+  now kept, and some of them are nearer a steep face than the turned part
+  beside them.
+- **The Bell X-1 turns 35 cubes.** The judge gives it 31% turned, against
+  the 14% it gives `pre261`'s studs-up build. Its turned build has 697
+  parts, 1.12 times its studs-up build's 624.
+- **The temple is still laid again studs up.** Its turned build is 95.69%
+  in a part, its studs-up one 98.17%; the region rule does not change
+  that.
+
+![The Bell X-1 at 48 studs: on pre261 laid again with its sides upright (left, 633 parts), on snot10 with 35 cubes turned and its right wing's tip held (right, 697 parts)](brickify/unit6-eleventh-bell-x1-48.jpg)
+
 ### Proof
+
+The eleventh round's runs (`snot10`, 2026-11-26), all in
+`bench/results/snot10-2026-11-26`, from the locked snapshot `snot10snap`
+(`1b686982`) against `snot10base` (`pre261` at `9d63bb90`):
+
+- **The causes:** `diag10.gd` on the Bell X-1 and the temple (`diag/base-*`,
+  `k1`, `st-*`), and `build.gd` on each variant of the table (`diag/v*`,
+  `t1-*`; `sphere.gd` on the hollow sphere, `diag/sp-*`).
+- **The fourteen:** `bench2.sh` laid both arms of each set at once and ran
+  snot8's judge (`judge2/bar-*`, `hold-*`, `means-*`, `why.txt`);
+  `pairs.sh` laid the same-moment time pairs (`judge2/times-*`).
+- **The probes snot8 ran,** from `snot10snap`, 0 FAIL: brickify 84,
+  bond 16, side studs 25, snot 11, shapes 84, buy 25, worker 12, techniques
+  116, face 30, stability 9, balance 58, stabletruth 12 (`probes2/`).
 
 The tenth round's runs (`snot9`, 2026-11-26), all in
 `bench/results/snot9-2026-11-26`:
@@ -4146,6 +4288,23 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the eleventh round (2026-11-26):
+
+- **The temple's turned build.** The cuts after the stitch take out about
+  2.2 points that the mend would tie back (97.93% kept, 95.69% cut). Before
+  its turned build can be kept, those cuts need to keep what the mend can
+  hold, as bricks standing on the ground, without the time and the hollow
+  sphere's 16 parts that keeping every cut costs.
+- **The temple's moon on a stick** (about 470 cells) is left out by every
+  build, turned or studs up.
+- **The stitch's time.** Given every piece a shell cuts off, the stitch
+  makes Smithsonian-1 and Spot take 1.4 times as long. Telling beforehand
+  which of those pieces it cannot join might win that time back (not
+  tried).
+- **What the judge calls turned.** It counts the part nearest a steep face.
+  A core piece kept beside a turned one can lower the count with no change
+  in what is turned, as on seven models this round.
 
 After the tenth round (2026-11-26), nothing changed. These are the steep
 faces still stacked, by cause (mean of the fourteen at 48 studs), with what

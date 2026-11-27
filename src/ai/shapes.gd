@@ -505,13 +505,16 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		# only side by side: pruned first from the foot, a bunny on its feet kept
 		# its feet and lost the rest. Joined first, then pruned.
 		var stitched: bool = bool(pattern.get("stitch_first", false))
-		# What a sculpt's shells cut off is taken out before the stitch spends
-		# its rounds on it: a bunny at 48 studs tried 86 joins where it had 27.
-		# Joined first where they meet the core, as the stitch's first way
-		# joins, all at once: only what that leaves is taken out.
+		# What a sculpt's shells cut off is joined where it meets the core, as the
+		# stitch's first way joins, all at once, before the stitch spends its
+		# rounds on it: a bunny at 48 studs tried 86 joins where it had 27. What
+		# that leaves is the stitch's: taken out here, before the stitch, what
+		# lay wholly beside a shell never had its chance, and the Bell X-1 at 48
+		# studs lost its wings beside its turned flanks (92.8% of it in a part)
+		# where the stitch joins them (98.4%). What the stitch leaves apart is
+		# taken out after it (cut_off, caps_apart).
 		if not shells.is_empty():
 			last["joined_cut_off"] = plan.join_cut_off()
-			last["cut_off"] = plan.cut_off(true)
 		if stitched:
 			plan.stitch()
 		last["ms"]["stitch"] = Time.get_ticks_msec() - clock
@@ -565,7 +568,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 	# studs left seven such, and its mend checked it three times over; a milk
 	# truck's strip a stud wide under its flank was 29 parts in three pieces.
 	if not plan.cubes.is_empty() and not shells.is_empty():
-		last["cut_off"] = int(last.get("cut_off", 0)) + plan.cut_off() + plan.caps_apart()
+		last["cut_off"] = plan.cut_off() + plan.caps_apart()
 	# What a sculpt's turned sides took from the core and gave back, and what
 	# was cut off beside them, for src/dev/snot_gaps.gd to say which of the
 	# model no part fills, and why.
@@ -3447,20 +3450,18 @@ class Plan extends RefCounted:
 		return {}
 
 	## The pieces of the core apart from the rest, of [constant CUT_OFF] parts
-	## or fewer, that touch a shell (with [param wholly], every part of them
-	## does: a sliver beside one, not a leg that meets one at its top):
-	## taken out of [member made]. How many parts.
-	func cut_off(wholly: bool = false) -> int:
+	## or fewer, that touch a shell: taken out of [member made]. How many
+	## parts.
+	func cut_off() -> int:
 		if cubes.is_empty() or shelled.is_empty():
 			return 0
 		var gone: Dictionary = {}
 		for piece: Array in pieces().slice(1):
 			if piece.size() > CUT_OFF:
 				continue
-			var touches: bool = wholly
+			var touches: bool = false
 			for n: int in piece:
-				touches = (touches and beside_shell(made[n])) if wholly \
-					else (touches or beside_shell(made[n]))
+				touches = touches or beside_shell(made[n])
 			if touches:
 				for n: int in piece:
 					gone[n] = true
@@ -3472,8 +3473,7 @@ class Plan extends RefCounted:
 				else:
 					for cell: Vector2i in made[n].get("_cells", []):
 						for v: int in int(made[n].get("_h", 1)):
-							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = \
-								"wholly" if wholly else "cut"
+							cut_cells[Vector3i(cell.x, roundi(float(made[n]["y"])) + v, cell.y)] = "cut"
 			made = left
 		return gone.size()
 

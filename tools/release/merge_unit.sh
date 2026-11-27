@@ -145,6 +145,19 @@ if command -v shellcheck >/dev/null && ! git diff --quiet "$BASE" HEAD -- 'tools
     shellcheck -S warning tools/*.sh tools/release/*.sh 2>&1 | head -20; echo "merge_unit: shellcheck, as ci_gate.sh runs it"; exit 5
   fi
 fi
+# The release gate's Python suite, here: a unit's words went red only at a
+# train's ci gate twice in a day (test_made_with after pubbind, then
+# test_trademarks after photoreal27's docs line held rel-m346, 2026-11-26).
+if python3 -c 'import pytest' 2>/dev/null; then
+  suite=(python3 -m pytest tests/ -q)
+else
+  suite=(python3 tools/minitest.py tests/test_*.py)
+fi
+if ! pyout=$(~/.claude/claude-core/bin/heavy timeout 1800 "${suite[@]}" 2>&1 </dev/null); then
+  said=$(echo "$pyout" | awk -f tools/failures.awk)
+  if [ -n "$said" ]; then echo "$said" | head -30; else echo "$pyout" | tail -15; fi
+  echo "merge_unit: the Python suite, as ci_gate.sh runs it"; exit 7
+fi
 # MERGE_GATES=ship: the parse gate and the tool list are left to ship.sh,
 # which runs them once for every unit merged, under the release's priority.
 if [ "${MERGE_GATES:-}" = ship ]; then
