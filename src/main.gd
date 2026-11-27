@@ -1393,7 +1393,12 @@ func use_controls(layer: StringName) -> bool:
 				put_away[child] = (child as Control).visible
 				(child as Control).visible = false
 		_simple_left = {"steps": _timeline_left(), "notices_at": _notices.get_index(), "put_away": put_away}
-		_notices.reparent(_simple.get("notices_slot"), false)
+		# The strip goes over Simple's model while a note in it shows, now or
+		# once one does (_show_notices); with none it stays put away with the
+		# column. Moving it took 3-8 ms each way, every note in it leaving the
+		# tree and coming back, and the switch is a frame's work.
+		if _a_notice_shown():
+			_notices.reparent(_simple.get("notices_slot"), false)
 		if _phone != null:
 			_phone.call("set_simple", true)
 		else:
@@ -1407,8 +1412,9 @@ func use_controls(layer: StringName) -> bool:
 		_simple.call("left")
 		_simple.visible = false
 		var middle: Control = _over_model.get_parent()
-		_notices.reparent(middle, false)
-		middle.move_child(_notices, int(_simple_left.get("notices_at", 0)))
+		if _notices.get_parent() != middle:
+			_notices.reparent(middle, false)
+			middle.move_child(_notices, int(_simple_left.get("notices_at", 0)))
 		var put_away: Dictionary = _simple_left.get("put_away", {})
 		for child: Control in put_away:
 			if is_instance_valid(child):
@@ -10094,9 +10100,12 @@ func _tab_columns() -> void:
 
 ## The strip over the model shows while something in it does.
 func _show_notices() -> void:
-	var any: bool = false
-	for note: Node in _notices.get_child(0).get_children():
-		any = any or (note as Control).visible
+	var any: bool = _a_notice_shown()
+	# A note shown in Simple takes the strip over Simple's model (use_controls
+	# left it in the column). Deferred: this runs as a note shows, from its
+	# own visibility_changed, and the strip is that note's grandparent.
+	if any and _layer == &"simple" and _notices.get_parent() != _simple.get("notices_slot"):
+		_notices_over_simple.call_deferred()
 	# On a phone the drawer down the left takes the screen beside its rail,
 	# and the strip, squeezed beside it, ran off the screen: it waits. So
 	# for the assistant's down the right: the month's challenge line kept
@@ -10110,6 +10119,19 @@ func _show_notices() -> void:
 	_notices.visible = any and not (_phone != null and not Phone.wide() and drawer)
 	if _phone != null and any:
 		_for_a_finger(_notices)
+
+
+func _a_notice_shown() -> bool:
+	for note: Node in _notices.get_child(0).get_children():
+		if (note as Control).visible:
+			return true
+	return false
+
+
+func _notices_over_simple() -> void:
+	var slot: Variant = _simple.get("notices_slot") if _simple != null else null
+	if _layer == &"simple" and slot != null and _notices.get_parent() != slot:
+		_notices.reparent(slot as Node, false)
 
 
 ## A desktop panel's words and buttons drawn for a finger, on a phone: its

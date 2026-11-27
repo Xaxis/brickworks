@@ -17,7 +17,9 @@
 ##           and over Simple's tray, a point where the parts bin was the
 ##           model's or Simple's, and the header's Full pressed brings the
 ##           studio back. Nothing of the model changes; the view is Simple's
-##           framing in Simple and Full's again back in Full.
+##           framing in Simple and Full's again back in Full. The notices
+##           strip goes over Simple's model only while a note in it shows,
+##           as one shows there, and stands where it stood in Full after.
 ##   models  Simple's plan's P2 on four real models: 10030-1 (136 sub-model
 ##           sections), 6685-1 (the author's steps), 5972-1 (LSynth hoses, its
 ##           flexible parts) and 4005-1 with two parts the library lacks, one
@@ -209,6 +211,42 @@ func _case_layer() -> void:
 	_same("back to Full", before, _state())
 	_ok(bool(_main.call("use_controls", &"full")) and not bool(_main.call("use_controls", &"tiny")),
 		"Full asked again is no change; a layer nobody made is refused")
+	await _notes_across()
+
+
+## The notices strip over Simple's model while a note in it shows, and put
+## away with the column while none does (moving it was 3-8 ms of the
+## switch); back in Full, where it stood in the column. The note is the one
+## another window's save brings (ModelStore.saved_by_another).
+func _notes_across() -> void:
+	var strip: Control = _main.get("_notices")
+	var middle: Node = strip.get_parent()
+	var at: int = strip.get_index()
+	var note: Control = _main.get("_reload_offer")
+	var shown: bool = bool(_main.call("_a_notice_shown"))
+	_main.call("use_controls", &"simple")
+	await _frames(3)
+	var slot: Node = (_main.get("_simple") as Node).get("notices_slot")
+	_ok(strip.get_parent() == (slot if shown else middle),
+		"into Simple with %s: the notices strip %s" % ["a note shown" if shown else "no note shown",
+		"over Simple's model" if shown else "put away with the column"])
+	_store.saved_by_another.emit("another window's")
+	await _frames(2)
+	_ok(note.is_visible_in_tree() and strip.get_parent() == slot,
+		"a note shown in Simple: the strip over Simple's model, the note seen")
+	await _picture("simple-note")
+	_main.call("use_controls", &"full")
+	await _frames(3)
+	_ok(strip.get_parent() == middle and strip.get_index() == at and note.is_visible_in_tree(),
+		"back in Full: the strip in the column where it stood (%d, was %d), the note seen" % [strip.get_index(), at])
+	_main.call("use_controls", &"simple")
+	_ok(strip.get_parent() == slot and strip.is_visible_in_tree(),
+		"into Simple with the note shown: the strip over Simple's model at once")
+	_main.call("use_controls", &"full")
+	note.call("dismiss")
+	await _frames(3)
+	_ok(not note.visible and strip.get_parent() == middle and strip.get_index() == at,
+		"the note let go of in Full: the strip in the column where it stood")
 
 
 ## P2 on one model: the same edits made in Full alone and through the switch,

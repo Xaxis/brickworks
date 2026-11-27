@@ -4086,7 +4086,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   studio while Simple shows (`Inspector.put_away`), so Full's selection put
   back on the way out is what they show already (redrawn for nobody, the
   part's view and its Hinge's joint were 6-15 ms of the way back), and
-  back in Full the properties' joined count says what a look finds.
+  back in Full the properties' joined count says what a look finds. The
+  notices strip goes over Simple's model only while a note in it shows
+  (`Main._show_notices`, `_notices_over_simple`), put away with the column
+  otherwise (moving it was 3-8 ms each way); the layer case shows another
+  window's save there and reads it back in its place in Full.
 - `simple mode` (`src/ui/simple_layer.gd`; Simple mode phase 1, simple1,
   2026-11-26; docs-site/simple.md): on every device once the header's Simple is
   picked, the model not a viewer's. A tray along the foot: 12 solid colours
