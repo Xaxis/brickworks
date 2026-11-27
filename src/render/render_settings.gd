@@ -197,6 +197,11 @@ var fill: float = -1.0
 ## everywhere, 1 as the photographs show it. Below 0, StudioRender's
 ## PRODUCT_EDGE.
 var edge: float = -1.0
+## How much narrower across than the grid each part is drawn, in LDU
+## (photoreal30), path traced in the product look: a real part is moulded a
+## little under its grid (0.5 LDU, 0.2 mm), so parts side by side leave a
+## slot. 0 the grid's own size. Below 0, StudioRender's PRODUCT_CLEARANCE.
+var clearance: float = -1.0
 ## A large bright source the glossy tops mirror (photoreal14), path traced in
 ## the product look on a backdrop: a softbox or a window card standing above
 ## and behind the model as the camera sees it, sharp-edged, the tent or the

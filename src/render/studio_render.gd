@@ -201,6 +201,11 @@ const PRODUCT_FILL := 0.0
 ## judged alone beside the photographs against this tree without it, the
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
+## Parts moulded under the grid (photoreal30, RenderSettings.clearance,
+## PathTracer.clearance; docs/RENDERING.md 5ae): each part drawn 0.5 LDU
+## narrower across than the grid it stands on, as a real 1 x 1 brick is
+## 7.8 mm for 8 mm of grid, so parts side by side leave a slot.
+const PRODUCT_CLEARANCE := 0.5
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
@@ -2802,6 +2807,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	_tracer.clearance = _own(settings.clearance, PRODUCT_CLEARANCE) if _tracer.product else 0.0
 	var breakup: Array = _breakup(settings)
 	_tracer.peel = float(breakup[2])
 	_tracer.sink = float(breakup[3])

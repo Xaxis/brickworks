@@ -155,6 +155,17 @@ const SEAT_TURN := 0.3
 var play: float = 0.0
 const PLAY_TURN := 0.15
 const PLAY_SHIFT := 1.5
+## How much narrower than the grid each part is drawn across, in LDU
+## (photoreal30), set before [method stage]: a real part is moulded a little
+## under the grid it stands on (a 1 x 1 brick is 7.8 mm across for 8 mm of
+## grid: 0.5 LDU), so two parts side by side leave a dark slot between them,
+## as three_2x2_top's photograph measures (0.39 to 0.60 LDU apart) and the
+## set photographs show ("small gaps between bricks"). Only across, the
+## part's own x and z, and only where the part spans half a stud or more (a
+## bar or an antenna keeps its thickness); a part stands on the one below as
+## before. 0 for the grid's own size.
+var clearance: float = 0.0
+const CLEARANCE_FROM := 10.0
 ## How far each stud's logo and top differ from the next (photoreal8), set
 ## before [method stage]: 0 as before, 1 one stud's letters rubbed nearly
 ## flat and the next's full (path_tracer.glsl's stud_logo). It goes to the
@@ -435,6 +446,22 @@ func _seated(place: Transform3D, key: int) -> Transform3D:
 	return seat(place, key, seating, play)
 
 
+## A part drawn [member clearance] narrower than the grid across, about its
+## box's middle (its own x and z, each where it spans CLEARANCE_FROM or more):
+## put on the right of its place. Its own space (the hit's local point, its
+## box) is untouched, so its edges, logos and wear are drawn as before.
+func _narrower(box_min: Vector3, box_max: Vector3) -> Transform3D:
+	var size: Vector3 = box_max - box_min
+	if not product or clearance <= 0.0:
+		return Transform3D.IDENTITY
+	var scale := Vector3(1.0 - clearance / size.x if size.x >= CLEARANCE_FROM else 1.0, 1.0,
+		1.0 - clearance / size.z if size.z >= CLEARANCE_FROM else 1.0)
+	if scale == Vector3.ONE:
+		return Transform3D.IDENTITY
+	var middle: Vector3 = (box_min + box_max) * 0.5
+	return Transform3D(Basis.from_scale(scale), middle - middle * scale)
+
+
 ## [param place] as a part seated [param seating] off exact sits, its own way
 ## by its [param key] ([method _part_key]), with LEGO's own [param play]: the
 ## tracer's seating, and the raster's when it draws Played with
@@ -539,6 +566,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		if material != null and material.get_shader_parameter("part_body_top") != null:
 			body_top = minf(float(material.get_shader_parameter("part_body_top")), box_max.y)
 		var moulded: float = 1.0 if product else 0.0
+		var narrower: Transform3D = _narrower(box_min, box_max)
 		var whole: Transform3D = batch.global_transform
 		var buffer: PackedFloat32Array = multimesh.buffer
 		var stride: int = 12 + (4 if multimesh.use_colors else 0) \
@@ -573,7 +601,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			kinds.append_array([mesh_number, kind, key, stud_code])
 			var instance := RDAccelerationStructureInstance.new()
 			instance.blas = shape[0]
-			instance.transform = _seated(whole * at, key)
+			instance.transform = _seated(whole * at, key) * narrower
 			instance.id = placed.size()
 			instance.mask = MASK_GLASS if kind == KIND_GLASS else MASK_SOLID
 			instance.hit_sbt_range = _range
