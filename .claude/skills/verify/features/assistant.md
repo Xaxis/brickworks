@@ -3337,7 +3337,13 @@ off there). A chat's undo leaves the person's own step, as it leaves another cha
 ("is the person's own, made in the tab, so it was left"). The gear is counted among the
 assistant's placed parts (the check answers only for the design's own) and stood on
 its edge beside the rail, where the check finds it not held; the probe prints each spot
-it tried, and "(not held)" on the one it kept is the case 42061-1 met. The
+it tried, and "(not held)" on the one it kept is the case 42061-1 met. A browser is
+never a bench (savereview2 G1): its arguments are the address's query, so
+`Assistant.brickbench_of` and `DesignMemory.bench_arguments` read no --brickbench,
+--held-out or --held-out-name under the web feature (save_whole_probe's "...a browser
+(the web feature) reads none of them"), and `src/boot/shell.html` passes no such key
+from the address, even one spelled ?held-out%3D (`tools/minitest.py
+tests/test_shell_bench_keys.py`, 9 passed; 8 fail on the page before it). The
 harness's end save (`realset._save_end`) skips features not settled and asks the
 pieces gate again, so no gate loses a session's model (8 lost in design32-35):
 `tools/minitest.py tests/test_realset.py`, "the bench's own save is never lost".

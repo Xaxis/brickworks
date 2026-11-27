@@ -22503,8 +22503,17 @@ const MOST_EXACT_REFUSALS := 2
 ## was refused twice over a minifig's hands and hat, a door hung in its frame
 ## and a wheel rim, each held by our own joints. The flag says it; nothing
 ## else is read as a sign of the bench.
+## Never in a browser: there the arguments are the address's query
+## (shell.html), so a link with ?brickbench made the person's tab a bench's,
+## whose save takes parts off (savereview2 G1). The benches start desktop
+## builds.
 const BRICKBENCH_FLAG := "--brickbench"
-static var brickbench: bool = OS.get_cmdline_user_args().has(BRICKBENCH_FLAG)
+static var brickbench: bool = brickbench_of(OS.get_cmdline_user_args(), OS.has_feature("web"))
+
+
+## Whether these arguments make a bench, in a browser ([param web]) or not.
+static func brickbench_of(arguments: PackedStringArray, web: bool) -> bool:
+	return not web and arguments.has(BRICKBENCH_FLAG)
 ## What saving says of the pieces our own joints find, once a design, and
 ## whether it has been said ([method save_advice]).
 var _save_advice: String = ""

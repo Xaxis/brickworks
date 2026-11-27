@@ -72,6 +72,16 @@ func _run() -> void:
 		await account.changed
 	await process_frame
 	# The bench's save: what realset's last save_model meets (bench_run()).
+	# A browser never takes the bench's flags: there the arguments are the
+	# address's query, so a link could make a person's tab a bench whose save
+	# takes parts off (savereview2 G1).
+	var flags := PackedStringArray([Assistant.BRICKBENCH_FLAG, "--held-out=7634-1",
+		"--held-out-name=Tower Crane"])
+	_check("the desktop reads --brickbench, --held-out and --held-out-name",
+		Assistant.brickbench_of(flags, false) and DesignMemory.bench_arguments(flags, false) == flags
+		and DesignMemory.held_out_of(DesignMemory.bench_arguments(flags, false)) == PackedStringArray(["7634-1"]))
+	_check("...a browser (the web feature) reads none of them",
+		not Assistant.brickbench_of(flags, true) and DesignMemory.bench_arguments(flags, true).is_empty())
 	Assistant.brickbench = true
 	_check("a bench run, as realset's is", CommandSocket.bench_run())
 	var assistant: Assistant = _main.get("_assistant")
