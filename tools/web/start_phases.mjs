@@ -13,6 +13,13 @@
 //              iphone13  Playwright's WebKit as an iPhone 13, drawing in
 //                        software; WebKit takes no CPU or network throttle here
 //   --warm     a return too: the same profile's second tab, everything cached
+//   --hold=S   each visit kept open S s past working, its memory still read:
+//              whether the height comes later than the start (webstart13)
+//
+// A URL may be a deployment (https://…/app): live is timed so beside a
+// local export or a preview, at the same moments. A protected preview is
+// let in by BW_BYPASS (set it from .env's VERCEL_BYPASS), as every flow is:
+// without it each visit timed Vercel's login page (webstart14).
 //
 // Each pair starts both builds together, each in its own child process (so
 // /proc counts each browser's own threads), and alternates which is
@@ -32,14 +39,24 @@
 //   window       to "ui": the window built
 //   first part   to "model": the start's model laid; and working, its 61
 //                parts all drawn (awaited 0), as phonetruth_flow says it
+//   (layers      on an iPhone or iPad, BrickworksLoop's first screen
+//                compiled a cycle at a time, between the engine and scripts:
+//                its own marks, "layered" and "layers", where the build has
+//                them)
 // Memory: the Wasm memory's size at each mark (the app's marks are caught
 // as they are set) and its largest, the content process's Pss at working.
+// The memory grows a fifth at a time (emscripten's resize), so its size
+// says only which step the heap's need fell in: each growth the page's
+// thread asked for is kept too, with what it asked for and when, read even
+// inside one long compile, where no timer runs (webstart13). Which engine
+// the page chose (threads or not) and whether it took itself for an iPhone
+// or iPad (the shell's brickworksEngine) are kept with each visit.
 // CPU: each thread's from /proc at working (proc_cpu.mjs), never a trace.
 //
 // Writes DIR/pairs.json, and DIR/phases.md: each phase's median per build
 // and the median of each pair's ratio.
 import { chromium, devices, webkit } from "playwright";
-import { SOFTWARE, START_MS, WEBKIT_SOFTWARE } from "./browser.mjs";
+import { SOFTWARE, START_MS, WEBKIT_SOFTWARE, bypassCookie } from "./browser.mjs";
 import { canSignIn, signInContext } from "./session.mjs";
 import { descendants, pageRenderer, threads } from "./proc_cpu.mjs";
 import { spawn } from "node:child_process";
@@ -70,6 +87,7 @@ const PHASES = [
   ["compile", "wasm compiled"],
   ["instantiate", "wasm instantiated"],
   ["engine", "engine's own start"],
+  ["layers", "first screen's cycles compiled (iPhone, iPad)"],
   ["scripts", "scripts compiled"],
   ["data", "data pack waited for"],
   ["catalogue", "catalogue read"],
@@ -101,7 +119,7 @@ for (let n = 0; n < pairs; n++) {
   const order = n % 2 ? [...urls.keys()].reverse() : [...urls.keys()];
   const load = loadavg()[0];
   const runs = await Promise.all(order.map((i) => child({ url: urls[i], label: labels[i], config: configName,
-    warm: Boolean(args.warm), shot: join(out, `${configName}-${labels[i]}-${n + 1}`) })));
+    warm: Boolean(args.warm), hold: Number(args.hold || 0), shot: join(out, `${configName}-${labels[i]}-${n + 1}`) })));
   const pair = { n: n + 1, load, builds: {} };
   for (const [k, i] of order.entries()) pair.builds[labels[i]] = runs[k];
   all.push(pair);
@@ -137,7 +155,9 @@ function median(xs) {
 function said(run) {
   if (!run?.cold) return `failed (${run?.why || "?"})`;
   const c = run.cold;
-  return `working ${sec(c.at.working)} s, wasm ${mbs(c.memory.most)} MB${run.warm ? `, return ${sec(run.warm.at.working)} s` : ""}`;
+  return `working ${sec(c.at.working)} s, wasm ${mbs(c.memory.most)} MB (asked ${mbs(c.memory.asked)})`
+    + `${Number.isFinite(c.memory.held) ? `, held ${mbs(c.memory.held)} MB` : ""}${run.warm ? `, return ${sec(run.warm.at.working)} s` : ""}`
+    + `${c.engine ? `; ${c.engine.apple ? "apple" : "not apple"}, ${c.engine.threads ? "threads" : "no threads"}` : ""}`;
 }
 
 /// Each phase's end and length, each build's median, and the median of the
@@ -169,12 +189,22 @@ function table(rows) {
       return `${Number.isFinite(m) ? unit(m) : "-"} | `;
     }).join(" | ")} |`);
     row("Wasm memory at its largest, MB", (b) => b?.memory?.most, (m) => Math.round(m / 1e6));
+    row("… the most the heap asked for at a growth, MB", (b) => b?.memory?.asked, (m) => Math.round(m / 1e6));
+    row("… its largest once held past working, MB", (b) => b?.memory?.held, (m) => Math.round(m / 1e6));
+    row("… at the first screen's cycles' mark, MB", (b) => b?.memory?.at?.layers, (m) => Math.round(m / 1e6));
     row("… at the catalogue mark, MB", (b) => b?.memory?.at?.catalogue, (m) => Math.round(m / 1e6));
     row("… at the scripts' mark, MB", (b) => b?.memory?.at?.compiled, (m) => Math.round(m / 1e6));
     row("… at the engine's own start, MB", (b) => b?.memory?.at?.engine, (m) => Math.round(m / 1e6));
     row("content process Pss at working, MB", (b) => b?.pss, (m) => Math.round(m / 1e6));
     row("main thread CPU to working, s", (b) => b?.cpu?.main, (m) => m.toFixed(1));
     row("all threads' CPU to working, s", (b) => b?.cpu?.all, (m) => m.toFixed(1));
+    row("the engine's wasm asked for at, s", (b) => b?.marks?.asked?.wasm, (m) => sec(m));
+    row("… the page's op=phone answered at, s", (b) => b?.marks?.asked?.phone || NaN, (m) => sec(m));
+    row("frames from the window built to working", (b) => b?.marks?.after_window?.frames, (m) => String(Math.round(m)));
+    row("… their own time, s", (b) => b?.marks?.after_window?.frame_ms / 1000, (m) => m.toFixed(1));
+    row("… the longest, ms", (b) => b?.marks?.after_window?.longest_ms, (m) => String(Math.round(m)));
+    row("visits the page took for an iPhone or iPad", (b) => (b?.engine ? Number(Boolean(b.engine.apple)) : NaN), (m) => (m ? "yes" : "no"));
+    row("visits on the engine with threads", (b) => (b?.engine ? Number(Boolean(b.engine.threads)) : NaN), (m) => (m ? "yes" : "no"));
     lines.push("");
   }
   return lines.join("\n");
@@ -188,7 +218,7 @@ async function one(job) {
   const type = config.engine === "webkit" ? webkit : chromium;
   const options = config.engine === "webkit" ? { env: { ...process.env, ...WEBKIT_SOFTWARE } } : { args: SOFTWARE };
   const result = { url: job.url, label: job.label, config: job.config, load: loadavg()[0] };
-  const context = await type.launchPersistentContext(dir, { ...options, ...config.context });
+  const context = bypassCookie(await type.launchPersistentContext(dir, { ...options, ...config.context }));
   try {
     await signInContext(context);
     await context.addInitScript(instrument);
@@ -268,9 +298,24 @@ async function visit(context, config, job, which) {
     const said = (pattern) => ((at.said.find(([, line]) => pattern.test(line)) || [NaN])[0]);
     // The memory as the engine's own start ended, before any script.
     at.memory.engine = (at.said.find(([, line]) => /^Build configuration/.test(line)) || [0, "", NaN])[2];
+    const chose = window.brickworksEngine || {};
+    // From the window built to working: the frames drawn and what they took,
+    // and the model's own open, phase by phase (ModelStore.open_phases).
+    const from = (window.brickworksBoot || {}).ui || Infinity;
+    const drawn = at.frames.filter(([began]) => began >= from);
+    const after = { frames: drawn.length, frame_ms: drawn.reduce((n, [, ms]) => n + ms, 0),
+      longest_ms: drawn.reduce((n, [, ms]) => Math.max(n, ms), 0),
+      open_phases: (window.brickworksState || {}).open_phases || {} };
     return { boot: { ...(window.brickworksBoot || {}) }, wasm: at.wasm, memory: at.memory, timeline: at.timeline,
       firstFrame: at.firstFrame, fetched: { wasm: res(/index\.wasm(\?|$)/), pck: res(/index\.pck(\?|$)/), data: res(/index\.data\.pck(\?|$)/) },
-      banner: said(/^Godot Engine v/), configured: said(/^Build configuration/), most: window.__phases.most() };
+      banner: said(/^Godot Engine v/), configured: said(/^Build configuration/), most: window.__phases.most(),
+      grows: at.grows.slice(), after_window: after,
+      // When the engine's wasm was asked for, and the question an iPhone or
+      // iPad asks before it (the shell's op=phone): a return waits on it.
+      asked: { wasm: Math.min(Infinity, ...performance.getEntriesByType("resource")
+        .filter((r) => /index\.wasm(\?|$)/.test(r.name)).map((r) => r.startTime)),
+      phone: res(/\/api\/plans\?op=phone/) },
+      engine: { at: chose.at || "", threads: chose.threads, apple: chose.apple, on: chose.on ?? null } };
   });
   const b = marks.boot;
   const fetchEnd = Math.max(marks.fetched.wasm, marks.fetched.pck);
@@ -279,6 +324,7 @@ async function visit(context, config, job, which) {
     compile: marks.wasm.compiled || NaN,
     instantiate: marks.wasm.instantiated || NaN,
     engine: marks.configured,
+    layers: b.layers,
     scripts: b.compiled,
     data: b.data || b.compiled,
     catalogue: b.catalogue,
@@ -303,9 +349,24 @@ async function visit(context, config, job, which) {
   } catch { /* gone */ }
   const top = Object.entries(after).map(([tid, r]) => ({ tid: Number(tid), comm: r.comm,
     s: (r.cpu - (before[tid]?.cpu || 0)) / 100 })).sort((x, y) => y.s - x.s).slice(0, 8);
+  // Held past working, the memory still read: what a minute of the window
+  // standing (the account's replies, the bin's sort, the figures' index)
+  // grows it to.
+  let held = NaN;
+  if (job.hold > 0 && Number.isFinite(state?.now)) {
+    await page.waitForTimeout(job.hold * 1000);
+    held = await page.evaluate(() => window.__phases.most()).catch(() => NaN);
+  }
+  const grows = Number.isFinite(held)
+    ? await page.evaluate(() => window.__phases.grows.slice()).catch(() => marks.grows) : marks.grows;
   await page.screenshot({ path: `${job.shot}-${which}.png`, timeout: 60000 }).catch(() => {});
   await page.close().catch(() => {});
-  return { at, lasts, memory: { at: marks.memory, most: marks.most, timeline: marks.timeline }, marks,
+  // The most the page's thread asked the heap for, at any growth to
+  // working: a floor under what the start needs, where the memory's size
+  // is the step above it.
+  const wants = grows.filter(([when]) => !(when > at.working)).map(([, wanted]) => wanted);
+  return { at, lasts, memory: { at: marks.memory, most: marks.most, timeline: marks.timeline,
+    asked: wants.length ? Math.max(...wants) : NaN, held, grows }, marks, engine: marks.engine,
     pss, cpu: { main: (u.main - t.main) / 100, all: (u.all - t.all) / 100, top }, errors: errors.slice(0, 5),
     bricks: state?.bricks, awaited: state?.awaited };
 }
@@ -315,12 +376,34 @@ async function visit(context, config, job, which) {
 // engine's console lines, and the first frame drawn once the app runs.
 function instrument() {
   try { localStorage.setItem("ov_ignore", "1"); } catch {}
-  const at = { wasm: {}, memory: {}, timeline: [], said: [], firstFrame: 0 };
+  const at = { wasm: {}, memory: {}, timeline: [], said: [], firstFrame: 0, grows: [] };
   window.__phases = at;
   const memories = [];
   const bytes = () => memories.reduce((most, m) => Math.max(most, m.buffer.byteLength), 0);
   let most = 0;
   at.most = () => Math.max(most, bytes());
+  // emscripten's resize, the import whose source grows the heap a fifth at
+  // a time, wrapped: [ms, what the heap asked for, the size before, after].
+  const watchGrowth = (imports) => {
+    for (const space of Object.values(imports || {})) {
+      if (!space || typeof space !== "object") continue;
+      for (const [name, fn] of Object.entries(space)) {
+        if (typeof fn !== "function" || fn.phasesWrapped) continue;
+        let text = "";
+        try { text = Function.prototype.toString.call(fn); } catch {}
+        if (!/overGrownHeapSize/.test(text)) continue;
+        const wrapped = function (requested, ...rest) {
+          const had = bytes();
+          const done = fn.call(this, requested, ...rest);
+          if (at.grows.length < 500) at.grows.push([Math.round(performance.now()), requested >>> 0, had, bytes()]);
+          return done;
+        };
+        wrapped.phasesWrapped = true;
+        try { space[name] = wrapped; } catch {}
+      }
+    }
+    return imports;
+  };
   const Real = WebAssembly.Memory;
   function Memory(descriptor) {
     const made = new Real(descriptor);
@@ -343,11 +426,11 @@ function instrument() {
     at.wasm.asked = performance.now();
     const module = await compileStreaming(source);
     at.wasm.compiled = performance.now();
-    const instance = await instantiate(module, imports);
+    const instance = await instantiate(module, watchGrowth(imports));
     at.wasm.instantiated = performance.now();
     return keep({ module, instance });
   };
-  WebAssembly.instantiate = (...a) => instantiate(...a).then(keep);
+  WebAssembly.instantiate = (what, imports, ...rest) => instantiate(what, watchGrowth(imports), ...rest).then(keep);
   // The app's marks, each with the memory's size as it was set.
   const marks = {};
   Object.defineProperty(window, "brickworksBoot", {
@@ -372,6 +455,31 @@ function instrument() {
   }
   let running = false;
   let state;
+  // Each animation frame's own length from the window built on, [began,
+  // ms]: what the window built to working is made of, frames drawn or a wait
+  // between. From the app's mark, not its first state: the state is first
+  // published near working, so the iPhone's visits said 0 frames. Kept
+  // whatever the page puts there after: the connector paces frames through
+  // its own requestAnimationFrame (src/net/claude_connector.gd), which asks
+  // the one it found here, so a frame passes through this twice: timed
+  // once, from the outside.
+  at.frames = [];
+  let inner = window.requestAnimationFrame.bind(window);
+  let inside = false;
+  const timed = (callback) => (time) => {
+    if (!marks.ui || inside) return callback(time);
+    inside = true;
+    const began = performance.now();
+    try { return callback(time); } finally {
+      inside = false;
+      if (at.frames.length < 3000) at.frames.push([Math.round(began), Math.round(performance.now() - began)]);
+    }
+  };
+  Object.defineProperty(window, "requestAnimationFrame", {
+    configurable: true,
+    get() { const now = inner; return (callback) => now(timed(callback)); },
+    set(f) { inner = f; },
+  });
   Object.defineProperty(window, "brickworksState", {
     configurable: true,
     get() { return state; },

@@ -106,6 +106,23 @@ def test_the_engine_moves_to_an_address_of_its_bytes_and_the_page_names_it(tmp_p
     assert "nothreads" not in config
 
 
+def test_the_page_compressed_before_it_was_pointed_goes(tmp_path):
+    # export.sh writes index.html.br of the unpointed page. serve.py
+    # --compressed sends it in the page's place to a browser taking brotli
+    # (Chromium, from 127.0.0.1): its engine "index", moved away, and
+    # "Engine is not defined" on every Chromium start (webstart13's proofs).
+    build = export(tmp_path, "abc1234")
+    (build / "index.html.br").write_bytes(b"br " + PAGE.encode())
+    (build / "index.html.gz").write_bytes(b"gz " + PAGE.encode())
+    said = run(tmp_path, "abc1234")
+    assert said.returncode == 0, said.stderr
+    assert not (build / "index.html.br").exists()
+    assert not (build / "index.html.gz").exists()
+    assert config_of((build / "index.html").read_text())["engine"].startswith("/e/")
+    # The packs keep theirs: those are what the deployment sends as brotli.
+    assert (build / "index.pck.br").is_file()
+
+
 def test_the_engine_without_threads_is_placed_beside_and_named_with_only_what_differs(tmp_path):
     build = export(tmp_path / "static", "abc1234")
     other = export_nothreads(tmp_path, build)

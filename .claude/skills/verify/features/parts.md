@@ -109,7 +109,12 @@ geometry in front of them.
   modified" is 15573, the jumper. `select_by` asks without these
   (`loose = false`). Keys are sorted as whole numbers over dense arrays, and
   the index is made on a worker once the bin is filled
-  (`PartLibrary.prepare_search`), so a first key typed answers in about
+  (`PartLibrary.prepare_search`), and in the app not before the start's
+  model is laid and every part of it is here (`search_ahead_held`, let go
+  of by `Main._search_ahead_after_start`, at most 20 s after the window;
+  a key typed meanwhile has it made at once): made beside the start's last
+  seconds, a worker grew WebKit's Wasm memory 360 to 432 MB (webstart13;
+  `searchahead_probe`, headless, in the suite). So a first key typed answers in about
   30 ms on a quiet box (54 ms the slowest letter at load 13, twice that at
   38). A key typed before it is made waits for it without holding the
   frame (`PartsBin._search_soon`, `PartLibrary.search_ready` never waits),

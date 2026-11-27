@@ -323,6 +323,56 @@ load 50 to 109):
   asked first, 78% of the first screen. Under 300 needs that cycle cut,
   class by class, so that its parts compile apart: the Next.
 
+### Where live's 432 MB comes from, and a return's seconds (webstart13)
+
+webstart13, 2026-11-22. webstart12 read 360 MB and live reads 432: both
+are right. `tools/web/start_phases.mjs` now keeps every growth of the
+heap the page's own thread asks for (the size asked, the size before and
+after) and holds each visit 30 s past working (`--hold=30`). Live (m318),
+3 visits a config at load 109 to 126
+(`bench/results/webstart13-2026-11-20/live/`):
+
+- **WebKit as an iPhone 13: layered compile is on** (the page took it for
+  an iPhone; the threaded engine, the switch off). Every growth its own
+  thread asked for was 300 MB or under, so the Wasm memory stood at 360 at
+  the scripts', the catalogue's and working's marks in 2 visits of 3. In
+  all 3 it was 432 within 30 s of working: 5 to 6 s after the window was
+  built, from a thread that is not the page's (a worker's growth is its
+  own copy of the import, unseen here). webstart12 read at working only.
+- **Chromium as a phone: the compile itself reaches 432**: the page's own
+  thread asked for 360 MB at the scripts' mark (no layered compile off
+  Apple, webstart12's choice).
+- **Where an iPhone's start goes**, median of 3, s: first visit 23.8 (the
+  engine's files 7.9, wasm compiled 4.6, engine 0.7, scripts 6.2, the data
+  pack 2.4, catalogue 0.7, window 1.2, first part 0.7, to working 4.7); a
+  return 19.5 (files 3.3, wasm 0.5, engine 0.7, scripts 6.5, data 1.0,
+  catalogue 0.7, window 1.5, first part 1.0, to working 5.1). The engine's
+  wasm was asked for only once the switch answered (op=phone), at 1.6 s on
+  a return as on a first visit. The main thread's own CPU to working is
+  12.0 to 12.8 s of it: the bar's 8 s is under the page's own work.
+
+What was done with it (measured at the same moments against live in
+`bench/results/webstart13-2026-11-20/proofs-<sha>/`, queued behind a
+release when written):
+
+- **The search's index waits for the start** (`PartLibrary.
+  search_ahead_held`, let go of by `Main._search_ahead_after_start` once
+  the start's model is laid and every part of it is here, 20 s at most):
+  it was the start's one worker task over the whole catalogue, begun as
+  the bin first fills, and ran beside the model's last seconds. A key typed
+  meanwhile has it made at once, as before (`searchahead_probe`).
+- **A return starts the engine at once on an iPhone or iPad that last
+  heard the switch off** (`brickworks.phoneEngine` in localStorage, the
+  shell's `brickworksEngine`): the question is still asked and its answer
+  kept, so the switch turned on reaches such a device a visit late; one
+  that last heard on waits for the answer, so off reaches it at once.
+
+**Not met, and why**: an iPhone's return at 8 s and Chromium's at 6 need
+the scripts' 6.5 s and the 5 s from the window to working cut, which is the
+124-script cycle (above) and the model's laying, not the start's order;
+300 MB is the same cycle's compile (300 to 360 at its height on an iPhone,
+over 360 on Chromium).
+
 ## The no-threads export on WebKit
 
 `Web (no threads)` (`build/web-nothreads`, unshared memory) against the

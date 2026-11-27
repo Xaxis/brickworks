@@ -2892,6 +2892,30 @@ const INDEX_WANTED_MS := 12.0
 ## search waits for it.
 var _index_making: PartSearch = null
 var _index_wanted: bool = false
+## While the app's start lays its first model (Main), the index is not made
+## ahead of need: asked so meanwhile ([method prepare_search] without
+## wanted), it is made once [method let_search_ahead] is called. A search
+## typed meanwhile still has it made at once. On WebKit as an iPhone 13 on
+## live, a worker grew the Wasm memory from 360 to 432 MB about 5 s after
+## the window was built, as the start's model was being drawn: every growth
+## the page's own thread asked for stopped at 360 (webstart13). This index,
+## made on a worker from the bin's first fill, is the start's worker task
+## over every part of the catalogue, its words and names and element
+## numbers. A page's Wasm memory never shrinks; made once the start's own
+## work is let go of, it is made in the room that left.
+var search_ahead_held: bool = false
+var _ahead_asked: bool = false
+
+
+## The start is over: the index asked for ahead of need while it was
+## ([member search_ahead_held]) is made now.
+func let_search_ahead() -> void:
+	if not search_ahead_held:
+		return
+	search_ahead_held = false
+	if _ahead_asked:
+		_ahead_asked = false
+		prepare_search()
 
 
 ## Whether the search's index is made, and where there are threads the
@@ -2919,6 +2943,9 @@ func search_ready() -> bool:
 ## when the first is typed (part_of_element), a seventh of a second.
 func prepare_search(wanted: bool = false) -> void:
 	_index_wanted = _index_wanted or wanted
+	if search_ahead_held and not wanted:
+		_ahead_asked = true
+		return
 	if _preparing >= 0 or _index_making != null or search_ready():
 		return
 	_collect_preparing()
