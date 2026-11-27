@@ -100,20 +100,33 @@ class Job extends RefCounted:
 	func next() -> void:
 		if _pace == null:
 			_pace = FramePace.new()
+		if _after_click:
+			# The click's own frame drawn before the next slice: the
+			# process_frame after a click is still in the click's frame
+			# ([method shown]), and the slice there was 12 ms more of it.
+			_after_click = false
+			IdleDraw.keep_awake()
+			await shown()
+			_pace = FramePace.new(_pace._least)
+			return
 		await _pace.next()
 
 	## Slices of at least [param least_us] from now on (FramePace).
 	func slices_of(least_us: int) -> void:
 		_pace = FramePace.new(least_us)
 
-	## The slice under way over [param us] from now: work begun on a click,
-	## whose frame has the click's own work to do (Inspector._count_joined).
+	## The slice under way over [param us] from now, and the next one once
+	## this frame has been drawn: work begun on a click, whose frame has the
+	## click's own work to do (Inspector._count_joined).
 	func first_slice(us: int) -> void:
 		if _pace == null:
 			_pace = FramePace.new()
 		_pace.ends_in(us)
+		_drawn_from = Engine.get_frames_drawn()
+		_after_click = true
 
 	var _pace: FramePace = null
+	var _after_click: bool = false
 
 	func cancel() -> void:
 		if not can_cancel or ended:

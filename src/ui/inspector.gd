@@ -1064,11 +1064,12 @@ func _plan_steps(key: String) -> void:
 	_planning = key
 	var job := Working.Job.new()
 	job.can_cancel = true
+	job.first_slice(0)
 	_plan_job = job
-	# From the next frame: what it reads before its first slice is spent
-	# (the model's shape, whether its author gave steps) was 5-9 ms of the
-	# click on 6685-1 and 5972-1.
-	await get_tree().process_frame
+	# Once the click's frame is drawn: what the plan reads before its first
+	# slice is spent (the model's shape, whether its author gave steps) was
+	# 5-9 ms of the click on 6685-1 and 5972-1.
+	await job.next()
 	if _planning != key or job.cancelled:
 		return
 	# The author's steps when there are any, numbered as the booklet is.

@@ -14,8 +14,9 @@
 ## (EditVerbs.click, as a press of the left button runs it):
 ##   clicks   the first click after the model opens (the instructions' steps
 ##            worked out then on a model of 600 parts or fewer) and four more,
-##            each from nothing selected: the click and the rest of its frame,
-##            to the start of the frame after, under a frame (16.7 ms; the
+##            each from nothing selected: the click, the rest of its frame,
+##            and what it left for the next process_frame (which to a person's
+##            press is the press's own frame), under a frame (16.7 ms; the
 ##            least of the warm ones, and the first on its own); Properties
 ##            name the part clicked at once; the line "Joined to N" reached
 ##            within 3,000 frames, the same words a whole look from the part
@@ -144,8 +145,8 @@ func _case_model(tag: String, path: String) -> void:
 		took.append(got)
 		if n > 0:
 			warm.append(float(got["answer"]))
-		print("    %s #%d (%s, %s): click %.1f ms, to the next frame %.1f ms; \"%s\" after %d frames, %.0f ms, the longest %.1f ms"
-			% [tag, n + 1, part["id"], part["name"], got["click"], got["answer"], got["line"],
+		print("    %s #%d (%s, %s): click %.1f ms, to the next frame %.1f ms, its frame %.1f ms; \"%s\" after %d frames, %.0f ms, the longest %.1f ms"
+			% [tag, n + 1, part["id"], part["name"], got["click"], got["next"], got["answer"], got["line"],
 				got["frames"], got["counted"], got["longest"]])
 		_check("%s #%d: Properties name the part at once (\"%s\")" % [tag, n + 1, got["title"]],
 			got["title"] == part["name"] and got["selected"] == [part["id"]])
@@ -174,9 +175,9 @@ func _case_model(tag: String, path: String) -> void:
 			_check("%s #%d: \"%s\" %d frames after the count, as the steps worked out on the spot (\"%s\")"
 				% [tag, n + 1, took[n]["step"], took[n]["step_frames"], want], took[n]["step"] == want)
 	warm.sort()
-	_check("%s: the first click to the next frame in %.1f ms, under a frame" % [tag,
+	_check("%s: the first click's frame %.1f ms, under a frame" % [tag,
 		took[0]["answer"]], float(took[0]["answer"]) < FRAME_MS)
-	_check("%s: a click to the next frame in %.1f ms, under a frame (the least of %s)" % [tag,
+	_check("%s: a click's frame %.1f ms, under a frame (the least of %s)" % [tag,
 		warm[0], warm], warm[0] < FRAME_MS)
 	var longest: Array = []
 	for got: Dictionary in took:
@@ -329,9 +330,16 @@ func _click(part: Dictionary) -> Dictionary:
 	var t1: int = Time.get_ticks_usec()
 	var title: String = _inspector._title.text
 	await process_frame
+	# Told after all the click began in this process_frame: a person's
+	# press is handled before its frame's processing, so to them the
+	# process_frame after the click is the click's own frame, still to be
+	# drawn (Working.Job.shown), and what the click left for it is the
+	# click's too. Here the click ran inside a process_frame, and that work
+	# is in the frame after: counted with the click.
+	var t3: int = Time.get_ticks_usec()
 	var t2: int = _frame_began
-	var out: Dictionary = {"click": (t1 - t0) / 1000.0, "answer": (t2 - t0) / 1000.0,
-		"selected": _builder.selection.keys(), "title": title}
+	var out: Dictionary = {"click": (t1 - t0) / 1000.0, "answer": (t3 - t0) / 1000.0,
+		"next": (t2 - t0) / 1000.0, "selected": _builder.selection.keys(), "title": title}
 	# Where the buttons under the facts are, laid out by the frame after.
 	out["buttons_at"] = _inspector._actions.global_position.y
 	var frames: int = 0
