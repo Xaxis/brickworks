@@ -3427,8 +3427,9 @@ plan with Claude as the client.
   (save-data, slow, cellular, phone, apple, unplaced). Proven by `the
   start by phase` with `--from=/` (the visit comes from the home page; the
   attribute at the click is in its table); `homefeed`'s check 6 counts
-  these apart from the post's studio (the main frame's prefetches and its
-  fetch of `/app`). `#loop-say` shows the caption of the moment from
+  these apart from the post's studio (the addresses of the page's own
+  `link[rel=prefetch]`, read at the check, as Playwright gives a link
+  prefetch no type of its own; and its fetch of `/app`). `#loop-say` shows the caption of the moment from
   `data-cues-desktop` / `data-cues-phone` ("seconds;t:word,..."; words in
   `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
   Made by `python3 tools/site/hero_capture.py` (the probe
