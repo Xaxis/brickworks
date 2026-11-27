@@ -973,10 +973,10 @@
    ],
    "yaw": 55.0,
    "pitch": 29.4,
-   "zoom": 1.538,
+   "zoom": 1.461,
    "shift": [
-    -0.06,
-    -0.007
+    -0.023,
+    0.008
    ],
    "focal_mm": 87.7,
    "backdrop": "#ffffff",
@@ -992,7 +992,8 @@
    "dust": 0.4,
    "paper": 0.0,
    "softness": 0.6,
-   "seating": 2.5
+   "seating": 2.5,
+   "plastic": "played"
   },
   {
    "name": "set_6657",
@@ -1025,7 +1026,8 @@
    "dust": 0.4,
    "paper": 1.0,
    "softness": 0.6,
-   "seating": 2.5
+   "seating": 2.5,
+   "plastic": "played"
   },
   {
    "name": "set_6660",
@@ -1057,7 +1059,8 @@
    "dust": 0.4,
    "paper": 0.0,
    "softness": 0.6,
-   "seating": 2.5
+   "seating": 2.5,
+   "plastic": "played"
   }
  ]
 }

@@ -201,6 +201,13 @@ const PRODUCT_FILL := 0.0
 ## judged alone beside the photographs against this tree without it, the
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
+## Parts moulded under the grid (photoreal30, RenderSettings.clearance,
+## PathTracer.clearance; docs/RENDERING.md 5ae): asked for, each part drawn
+## that many LDU narrower across than the grid it stands on (a real 1 x 1
+## brick is 7.8 mm for 8 mm of grid, 0.5 LDU), so parts side by side leave
+## a slot. 0 unless asked: at 0.5 the judge called the sets photographs no
+## more often (-0.037 against none, 95%: -0.130 to +0.022).
+const PRODUCT_CLEARANCE := 0.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
@@ -315,6 +322,16 @@ const PAPER_WHITE := 0.8
 ## the tent close-ups' photographs from the tracer's raw light
 ## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
 const PHOTO_EV := 0.33
+## How many stops more than PHOTO_EV the product look on a paper backdrop
+## (PAPER_WHITE or lighter) is exposed (photoreal30, RenderSettings.high_key;
+## docs/RENDERING.md 5ae): a product photograph on white is exposed
+## high-key, a white part's lit side nearly as bright as the paper (254 of
+## 255 on 6660's door, where the card metered at PHOTO_EV alone drew 215).
+## Half a stop lifted the sets beside their photographs by +0.089 (95%:
+## +0.015 to +0.177); a whole stop washed them out and gained nothing. On a
+## coloured surface none: there it greyed the black brick on leather (0.64
+## to 0.13 over three draws).
+const PRODUCT_HIGH_KEY := 0.5
 const PHOTO_LINEAR_SATURATION := 1.3
 const CAMERA_KNEE := 0.6
 const CAMERA_TOP := 2.5
@@ -2802,6 +2819,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	_tracer.clearance = _own(settings.clearance, PRODUCT_CLEARANCE) if _tracer.product else 0.0
 	var breakup: Array = _breakup(settings)
 	_tracer.peel = float(breakup[2])
 	_tracer.sink = float(breakup[3])
@@ -3606,13 +3624,18 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 		exposure: float, tonemapper: int, white: float, contrast: float,
 		saturation: float) -> float:
 	var goal: float = settings.backdrop.get_luminance()
-	if goal < PAPER_WHITE:
+	var paper: bool = goal >= PAPER_WHITE
+	if not paper:
 		goal = 1.0
 	# The card's light is the paper's own lightness in linear light, before
 	# the curve: a white paper's card is 1, PHOTO_EV over, and the camera's
 	# shoulder draws it a little short of white (the backdrop round the model
-	# is drawn at its own colour whatever, the shadow catcher).
-	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white * pow(2.0, PHOTO_EV)
+	# is drawn at its own colour whatever, the shadow catcher). On paper,
+	# PRODUCT_HIGH_KEY over that unless asked otherwise: a high-key
+	# photograph is a white paper's; on a coloured surface the card is kept.
+	var high: float = _own(settings.high_key, PRODUCT_HIGH_KEY if paper else 0.0)
+	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white \
+		* pow(2.0, PHOTO_EV + high)
 	var scale: float = 1.0
 	const DIM := 0.2
 	for round: int in 2:
