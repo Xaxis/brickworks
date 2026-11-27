@@ -821,8 +821,6 @@ export class Tracer {
 		const values = floats(numbers);
 		const full = new Float32Array(Math.ceil(Math.max(p.blocks.Resolve || 64, 64) / 4));
 		full.set(values.subarray(0, Math.min(values.length, full.length)));
-		gl.bindBuffer(gl.UNIFORM_BUFFER, this.resolveBuffer);
-		gl.bufferData(gl.UNIFORM_BUFFER, full, gl.DYNAMIC_DRAW);
 		gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, this.resolveBuffer);
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, this.pairs[0].accum);
@@ -834,8 +832,19 @@ export class Tracer {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.picturePair.fb);
 		gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 		gl.viewport(0, 0, w, h);
+		// Midway through a block of samples the rows it has reached hold that
+		// many more: each part divided by its own count, or the picture shown
+		// while it traces would be banded.
+		const parts = this.row > 0 ? [[0, this.row, this.blockCount], [this.row, h, 0]] : [[0, h, 0]];
+		gl.enable(gl.SCISSOR_TEST);
+		for (const [from, to, more] of parts) {
+			full[0] = values[0] + more;
+			gl.bindBuffer(gl.UNIFORM_BUFFER, this.resolveBuffer);
+			gl.bufferData(gl.UNIFORM_BUFFER, full, gl.DYNAMIC_DRAW);
+			gl.scissor(0, from, w, to - from);
+			gl.drawArrays(gl.TRIANGLES, 0, 3);
+		}
 		gl.disable(gl.SCISSOR_TEST);
-		gl.drawArrays(gl.TRIANGLES, 0, 3);
 		const out = new Uint8Array(w * h * 4);
 		gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, out);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -925,6 +934,7 @@ export function start() {
 		surface: (width, height, data) => tracer.surface(width, height, data),
 		begin: (width, height, scene, version) => tracer.begin(width, height, scene, version),
 		trace: (count, seed, whole) => tracer.trace(count, seed, !!whole),
+		between: () => tracer.row === 0,
 		picture: (numbers) => tracer.picture(numbers),
 		mean: () => tracer.mean(),
 		release: () => tracer.release(),

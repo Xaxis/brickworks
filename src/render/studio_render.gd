@@ -2835,11 +2835,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		# A frame's share at a time: 48 samples at once held the window's
 		# frame while the queue drew beside it.
 		_doing("metering")
-		for _part: int in 4:
-			_tracer.trace(12, round)
-			await get_tree().process_frame
-			if _cancelled:
-				return null
+		if not await _meter_samples(round, small.y):
+			return null
 		if _wanted_lightness > 0.0:
 			for _step_round: int in 4:
 				var seen: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
@@ -2916,6 +2913,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var shown_at: int = Time.get_ticks_msec()
 	_stopping = false
 	while _tracer.samples < wanted:
+		# Finish now in a browser waits out the block of samples under way, so
+		# every row of the picture has as many (the page's tracer takes a block
+		# down the picture in bands, photoreal28).
+		if _stopping and OS.has_feature("web") and PageTracer.between():
+			break
 		# Each sample's numbers come from its own index (path_tracer.glsl)
 		# and the seed alone, not from how the passes fell: the same
 		# settings trace the same picture however fast the card was
@@ -2943,7 +2945,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		var said: String = words if not words.is_empty() else \
 			"%d of %d samples" % [_tracer.samples, wanted]
 		progress.emit(lerpf(from, to, float(_tracer.samples) / float(wanted)), said)
-		if _stopping:
+		if _stopping and not OS.has_feature("web"):
 			break
 		# Shown as it gets cleaner, a picture a second, in two halves: the
 		# dialog draws pieces, and the whole of it is the finished picture.
@@ -2979,6 +2981,26 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 					await get_tree().process_frame
 				WorkerTasks.collect(task)
 	return result
+
+
+## The small metering picture's 48 samples, 12 a frame: a frame's share at a
+## time (48 at once held the window's frame while the queue drew beside it).
+## In a browser the page's tracer paces them itself (photoreal28), as many a
+## frame as the card does in its share. False when cancelled or it failed.
+func _meter_samples(round: int, rows: int) -> bool:
+	if OS.has_feature("web"):
+		while _tracer.samples < 48:
+			_tracer.trace(48 - _tracer.samples, round, 0, rows)
+			await get_tree().process_frame
+			if _cancelled or not PageTracer.usable():
+				return false
+		return true
+	for _part: int in 4:
+		_tracer.trace(12, round)
+		await get_tree().process_frame
+		if _cancelled:
+			return false
+	return true
 
 
 ## [param image], in place, as the camera saved it (photoreal6): through a
@@ -3528,11 +3550,8 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 		if not _tracer.begin(small):
 			return 0.0
 		_doing("metering")
-		for _part: int in 4:
-			_tracer.trace(12, round)
-			await get_tree().process_frame
-			if _cancelled:
-				return 0.0
+		if not await _meter_samples(round, small.y):
+			return 0.0
 		var seen: Image = _tracer.picture(exposure * scale * DIM, tonemapper, white, contrast,
 			saturation, true, false)
 		# A staged key falls off across the card (photoreal7): it is read

@@ -222,6 +222,13 @@ static func trace(count: int, seed: int, whole: bool) -> int:
 	return int(tracer.trace(count, seed, whole))
 
 
+## Whether no block of samples is part way down the picture: every row has
+## as many samples.
+static func between() -> bool:
+	var tracer: JavaScriptObject = _tracer()
+	return tracer == null or bool(tracer.between())
+
+
 ## The picture through the resolve's [param numbers]: RGBA8, top row first.
 static func picture(numbers: PackedFloat32Array) -> PackedByteArray:
 	var tracer: JavaScriptObject = _tracer()

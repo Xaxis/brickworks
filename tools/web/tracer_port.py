@@ -102,6 +102,8 @@ float rt_t;
 vec2 weights;
 const uint RT_OPAQUE = 1u;
 const uint RT_FIRST = 4u;
+// The port's own: the hit's part and distance only, not its surface (below).
+const uint RT_BARE = 256u;
 void closest_hit();
 """ % {"mask": WIDE - 1, "shift": WIDE.bit_length() - 1}
 
@@ -242,6 +244,11 @@ TRACE = """bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 		hit.t = best;
 		return true;
 	}
+	if ((flags & RT_BARE) != 0u) {
+		hit.t = best;
+		hit.instance = uint(found);
+		return true;
+	}
 	vec4 w0 = texelFetch(u_places, rt_texel(4 * found), 0);
 	vec4 w1 = texelFetch(u_places, rt_texel(4 * found + 1), 0);
 	vec4 w2 = texelFetch(u_places, rt_texel(4 * found + 2), 0);
@@ -352,6 +359,15 @@ def tracer_glsl(version: str) -> str:
     ray = swap(ray, "void main() {\n", "void main() {\n\trt_launch = uvec2(gl_FragCoord.xy);\n", "main")
     ray = swap(ray, "gl_RayFlagsOpaqueEXT", "RT_OPAQUE", "the flags", 0)
     ray = swap(ray, "gl_RayFlagsTerminateOnFirstHitEXT", "RT_FIRST", "the flags", 0)
+    # A shader has no calls: every trace() is copied in where it is called, and
+    # the closest hit with it. through_masked's walk through clear parts is in
+    # every light's shadow ray, seventeen copies of the whole surface (moulding,
+    # logos, wear), and the card took a minute to compile them, the page's
+    # frames stopped meanwhile. It reads only which part and how far, which
+    # RT_BARE gives without the surface; every read of hit's surface comes after
+    # a later full trace().
+    ray = swap(ray, "trace(at, way, left, MASK_GLASS, RT_OPAQUE)",
+               "trace(at, way, left, MASK_GLASS, RT_OPAQUE | RT_BARE)", "the walk through clear parts")
     ray = calls(ray, "table", "table_at", "int")
     ray = calls(ray, "instances", "instance_at", "uint")
 

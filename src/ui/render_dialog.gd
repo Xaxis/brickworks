@@ -1700,6 +1700,10 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_" + _quality[n].text.to_lower()] = _quality[n]
 	for n: int in _sizes.size():
 		named_controls["render_size_" + _sizes[n].text.to_lower()] = _sizes[n]
+	# Custom's own width and height (photoreal28: a browser check draws Best
+	# small, where a software renderer traces it).
+	named_controls["render_width"] = _width.get_line_edit()
+	named_controls["render_height"] = _height.get_line_edit()
 	for n: int in _backgrounds.size():
 		named_controls["render_bg_" + str(BACKGROUNDS[n][0]).to_lower()] = _backgrounds[n]
 	for n: int in _looks.size():
@@ -1757,6 +1761,10 @@ func _tell_page() -> void:
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step
+		# Path traced or not, and its samples so far (photoreal28).
+		state["traced"] = renderer.traced_last()
+		state["samples"] = renderer.samples_traced() if renderer.is_busy() else renderer.last_samples
+		state["finish"] = _finish_button.visible and not _finish_button.disabled
 	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion", "parts", "steps"]:
 		if _last.has(key):
 			state[key] = _last[key]
