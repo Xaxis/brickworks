@@ -39,6 +39,8 @@ const enough = Number(args.samples || 6);
 // How long the traced Best may take: on SwiftShader the product look's light
 // is metered first, 96 samples at 20 s each on a loaded box.
 const minutes = Number(args.minutes || 20);
+// Which pages: --only=traced or --only=plain runs one (the plain page is minutes, the traced one an hour).
+const parts = String(args.only || "traced,plain").split(",");
 const withParam = (address, param) => `${address}${address.includes("?") ? "&" : "?"}${param}`;
 mkdirSync(out, { recursive: true });
 
@@ -172,7 +174,7 @@ async function keep(download, label) {
   return file;
 }
 
-try {
+async function tracedPart() {
   // The tracer, asked for by the address.
   const page = await openPage(withParam(url, "tracer=on"));
   await chooseBest(page);
@@ -281,7 +283,9 @@ try {
     running.working === "picture" && running.traced === true && stopped.working === ""
     && /Cancel/.test(stopped.status || "") && !downloadedAnyway);
   await page.close();
+}
 
+async function plainPart() {
   // No graphics card: Best as frames averaged, and the result says why.
   const plain = await openPage(url);
   await chooseBest(plain);
@@ -302,6 +306,11 @@ try {
   check(`and downloads its picture (${flat ? `${flat.width}x${flat.height}` : "none"})`,
     Boolean(flat) && flat.width === width && flat.height === height);
   await plain.close();
+}
+
+try {
+  if (parts.includes("traced")) await tracedPart();
+  if (parts.includes("plain")) await plainPart();
 } catch (trouble) {
   check(`the flow ran to its end (${trouble.message})`, false);
 }

@@ -3602,7 +3602,10 @@ picture the assistant is shown.
   `heavy` (Product, Best at 192x108 with `?tracer=on`, its samples climbing,
   Finish now, the PNG, a second Best cancelled once it traces; then
   without it, frames averaged and the result
-  saying why; the page's thread never held over 2 s while it traces); `node
+  saying why; the page's thread never held over 2 s while it traces; no
+  script error, as `PageTracer._tracer()` asks for the interface only once
+  window.brickworksTracer is set; `--only=traced` or `--only=plain` runs one
+  page, and the traced one takes an hour on a loaded box); `node
   tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js --width=256
   --samples=8` under `heavy` (CAPTURE from `photoreal_probe --pt-capture=DIR`:
   the page's tracer in Chromium on SwiftShader, frame gaps and samples

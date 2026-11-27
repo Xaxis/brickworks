@@ -106,7 +106,12 @@ static func _state() -> String:
 	return "" if said == null else str(said)
 
 
+## The page's tracer, or null until a path-traced Best has fetched it.
+## get_interface reports a script error for a name the page has not set, and
+## the first Best asks (shape_of, started) before the script has come.
 static func _tracer() -> JavaScriptObject:
+	if str(JavaScriptBridge.eval("window.brickworksTracer ? 'there' : ''", true)) != "there":
+		return null
 	return JavaScriptBridge.get_interface("brickworksTracer")
 
 
