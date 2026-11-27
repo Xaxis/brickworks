@@ -203,6 +203,7 @@ site356, 2026-10-29. And:
 | `--control-radius`, `--radius` | `--r-2`, `--r-3` | a control's corners, a card's |
 | `--t-code` | 0.92em | code in a line of words: a monospace face looks larger at one size |
 | `--shade`, `--shine` | dark and light, see-through | a brick's lower edge and top: the 404's wall, a colour's dot |
+| `--sheen-metal`, `--glint-clear` | light at the top left falling to shadow; a glint, both themes | a colour's swatch in metallic or pearl plastic, and in see-through (the minifig maker); its edge, as every swatch's, is `--line-strong` |
 | `--scrim` | black, 55% | the dim behind an open dialog |
 | `--avatar-1` … `-8`, `--on-avatar` | eight tiles, white | an avatar made from a handle, its letter 5.37:1 or more on each |
 | `--motion`, `--motion-open`, `--ease` | 150 ms, 180 ms, an ease-out | a control answering the pointer; a dialog or menu opening ("Motion") |
