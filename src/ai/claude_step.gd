@@ -30,8 +30,15 @@ static func mark(builder: Builder, world: BrickWorld, scenery: Dictionary,
 ## [param at] steps deep (Builder.record). Nothing when nothing did, or when
 ## the model was replaced since (an Open, Brick Art laid): its history went
 ## with it. True when a step was kept.
+##
+## [param pair] false keeps every part taken off and put down as it is, by
+## number: a call's own change, where a part taken off and the same put
+## back is a re-lay asked for, and its undo gives the old number back
+## (copyfaults twin_relaid; savereview4 F2). True, a run's: one that failed
+## puts the model back under new numbers, and a part put back as it was, in
+## its sub-model, step and group, is no change.
 static func record(builder: Builder, world: BrickWorld, scenery: Dictionary,
-		from: Dictionary, at: int = -1) -> bool:
+		from: Dictionary, at: int = -1, pair: bool = true) -> bool:
 	if from.is_empty() or builder == null or world == null \
 			or world.generation() != int(from["generation"]):
 		return false
@@ -49,19 +56,29 @@ static func record(builder: Builder, world: BrickWorld, scenery: Dictionary,
 				back.append(step)
 			_:
 				steps.append(step)
+	if not pair:
+		steps = off.values() + steps + back
+		if steps.is_empty():
+			return false
+		builder.record(steps, "%s (%s)" % [from["words"], SelectionScope.words_for(steps)], at)
+		return true
 	# A part taken off and the same put back where it was is no change: a
-	# run that failed puts the model back so, under new numbers.
-	var standing: Dictionary = {}   ## part, colour and place -> ids put down since
+	# run that failed puts the model back so, under new numbers. The same
+	# only in its sub-model, step and group too: one moved into another at
+	# the same place is a change, and its undo takes it back.
+	var standing: Dictionary = {}   ## part, colour, place, sub-model, step, group -> ids
 	for brick_id: int in off:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		var key: String = "%s|%d" % [_place(brick.part_id, brick.transform), brick.color_code]
+		var key: String = _same(brick.part_id, brick.transform, brick.color_code, brick.unit,
+			brick.step, brick.group)
 		if not standing.has(key):
 			standing[key] = []
 		(standing[key] as Array).append(brick_id)
 	var gone: Array = []
 	for step: Dictionary in back:
-		var same: Array = standing.get("%s|%d" % [_place(str(step["part"]), step["transform"]),
-			int(step["color"])], [])
+		var same: Array = standing.get(_same(str(step["part"]), step["transform"],
+			int(step["color"]), str(step.get("unit", "")), int(step.get("step", -1)),
+			str(step.get("group", ""))), [])
 		var matched: int = 0
 		for brick_id: int in same:
 			if world.get_brick(brick_id).transform.is_equal_approx(step["transform"]):
@@ -128,3 +145,10 @@ static func _theirs(step: Dictionary, theirs: Dictionary) -> bool:
 
 static func _place(part: String, at: Transform3D) -> String:
 	return "%s@%.1f,%.1f,%.1f" % [part, at.origin.x, at.origin.y, at.origin.z]
+
+
+## What a part put back must share with one taken off to be the same part
+## ([method record]'s pairing): its place, colour, sub-model, step and group.
+static func _same(part: String, at: Transform3D, color: int, unit: String, step: int,
+		group: String) -> String:
+	return "%s|%d|%s|%d|%s" % [_place(part, at), color, unit, step, group]

@@ -352,8 +352,11 @@ func for_touches() -> String:
 
 ## Find, lay and hand over: the findings in words and one picture of the
 ## proposal standing on the model, marked. An Array of content blocks, or a
-## String where there is no picture or nothing was found. Awaited.
-func hand() -> Variant:
+## String where there is no picture or nothing was found. Awaited. [param by]
+## whose the pass is (Builder.BY), else whoever is [member Builder.acting] as
+## it is asked: what its pieces keep frames later is theirs.
+func hand(by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	ran = true
 	since_said = false
 	if assistant._bricks_inside({}).is_empty():
@@ -370,7 +373,7 @@ func hand() -> Variant:
 			offers.append(one)
 		else:
 			to_lay.append(one)
-	var laid: Array[Finding] = await _lay_all(to_lay, Time.get_ticks_msec() + LAYING_MS)
+	var laid: Array[Finding] = await _lay_all(to_lay, Time.get_ticks_msec() + LAYING_MS, actor)
 	for one: Finding in laid:
 		_numbered += 1
 		one.key = "S%d" % _numbered
@@ -465,8 +468,10 @@ func _picture(shown: Array[Finding]) -> Dictionary:
 # -- settling ------------------------------------------------------------------
 
 
-## settle_surface: what the design says of one finding, a few, or all.
-func settle(args: Dictionary) -> String:
+## settle_surface: what the design says of one finding, a few, or all, as
+## [param by]'s (Builder.BY), else whoever is [member Builder.acting].
+func settle(args: Dictionary, by: Variant = null) -> String:
+	var actor: String = Builder.acting if by == null else str(by)
 	var asked: String = str(args.get("finding", "")).strip_edges()
 	var verdict: String = str(args.get("verdict", "")).strip_edges().to_lower()
 	var reason: String = str(args.get("reason", "")).strip_edges()
@@ -487,7 +492,7 @@ func settle(args: Dictionary) -> String:
 			+ "or what the studs are for.")
 	var said := PackedStringArray()
 	for one: Finding in which:
-		said.append(await _settle_one(one, verdict, reason, args))
+		said.append(await _settle_one(one, verdict, reason, args, actor))
 	var left: Array[Finding] = open()
 	if left.is_empty():
 		said.append("Every finding is settled: %s." % record())
@@ -517,13 +522,14 @@ func _named(asked: String, verdict: String) -> Array[Finding]:
 	return out
 
 
-func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary) -> String:
+func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary,
+		by: String) -> String:
 	match verdict:
 		"flat":
-			return await _flat(one)
+			return await _flat(one, by)
 		"accept", "tile":
 			if one.offered and one.ids.is_empty():
-				if not await _lay(one):
+				if not await _lay(one, by):
 					return "%s: could not be laid as it stands now (%s); tile it with edit_model." % [
 						one.key, _why_not]
 				one.offered = false
@@ -547,7 +553,7 @@ func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary
 					placed["color"] = int(recolor.get(int(placed["color"]), int(placed["color"])))
 				adjusted = true
 			if adjusted:
-				var ids: Array[int] = await _edit(add, one.ids)
+				var ids: Array[int] = await _edit(add, one.ids, false, by)
 				if ids.is_empty():
 					return "%s: not adjusted, it stays as laid: %s" % [one.key, _why_not]
 				one.add = add
@@ -559,7 +565,7 @@ func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary
 			one.verdict = "accepted"
 			return "%s: accepted." % one.key
 		"reject", "keep":
-			if not one.ids.is_empty() and not await _take_off(one):
+			if not one.ids.is_empty() and not await _take_off(one, by):
 				return "%s: could not take the app's pieces off (%s); settle it another way." % [
 					one.key, _why_not]
 			one.verdict = "rejected" if verdict == "reject" else "kept"
@@ -583,10 +589,10 @@ func close() -> void:
 ## top wanted flat: "crisp flat-topped box; I tile its roof flat instead",
 ## "flat terraces ... I'll tile them flat", "square-edged boxes". The studs
 ## stayed: rejecting took the tiles off with the curves.
-func _flat(one: Finding) -> String:
+func _flat(one: Finding, by: String) -> String:
 	if one.kind != "edge":
 		return "%s: \"flat\" is for an edge; accept, reject or keep it." % one.key
-	if not one.ids.is_empty() and not await _take_off(one):
+	if not one.ids.is_empty() and not await _take_off(one, by):
 		return "%s: could not take the curved edge off (%s); settle it another way." % [
 			one.key, _why_not]
 	_read = OpenPoints.read(assistant)
@@ -610,7 +616,7 @@ func _flat(one: Finding) -> String:
 	var ids: Array[int] = []
 	if not add.is_empty():
 		var none: Array[int] = []
-		ids = await _edit(add, none)
+		ids = await _edit(add, none, false, by)
 	if ids.is_empty():
 		one.verdict = "rejected"
 		one.reason = "wanted flat; tiles would not lie there"
@@ -3648,7 +3654,7 @@ var _why_not: String = ""
 ## a minute: laid one finding at a time, a review of the starfighter took six,
 ## past the three minutes a session's call may take. One at a time only when
 ## the edit as a whole is refused, so one bad finding costs only itself.
-func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
+func _lay_all(these: Array[Finding], until: int, by: String) -> Array[Finding]:
 	var ready: Array[Finding] = []
 	_read = OpenPoints.read(assistant)
 	var points: Array = _points()
@@ -3680,7 +3686,7 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 	await _keep_pieces(not remove.is_empty())
 	var out: Array[Finding] = []
 	if ready.size() > 1:
-		var ids: Array[int] = await _edit(add, remove)
+		var ids: Array[int] = await _edit(add, remove, false, by)
 		if not ids.is_empty():
 			_share_out(ready, ids)
 			out = ready
@@ -3689,7 +3695,7 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 		if Time.get_ticks_msec() > until:
 			more += 1
 			continue
-		var ids: Array[int] = await _edit(one.add, one.remove)
+		var ids: Array[int] = await _edit(one.add, one.remove, false, by)
 		if ids.is_empty():
 			_could_not(one)
 			continue
@@ -3713,13 +3719,13 @@ func _keep_pieces(taking_off: bool) -> void:
 
 
 ## Lay one finding (ground offered, tiled when asked), checked open first.
-func _lay(one: Finding) -> bool:
+func _lay(one: Finding, by: String) -> bool:
 	_read = OpenPoints.read(assistant)
 	_why_not = _not_ready(one, {}, _points())
 	if not _why_not.is_empty():
 		return false
 	await _keep_pieces(not one.remove.is_empty())
-	var ids: Array[int] = await _edit(one.add, one.remove)
+	var ids: Array[int] = await _edit(one.add, one.remove, false, by)
 	assistant._keep_pieces = -1
 	if ids.is_empty():
 		return false
@@ -3808,7 +3814,7 @@ static func _signature(part: String, section: String, x: float, y: float, z: flo
 
 
 ## Take a finding's pieces off and put back what they replaced.
-func _take_off(one: Finding) -> bool:
+func _take_off(one: Finding, by: String) -> bool:
 	var standing: Array[int] = []
 	for id: int in one.ids:
 		if assistant.world.get_brick(id) != null:
@@ -3816,7 +3822,7 @@ func _take_off(one: Finding) -> bool:
 	if standing.is_empty() and one.restore.is_empty():
 		one.ids = []
 		return true
-	var put_back: Array[int] = await _edit(one.restore, standing, true)
+	var put_back: Array[int] = await _edit(one.restore, standing, true, by)
 	if put_back.is_empty() and not one.restore.is_empty():
 		return false
 	if one.restore.is_empty() and assistant.world.get_brick(standing[0]) != null:
@@ -3827,7 +3833,7 @@ func _take_off(one: Finding) -> bool:
 
 ## One edit through edit_model: what it added, by id; none when refused (why,
 ## in _why_not). [param removing_only] takes an edit that adds nothing.
-func _edit(add: Array, remove: Array[int], removing_only: bool = false) -> Array[int]:
+func _edit(add: Array, remove: Array[int], removing_only: bool, by: String) -> Array[int]:
 	var before: Dictionary = {}
 	for brick: BrickWorld.Brick in assistant.world.bricks():
 		before[brick.id] = true
@@ -3841,7 +3847,7 @@ func _edit(add: Array, remove: Array[int], removing_only: bool = false) -> Array
 		return out
 	assistant._laying_whole = true
 	assistant._quiet_edit = true
-	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input})
+	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input}, by)
 	assistant._quiet_edit = false
 	assistant._laying_whole = false
 	var head: String = str(answer if answer is String else (

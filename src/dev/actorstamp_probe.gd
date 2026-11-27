@@ -1,7 +1,7 @@
 ## actorstamp: a step a session's tool keeps after it has waited frames is
 ## still the session's, and the person's act in those frames is still theirs.
 ## A tool's first stretch runs as its session's (CommandSocket._by); one that
-## waits carries the session to the step it keeps (Builder.by, AppTools._mine).
+## waits carries the session, read at its entry, to the step it keeps (Builder.by).
 ##
 ##   godot --headless --path . --script src/dev/actorstamp_probe.gd
 ##

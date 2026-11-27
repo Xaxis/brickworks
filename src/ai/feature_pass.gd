@@ -438,8 +438,11 @@ static func names_it(entry: Dictionary, said: PackedStringArray, nouns: Array) -
 
 
 ## Lay the best piece that fits for a feature, as its proposal, unless one
-## already stands. Awaited.
-func propose(name: String) -> Proposal:
+## already stands. Awaited. [param by] whose the proposal is (Builder.BY),
+## else whoever is [member Builder.acting] as it is asked: what laying it
+## keeps frames later is theirs.
+func propose(name: String, by: Variant = null) -> Proposal:
+	var actor: String = Builder.acting if by == null else str(by)
 	var key: String = name.to_lower()
 	var one: Proposal = proposals.get(key)
 	if one == null:
@@ -453,13 +456,13 @@ func propose(name: String) -> Proposal:
 		one.guessed = bool(one.spot.get("guessed", false))
 	if one.candidates.is_empty() and one.next == 0:
 		one.candidates = candidates_for(name)
-	await _lay_next(one)
+	await _lay_next(one, actor)
 	return one
 
 
 ## Lay the next candidate that fits, from one.next on. Leaves one.piece
-## empty when none does.
-func _lay_next(one: Proposal) -> void:
+## empty when none does. Laid as [param actor]'s ([method propose]).
+func _lay_next(one: Proposal, actor: String) -> void:
 	one.piece = {}
 	one.ids = []
 	one.copies = []
@@ -478,7 +481,7 @@ func _lay_next(one: Proposal) -> void:
 			one.unsuited = why
 			continue
 		tries += 1
-		var ids: Array[int] = await lay(fit["bricks"])
+		var ids: Array[int] = await lay(fit["bricks"], [], actor)
 		if ids.is_empty():
 			one.missed.append(str(entry["id"]))
 			continue
@@ -491,7 +494,7 @@ func _lay_next(one: Proposal) -> void:
 		if _plural(one.feature) and not other.is_empty():
 			var second: Dictionary = await fit(entry, other, in_wall)
 			if not second.is_empty() and unsuited(one.feature, other, second).is_empty():
-				var more: Array[int] = await lay(second["bricks"])
+				var more: Array[int] = await lay(second["bricks"], [], actor)
 				if not more.is_empty():
 					one.ids.append_array(more)
 					one.copies.append(second)
@@ -748,8 +751,10 @@ static func _shifted(bricks: Array, by: Vector3) -> Array:
 
 
 ## Lay bricks through edit_model, checked like any edit; the ids they were
-## given, or none when it was refused.
-func lay(bricks: Array, remove: Array[int] = []) -> Array[int]:
+## given, or none when it was refused. As [param by]'s (Builder.BY), else
+## whoever is [member Builder.acting] as it is asked.
+func lay(bricks: Array, remove: Array[int] = [], by: Variant = null) -> Array[int]:
+	var actor: String = Builder.acting if by == null else str(by)
 	var before: Dictionary = {}
 	for brick: BrickWorld.Brick in assistant.world.bricks():
 		before[brick.id] = true
@@ -757,7 +762,7 @@ func lay(bricks: Array, remove: Array[int] = []) -> Array[int]:
 	if not remove.is_empty():
 		input["remove"] = remove
 	assistant._laying_whole = true
-	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input})
+	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input}, actor)
 	assistant._laying_whole = false
 	var head: String = str(answer if answer is String else "")
 	var out: Array[int] = []
@@ -771,8 +776,9 @@ func lay(bricks: Array, remove: Array[int] = []) -> Array[int]:
 
 
 ## Take the proposal's bricks off, those still standing. True when they
-## are gone.
-func take_off(one: Proposal) -> bool:
+## are gone. As [param by]'s, else whoever is [member Builder.acting].
+func take_off(one: Proposal, by: Variant = null) -> bool:
+	var actor: String = Builder.acting if by == null else str(by)
 	var standing: Array = []
 	for id: int in one.ids:
 		if assistant.world.get_brick(id) != null:
@@ -782,7 +788,7 @@ func take_off(one: Proposal) -> bool:
 		return true
 	assistant._laying_whole = true
 	var answer: Variant = await assistant._run_tool({"name": "edit_model",
-		"input": {"remove": standing}})
+		"input": {"remove": standing}}, actor)
 	assistant._laying_whole = false
 	var head: String = str(answer if answer is String else "")
 	if head.begins_with("Not applied") or head.begins_with("That would"):
@@ -793,8 +799,11 @@ func take_off(one: Proposal) -> bool:
 
 ## The same piece laid again, moved by whole studs and plates, turned, or
 ## recoloured: in one edit with taking the old copies off, so a refusal
-## leaves it where it was. "" when it went down; why not otherwise.
-func adjust(one: Proposal, move: Dictionary, turns: int, recolor: Dictionary) -> String:
+## leaves it where it was. "" when it went down; why not otherwise. As
+## [param maker]'s (Builder.BY), else whoever is [member Builder.acting].
+func adjust(one: Proposal, move: Dictionary, turns: int, recolor: Dictionary,
+		maker: Variant = null) -> String:
+	var actor: String = Builder.acting if maker == null else str(maker)
 	var bricks: Array = []
 	var copies: Array = []
 	for n: int in one.copies.size():
@@ -824,7 +833,7 @@ func adjust(one: Proposal, move: Dictionary, turns: int, recolor: Dictionary) ->
 	for id: int in one.ids:
 		if assistant.world.get_brick(id) != null:
 			standing.append(id)
-	var ids: Array[int] = await lay(bricks, standing)
+	var ids: Array[int] = await lay(bricks, standing, actor)
 	if ids.is_empty():
 		return ("Not applied: laid there it would run into the model or hold by "
 			+ "nothing, so it stays where it was. Move it less, or the other way.")

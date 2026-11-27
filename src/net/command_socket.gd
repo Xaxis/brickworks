@@ -883,12 +883,12 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			_at_work += 1
 			assistant.chat = chat
 			assistant.who = who
-			assistant.call_by = actor
+			# Not queued, so it runs beside another call: whose it is goes in
+			# the call itself, never in a member the other call also sets.
 			var said: Variant = await _by(actor, func() -> Variant:
-				return await _run_own(name, input))
+				return await _run_own(name, input, actor))
 			assistant.chat = ""
 			assistant.who = CLAUDE
-			assistant.call_by = ""
 			_at_work -= 1
 			var followed: Array = _one_step(name, before, actor, who)
 			# Said of the model as the copies that followed it left it, as
@@ -955,16 +955,16 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	_at_work += 1
 	assistant.chat = chat
 	assistant.who = who
-	assistant.call_by = actor
+	# Whose the call is goes with it, read at its start by what it runs
+	# (Builder.acting there) and carried past its waits: no member says it,
+	# for a call not queued (save, review, clear) to set or clear meanwhile.
 	if _the_app_tools().has(name):
 		var tools: AppTools = _the_app_tools()
 		tools.chat = chat
 		tools.connection = connection
-		tools.actor = actor
-		answer = await _by(actor, func() -> Variant: return await tools.run(name, input, work))
+		answer = await _by(actor, func() -> Variant: return await tools.run(name, input, work, actor))
 		tools.chat = ""
 		tools.connection = ""
-		tools.actor = ""
 	else:
 		answer = await _by(actor, func() -> Variant: return await assistant.use_tool(name, input))
 		# The parts its findings name, pictured (SeeTools, APP_UX5 seeing2).
@@ -972,7 +972,6 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 			answer = await _the_app_tools().findings_pictured(answer, input)
 	assistant.chat = ""
 	assistant.who = CLAUDE
-	assistant.call_by = ""
 	_at_work -= 1
 	var followed: Array = _one_step(name, before, actor, who)
 	# Counted and judged as the copies that followed it left the model; its
@@ -1091,12 +1090,15 @@ func _one_step(name: String, before: Dictionary, actor: String, who: String = CL
 		# the call's own, as it came first: redone after the floor, the floor
 		# was laid round nothing, and a baseplate part of the build came back
 		# scenery. No part a step kept since names is in it, so it stands
-		# apart from the person's steps on either side.
+		# apart from the person's steps on either side. Every part by its
+		# number, none paired off: a call that took a part off and put the
+		# same down is a re-lay it asked for, and its undo gives the old
+		# number back (copyfaults twin_relaid).
 		Builder.by(actor, func() -> bool:
 			return ClaudeStep.record(builder, assistant.world, assistant.scenery,
 				{"was": before["was"], "steps": [kept, builder.steps_now()[1]],
 				"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
-				own))
+				own, false))
 	builder.fold_since(from, "", actor)
 	var now: Array = builder.steps_now()[0]
 	var made: bool = false
@@ -1395,13 +1397,16 @@ static func _model_file(asked: String) -> String:
 ## The window's other commands (AppTools) are not these: they wait their
 ## turn as the assistant's tools do (_call), since a render, a hose and a
 ## pose all draw or change the one model. A String, or the blocks of an
-## answer with a picture in it.
-func _run_own(tool: String, input: Dictionary) -> Variant:
+## answer with a picture in it. [param by] whose the call is ([method
+## actor_of]), else whoever is [member Builder.acting] as it begins: handed
+## to what keeps its steps once it has waited.
+func _run_own(tool: String, input: Dictionary, by: Variant = null) -> Variant:
+	var actor: String = Builder.acting if by == null else str(by)
 	if tool == "review_model" and assistant != null:
 		if bool(input.get("surface", false)):
-			return await assistant.surface_review()
+			return await assistant.surface_review(actor)
 		return await assistant.review(str(input.get("assembly", "")),
-			str(input.get("feature", "")), bool(input.get("creative", false)))
+			str(input.get("feature", "")), bool(input.get("creative", false)), actor)
 	# A bench's save waits on what its judge is told, as it did: BrickBench
 	# reads the file at once and scores it (Assistant.BRICKBENCH_FLAG), and
 	# realset saves each held-out session's model at its end and scores that
@@ -1409,7 +1414,7 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 	# asked after its file is written only speaks (below): parts come off
 	# only here, before a bench's file is written.
 	if tool == "save_model" and assistant != null and bench_run():
-		var held: Variant = await assistant.save_gate(true)
+		var held: Variant = await assistant.save_gate(true, actor)
 		if not (held is String and (held as String).is_empty()):
 			return held
 	if app == null:
@@ -1470,7 +1475,7 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				var unsettled: String = _unsettled_said(assistant)
 				var held: Variant = ""
 				if unsettled.is_empty():
-					held = await assistant.save_gate()
+					held = await assistant.save_gate(false, actor)
 				if not unsettled.is_empty() or not (held is String and (held as String).is_empty()):
 					assistant.progress.emit("saved %s; not finished yet" % file)
 					return Assistant._joined(written + " The model as it stood is kept; saving "
@@ -1487,7 +1492,7 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			if assistant != null:
 				more = await assistant.fresh_eyes().after_save()
 			if assistant != null and str(more).is_empty():
-				more = await assistant.fresh_eyes().reviewed()
+				more = await assistant.fresh_eyes().reviewed(actor)
 			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
 

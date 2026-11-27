@@ -690,11 +690,17 @@ plan with Claude as the client.
   call, each building only in its own tab (2026-10-17; the run's log is in
   `bench/results/tabpair-2026-10-17/claude_pair2`). Undo per chat: a step is the
   person's unless a session's own code kept it. CommandSocket runs each call's tool
-  inside `Builder.by_wait(CommandSocket.actor_of(chat, connection), ...)`, and a tool
-  that keeps its step after waiting carries the session there itself (`Builder.by`:
-  `AppTools._mine`, `GrabDrag.for_session`, `EditVerbs.press`, `Working.attend`,
-  `MotionPlayer.pace`, `Assistant.call_by`); such a step holds `by` (`Builder.BY`), and
-  nothing is read off the clock. The `undo` tool takes back only this chat's steps and
+  inside `Builder.by_wait(CommandSocket.actor_of(chat, connection), ...)` and hands
+  that actor to the call itself (`AppTools.run(..., by)`, `_run_own(..., by)`); a tool
+  reads `Builder.acting` at its entry, before any wait, and carries it to the step it
+  keeps after waiting (`Builder.by(by, ...)`: each AppTools tool, `GrabDrag.for_session`,
+  `EditVerbs.press`, `Working.attend`, `MotionPlayer.pace`; the panel's run reads it
+  once into `Assistant._run_by`, the person's ""). No shared member says who acts, so a
+  call not queued (save, review, clear) running beside another cannot change whose a
+  step is (`savereview4_attack_probe` F1/F3). Such a step holds `by` (`Builder.BY`), and
+  nothing is read off the clock. A call's own change with no step of its own is kept by
+  number (`ClaudeStep.record(..., pair = false)`): a re-lay it asked for comes back
+  under its old number on Undo (`copyfaults_probe` twin_relaid). The `undo` tool takes back only this chat's steps and
   stops at another chat's, saying so (`AppTools._undo`), and at one with no `by`, the
   person's own, made at any time, the call's own time too (`saved_without_attack_probe`
   C1: "is the person's own, made in the tab, so it was left"; `savereview3_attack_probe`,
