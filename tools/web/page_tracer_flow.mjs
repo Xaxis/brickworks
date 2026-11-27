@@ -14,7 +14,8 @@
 // sample count does not climb while the dialog shows the picture, Finish
 // now leaves it running or downloads nothing, the PNG is not the size
 // asked or is one flat colour, the page's thread is held over --stall
-// seconds (default 2) while it traces, the page without ?tracer=on does
+// seconds (default 2) while it traces, Cancel once it traces leaves it
+// running or downloads anything, the page without ?tracer=on does
 // not say why its Best is frames averaged or downloads nothing, or a
 // script error reaches the console. Says the longest wait for a frame
 // while the tracer was readied (its shaders compiled) and while it traced.
@@ -223,6 +224,30 @@ try {
   check(`the result does not say frames averaged ("${seen.status}")`, !/frames averaged/.test(seen.status || ""));
   check(`the page's thread is never held over ${stallLimit} ms while it traces (${tracing.beat} ms)`,
     tracing.beat <= stallLimit);
+
+  // Cancel once it traces: nothing downloaded, nothing left running, and the
+  // next Best traces again from its first sample.
+  let downloadedAnyway = false;
+  const stray = (d) => { downloadedAnyway = true; d.cancel().catch(() => {}); };
+  page.on("download", stray);
+  await press(page, "render_picture");
+  let running = {};
+  for (let n = 0; n < 10 * 120; n++) {
+    running = await state(page);
+    if (running.working === "picture" && running.traced && running.samples > 0) break;
+    await page.waitForTimeout(500);
+  }
+  await press(page, "render_cancel");
+  let stopped = {};
+  for (let n = 0; n < 120; n++) {
+    stopped = await state(page);
+    if (stopped.working === "") break;
+    await page.waitForTimeout(500);
+  }
+  page.off("download", stray);
+  check(`Cancel stops a traced Best (was at ${running.samples || 0} samples, then "${stopped.status}")`,
+    running.working === "picture" && running.traced === true && stopped.working === ""
+    && /Cancel/.test(stopped.status || "") && !downloadedAnyway);
   await page.close();
 
   // No graphics card: Best as frames averaged, and the result says why.

@@ -116,7 +116,7 @@ float table_at(int i) {
 
 # trace(): the tree of instances, each instance's own tree of triangles in its own space, nearest
 # child first; a ray that wants only to know whether anything is there (a shadow) stops at the first.
-TRACE = """bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
+TRACE = """bool walk(vec3 from, vec3 way, float far, uint mask, uint flags) {
 	hit.t = -1.0;
 	if (u_top < 0) {
 		return false;
@@ -260,6 +260,18 @@ TRACE = """bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 	rt_primitive = found_prim;
 	weights = found_uv;
 	rt_t = best;
+	return true;
+}
+
+// The walk, then the closest hit unless the ray asked for none (a shadow
+// ray's first hit, or the bare hit). Only trace() copies the closest hit in.
+bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
+	if (!walk(from, way, far, mask, flags)) {
+		return false;
+	}
+	if ((flags & (RT_FIRST | RT_BARE)) != 0u) {
+		return true;
+	}
 	closest_hit();
 	return hit.t >= 0.0;
 }"""
@@ -366,8 +378,46 @@ def tracer_glsl(version: str) -> str:
     # frames stopped meanwhile. It reads only which part and how far, which
     # RT_BARE gives without the surface; every read of hit's surface comes after
     # a later full trace().
-    ray = swap(ray, "trace(at, way, left, MASK_GLASS, RT_OPAQUE)",
-               "trace(at, way, left, MASK_GLASS, RT_OPAQUE | RT_BARE)", "the walk through clear parts")
+    # The walk itself is copied in each time too: through_masked's two (the solid
+    # parts, then the clear parts' faces) in every shadow ray were 34 of the
+    # shader's 37. One walk() in a loop does both, the solid parts first.
+    ray = swap(ray, """	if (trace(from, way, far, solid,
+			RT_OPAQUE | RT_FIRST)) {
+		return vec3(0.0);
+	}
+	vec3 let = vec3(1.0);
+	if (scene.size.w < 0.5) {
+		return let;
+	}
+	vec3 at = from;
+	float left = far;
+""", """	vec3 let = vec3(1.0);
+	vec3 at = from;
+	float left = far;
+""", "through_masked's solid parts")
+    ray = swap(ray, """	for (int n = 0; n < 8; n++) {
+		if (!trace(at, way, left, MASK_GLASS, RT_OPAQUE)) {
+			return let;
+		}
+""", """	for (int n = -1; n < 8; n++) {
+		// The port's: the solid parts the whole way first (n -1), then the
+		// clear parts' faces, by the one walk().
+		bool solids = n < 0;
+		bool met = walk(solids ? from : at, way, solids ? far : left, solids ? solid : MASK_GLASS,
+			solids ? (RT_OPAQUE | RT_FIRST) : (RT_OPAQUE | RT_BARE));
+		if (solids) {
+			if (met) {
+				return vec3(0.0);
+			}
+			if (scene.size.w < 0.5) {
+				return let;
+			}
+			continue;
+		}
+		if (!met) {
+			return let;
+		}
+""", "through_masked's clear parts")
     ray = calls(ray, "table", "table_at", "int")
     ray = calls(ray, "instances", "instance_at", "uint")
 

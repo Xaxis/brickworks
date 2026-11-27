@@ -3569,19 +3569,37 @@ picture the assistant is shown.
   tracer.js is fetched only when a path-traced Best starts (`PageTracer.ready`,
   `import()` from `Origin.build()`), its shaders compiled beside the page; a
   pass is given only once the last one's fence has signalled, sized by the
-  card's timer query to 12 ms (else grown while done by the next frame), so
-  the tab keeps drawing. Where it fails (no script, a shader the card will not
-  compile, a lost context) `PageTracer.fail` and `_picture` draws Best's
-  frames instead; the result line says why (`PathTracer.why_not()`). Render's
-  Finish now (`render_finish`) keeps the picture as clean as it is. Check:
-  `python3 tools/minitest.py tests/test_page_tracer.py` (the port writes
-  every shader with nothing of Vulkan's left; rays walked through `pack()`'s
-  textures find the triangle testing every one finds); `node
+  card's timer query to 12 ms (where the browser does not time the card,
+  Firefox and Safari, grown while the page's frames come within 22 ms and
+  shrunk past 34), so the tab keeps drawing. A shader has no calls: the
+  walk and the closest hit are copied in wherever they are called, and they
+  made the first compile take about a minute. So a shadow ray's walk through
+  clear parts asks for the bare hit (`RT_BARE`, the port's own), and
+  `through_masked` walks the solid parts and then the clear parts' faces in
+  one loop over one `walk()` (20 walks in the shader, not 37). Its pictures
+  are the same to the bit (llvmpipe, a glass set and a clear round). Where it fails (no script, a
+  shader the card will not compile, a lost context) `PageTracer.fail` and
+  `_picture` draws Best's frames instead; the result line says why
+  (`PathTracer.why_not()`). Render's Finish now (`render_finish`) keeps the
+  picture as clean as it is, once the block of samples under way reaches
+  the last row (`PageTracer.between`). The page is told `traced`, `samples`
+  and `finish` in window.brickworksRender, and Custom's `render_width` and
+  `render_height` are named. Check: `python3 tools/minitest.py
+  tests/test_page_tracer.py` (the port writes every shader with nothing of
+  Vulkan's left; rays walked through `pack()`'s textures find the triangle
+  testing every one finds); `node tools/web/page_tracer_flow.mjs
+  --url=http://127.0.0.1:PORT/index.html --out=DIR` on a local export served
+  by `relay_server.mjs PORT --static=build/web` with `.env` loaded, under
+  `heavy` (Product, Best at 192x108 with `?tracer=on`, its samples climbing,
+  Finish now, the PNG, a second Best cancelled once it traces; then
+  without it, frames averaged and the result
+  saying why; the page's thread never held over 2 s while it traces); `node
   tools/web/tracer_bench.mjs page CAPTURE OUT.png --js=tracer.js --width=256
   --samples=8` under `heavy` (CAPTURE from `photoreal_probe --pt-capture=DIR`:
   the page's tracer in Chromium on SwiftShader, frame gaps and samples
   timed); bench/results/photoreal28-2026-11-26/scripts/gpu28.py runs the same
-  shaders and textures on the card through EGL under `gpu`.
+  shaders and textures on the card through EGL under `gpu`, a band of rows
+  a pass (a whole picture's pass of a set ran past the kernel's 10 s).
 - `render queue` (File, Render queue…; `src/ui/render_queue.gd`,
   `RenderQueue.of(app)`, loaded by name so main and the shell do not
   compile it at start): a panel in the bottom right of the model's room.
