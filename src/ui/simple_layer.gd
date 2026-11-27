@@ -596,16 +596,28 @@ func entered() -> void:
 	_lay_out()
 	_sketch()
 	reset(false)
-	# Framed and its left-alone parts counted a frame later: each reads every
-	# part, and the switch is the controls' work alone, whatever the model's
-	# size (10030 took it to 18.8 ms at 390 under load).
+	# Framed and its left-alone parts counted after the switch, each read a
+	# slice a frame: each reads every part, and the switch is the controls'
+	# work alone, whatever the model's size (10030 took it to 18.8 ms at 390
+	# under load; read at once, Orthanc's bounds were 31 ms of the frame).
 	_settle_in.call_deferred()
 
 
 func _settle_in() -> void:
-	if _up():
+	if not _up():
+		return
+	var camera: CadCamera = app.get("_camera")
+	var world: BrickWorld = app.get("_world")
+	var pose: String = str(_pose(camera))
+	var generation: int = world.generation()
+	await _know_world_paced()
+	# Another model opened meanwhile is framed by its open (bar.opened).
+	if not _up() or world.generation() != generation:
+		return
+	# Not where the view was moved meanwhile, by a finger or Fit.
+	if str(_pose(camera)) == pose:
 		_frame()
-		_tell_left_alone()
+	_tell_left_alone()
 
 
 ## Back to Full: the moment let go of, the camera's fingers the studio's
@@ -854,17 +866,56 @@ func _ground_rect() -> Rect2:
 
 
 func _know_world() -> void:
+	var key: Array = _world_now()
+	if not key.is_empty() and key != _world_key:
+		_know_world_from(key, app.call("_model_bounds"))
+
+
+## The model as Simple's world is known for: [] with no model.
+func _world_now() -> Array:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var floor: FloorLayer = app.get("_floor")
 	if world == null or store == null:
-		return
+		return []
 	var area: AABB = floor.area if floor != null and store.model_floor.kind != ModelFloor.NONE else AABB()
-	var key: Array = [world.generation(), world.revision, world.brick_count(), store.scenery.size(), area]
-	if key == _world_key:
-		return
+	return [world.generation(), world.revision, world.brick_count(), store.scenery.size(), area]
+
+
+## [method _know_world] with what is built read a slice a frame
+## (FramePace), as Main._model_bounds reads it at once: read in the frame of
+## the switch, Orthanc's 10,101 parts were 31 ms of it (simple3 T6). False
+## when Simple was left or the model changed meanwhile.
+func _know_world_paced() -> bool:
+	var key: Array = _world_now()
+	if key.is_empty() or key == _world_key:
+		return not key.is_empty()
+	var world: BrickWorld = app.get("_world")
+	var scenery: Dictionary = (app.get("_store") as ModelStore).scenery
+	var library: PartLibrary = app.get("_library")
+	var pace := FramePace.new(FramePace.LIGHT_US, FramePace.LIGHT_SHARE)
+	var built := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if pace.due():
+			await pace.next()
+			if not _up() or _world_now() != key:
+				return false
+		if scenery.has(brick.id):
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			continue
+		var box: AABB = brick.transform * part.bounds
+		built = box if first else built.merge(box)
+		first = false
+	_know_world_from(key, built)
+	return true
+
+
+func _know_world_from(key: Array, built: AABB) -> void:
 	_world_key = key
-	var built: AABB = app.call("_model_bounds")
+	var area: AABB = key[4]
 	var box := AABB()
 	var ground := Rect2()
 	if area.size.x > 0.0 and area.size.z > 0.0:
