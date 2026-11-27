@@ -117,7 +117,11 @@ func _menus() -> void:
 					continue
 				var named: String = ids[id]
 				homes[named] = int(homes.get(named, 0)) + 1
-	var twice: Array = homes.keys().filter(func(named: String) -> bool: return homes[named] > 1)
+	# But the instructions, in Build and in File, Export, where a parent
+	# looking to print them looks first: one command in both (ux12,
+	# 1334c1de0).
+	var twice: Array = homes.keys().filter(func(named: String) -> bool:
+		return homes[named] > (2 if named == "instructions" else 1))
 	_check("no command is in two menus (%d commands in the menus%s)" % [homes.size(),
 		"" if twice.is_empty() else "; twice: " + ", ".join(twice)], twice.is_empty() and homes.size() > 150)
 	var edit: MenuButton = _shell.menu("Edit")
@@ -159,6 +163,10 @@ func _menus() -> void:
 	app_menu.hide()
 	await _frames(6)
 	_check("...which opens the box, the keys in it", _palette.visible and _typing())
+	# Its first open: in a browser it stood at the window's top over the
+	# menu bar, as tall as the window (palfix, 2026-11-27).
+	_check("...its first open where it is meant: %s" % _placed_words(), _placed())
+	await _shot("first_open")
 	await _key(KEY_ESCAPE)
 	_check("...and Escape puts it away", not _palette.visible)
 	await _keys_from(KEY_P, true, true)
@@ -209,12 +217,56 @@ func _render_by_keys() -> void:
 	var box := Rect2(Vector2(_palette.position), Vector2(_palette.size))
 	_check("Ctrl+/ opens the box over the model (%s in %s), the keys in its field" % [box, over],
 		_palette.visible and _typing() and over.encloses(box))
+	var opened_at: Vector2i = _palette.position
+	var opened_under: float = over.position.y
 	for letter: String in "ren":
 		await _type(letter)
 		presses += 1
 	var rows: Array = _palette.get("_names")
 	_check("\"ren\": Render… first (%s)" % ", ".join(rows.slice(0, 3)), not rows.is_empty() and rows[0] == "render")
+	_check("...the box stays put as the rows change (%s, opened at %s): %s" % [_palette.position, opened_at,
+		_placed_words()], _palette.position == opened_at and _placed(opened_under))
 	var list: Tree = _palette.get("_list")
+	var heights: Dictionary = {}
+	for n: int in mini(rows.size(), CommandPalette.ROWS_SHOWN):
+		heights[roundi(list.get_item_area_rect(list.get_root().get_child(n)).size.y)] = true
+	_check("...every row as tall as the next (%s)" % ", ".join(heights.keys()), heights.size() == 1)
+	# The foot says each row's tip in its two lines: the box keeps its height
+	# as the keys go down the rows.
+	var tall: Dictionary = {}
+	for _n: int in mini(rows.size(), CommandPalette.ROWS_SHOWN) - 1:
+		await _key(KEY_DOWN, 1)
+		tall[_palette.size.y] = true
+	for _n: int in mini(rows.size(), CommandPalette.ROWS_SHOWN) - 1:
+		await _key(KEY_UP, 1)
+	_check("...and as tall whatever the lit row's tip (%s)" % ", ".join(tall.keys()), tall.size() == 1
+		and int(_palette.get("_lit")) == 0)
+	# One lit row, the pointer's: it lit a grey row of its own beside the
+	# blue one the keys were on.
+	var third: TreeItem = list.get_root().get_child(2)
+	var row_rect: Rect2 = list.get_item_area_rect(third)
+	var at_row: Vector2 = Vector2(_palette.position) + list.get_global_rect().position + row_rect.get_center()
+	var move := InputEventMouseMotion.new()
+	move.position = _as_event(at_row)
+	move.global_position = move.position
+	move.relative = Vector2(4, 4)
+	Input.parse_input_event(move)
+	await _frames(4)
+	var lit_rows: int = 0
+	for n: int in list.get_root().get_child_count():
+		if list.get_root().get_child(n).is_selected(0):
+			lit_rows += 1
+	_check("...the pointer on the third row lights it, and it alone (lit %d, %d rows lit, the pointer's "
+		% [int(_palette.get("_lit")) + 1, lit_rows] + "own grey drawn: %s)" % str(not (
+		list.get_theme_stylebox("hovered") is StyleBoxEmpty)), int(_palette.get("_lit")) == 2
+		and lit_rows == 1 and list.get_theme_stylebox("hovered") is StyleBoxEmpty)
+	# Back over the model, so the keys' row is the first again.
+	move = InputEventMouseMotion.new()
+	move.position = _as_event(over.get_center() + Vector2(0, over.size.y * 0.4))
+	move.global_position = move.position
+	Input.parse_input_event(move)
+	await _key(KEY_UP, 1)
+	await _key(KEY_UP, 1)
 	# Up to ROWS_SHOWN; past those it scrolls (German finds "ren" in every -ieren).
 	var shown: int = mini(rows.size(), CommandPalette.ROWS_SHOWN)
 	var last: Rect2 = list.get_item_area_rect(list.get_root().get_child(shown - 1))
@@ -285,6 +337,25 @@ func _a_part() -> void:
 		return child is VScrollBar and (child as VScrollBar).visible)
 	_check("...its %d rows in sight with no scroll bar" % rows.size(), scrolled.is_empty())
 	await _shot("a_part")
+	# A long name whole while the columns beside it have room: Figure
+	# Friends Hand Mirror with Heart… was cut at half the row, "Part 96488"
+	# beside it with a third.
+	await _key(KEY_ESCAPE)
+	await _keys_from(KEY_SLASH, true)
+	await _type("hand mirror with heart")
+	rows = _palette.get("_names")
+	var at: int = rows.find("part:96488")
+	var named: String = list.get_root().get_child(at).get_text(0) if at >= 0 else ""
+	var font: Font = list.get_theme_font("font")
+	var needs: float = font.get_string_size(named, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		list.get_theme_font_size("font_size")).x + list.get_theme_constant("inner_item_margin_left") \
+		+ list.get_theme_constant("inner_item_margin_right")
+	_check("...a long name whole where there is room (\"%s\", %d wide in a column of %d)" % [named,
+		roundi(needs), list.get_column_width(0)], at >= 0 and needs <= list.get_column_width(0) + 1.0)
+	await _shot("long_name")
+	await _key(KEY_ESCAPE)
+	await _keys_from(KEY_SLASH, true)
+	await _type("3001")
 	await _key(KEY_ENTER)
 	_check("...and Return takes it into hand (%s, the %s tool)" % [_builder.held_part,
 		(_main.get("_verbs") as EditVerbs).mode], _builder.held_part == "3001"
@@ -307,6 +378,17 @@ func _greyed() -> void:
 	_check("with nothing selected Mirror is listed, greyed, saying why (\"%s\", \"%s\")" % [
 		item.get_text(0), item.get_text(1)], rows[0] == "mirror" and item.get_custom_color(0).a < 0.6
 		and item.get_text(1) == why and why == "Select a part first")
+	# A part where its name has the word, never by a keyword alone: "mirror"
+	# listed Minifig Cutlery Spoon (80179, keyword Mirror), and Thorn
+	# Mirrored beside Hand Mirror, whose name has the word whole.
+	var parts: Array = rows.filter(func(named: String) -> bool: return named.begins_with(CommandPalette.PART))
+	var unnamed: Array = parts.filter(func(named: String) -> bool:
+		var info: PartLibrary.PartInfo = (_main.get("_library") as PartLibrary).parts.get(
+			named.trim_prefix(CommandPalette.PART))
+		return info == null or not info.name.to_lower().contains("mirror"))
+	_check("...the parts listed have \"mirror\" in their names, whole where one does (%s)" % ", ".join(parts),
+		unnamed.is_empty() and "part:96488" in parts and not "part:80179" in parts
+		and not "part:73828k02" in parts)
 	await _shot("greyed")
 	await _key(KEY_ENTER)
 	var foot: Label = _palette.get("_foot")
@@ -520,6 +602,24 @@ func _stand_in() -> void:
 func _typing() -> bool:
 	var field: LineEdit = _palette.get("_field")
 	return field.has_focus()
+
+
+## Whether the box is where it is meant: wholly in the window, and under the
+## top of the model's part of it, so the menu bar, the toolbar and the
+## model's banners over that are in sight; that top as it was when the box
+## opened ([param floor]), if given: a banner come since moves it down, and
+## the box stays put.
+func _placed(floor: float = -1.0) -> bool:
+	var room: Rect2 = root.get_visible_rect()
+	var box := Rect2(Vector2(_palette.position), Vector2(_palette.size))
+	var top: float = floor if floor >= 0.0 else _shell.model_area.get_global_rect().position.y
+	return _palette.visible and room.encloses(box) and box.size.y > 0.0 and box.position.y >= top
+
+
+func _placed_words() -> String:
+	return "the box %s in the window %s, the model's part from y %d" % [
+		Rect2(Vector2(_palette.position), Vector2(_palette.size)), root.get_visible_rect().size,
+		roundi(_shell.model_area.get_global_rect().position.y)]
 
 
 func _type(text: String) -> void:
