@@ -628,12 +628,9 @@ func left() -> void:
 	var builder: Builder = app.get("_builder")
 	var world: BrickWorld = app.get("_world")
 	# Where Full was, the sub-assembly it was editing inside with it, only
-	# where nothing chosen here is still chosen: a part chosen in Simple is
-	# one at the model's top, outside whatever Full was inside. A choice let
-	# go of again is none: a phone's tap that puts a brick down clears the
-	# selection, and Full came back at the top with nothing selected.
-	var chosen: bool = _chose_here and not builder.selection.is_empty()
-	var as_it_was: bool = not chosen and _full_gen == world.generation()
+	# where nothing was chosen here: a part chosen in Simple is one at the
+	# model's top, outside whatever Full was inside.
+	var as_it_was: bool = not _chose_here and _full_gen == world.generation()
 	var xray: bool = bool(_full_context.get("xray", false))
 	_put_full_back(as_it_was)
 	if as_it_was:
@@ -1483,16 +1480,21 @@ func _pick(ids: Array) -> void:
 			if not builder.selection.has(id):
 				builder.select_brick(id, true)
 	_picking = false
-	if _up():
+	if _up() and not keep.is_empty():
 		_chose_here = true
 
 
 ## The selection changed while Simple is up (a key's paste, an undo, a check):
-## a choice made in Simple, kept to the parts it may act on.
-func _on_selection(_count: int) -> void:
+## a choice made in Simple, kept to the parts it may act on. Only a part
+## chosen is a choice: a selection emptied by the way (in a 390 window the
+## tray's put by finger did) left Full coming back at the model's top, its
+## x-ray off, instead of inside the sub-assembly it was editing. A part
+## chosen and then deleted still counts, and Full comes back with none.
+func _on_selection(count: int) -> void:
 	if _picking or not _up():
 		return
-	_chose_here = true
+	if count > 0:
+		_chose_here = true
 	if not _prune_queued:
 		_prune_queued = true
 		_prune.call_deferred()
