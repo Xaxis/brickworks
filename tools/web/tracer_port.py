@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 TRACER = ROOT / "src/render/path_tracer.glsl"
 RESOLVE = ROOT / "src/render/path_tracer_resolve.glsl"
 RUNTIME = ROOT / "src/render/page_tracer.js"
+# The browser's own denoise (photoreal29): already GLSL ES, a fragment shader.
+DENOISE = ROOT / "src/render/page_denoise.frag"
 VERSIONS = {"plain": "", "marks": "#define MARKS\n", "photo": "#define PHOTO\n"}
 
 # How wide every data texture is; page_tracer.js packs them so (its WIDE).
@@ -106,6 +108,27 @@ const uint RT_FIRST = 4u;
 const uint RT_BARE = 256u;
 void closest_hit();
 """ % {"mask": WIDE - 1, "shift": WIDE.bit_length() - 1}
+
+# The denoise's sums (photoreal29): the old ones read, the new written, as accum and guide are.
+MORE = """uniform highp sampler2D u_more;
+uniform highp sampler2D u_even;
+layout(location = 2) out vec4 out_more;
+layout(location = 3) out vec4 out_even;"""
+
+# What the eye first met in this sample: its albedo (white for clear plastic, the sweep and
+# nothing) and how far it is, along the camera's own axis.
+MORE_HELPERS = """vec4 rt_more;
+
+float rt_depth(vec3 at) {
+	return dot(at - scene.origin.xyz, -normalize(scene.back.xyz));
+}
+
+float rt_albedo(vec3 albedo) {
+	rt_more.rgb = albedo;
+	return luminance(albedo);
+}
+
+"""
 
 TABLE = """uniform highp sampler2D u_table;
 
@@ -348,7 +371,7 @@ def tracer_glsl(version: str) -> str:
     ray = swap(ray, "layout(set = 0, binding = 0) uniform accelerationStructureEXT tlas;\n", "", "the TLAS")
     ray = swap(ray, "layout(set = 0, binding = 1, rgba32f) uniform image2D accum;",
                "uniform highp sampler2D u_accum;\nlayout(location = 0) out vec4 out_accum;\n"
-               "layout(location = 1) out vec4 out_guide;", "accum")
+               "layout(location = 1) out vec4 out_guide;\n" + MORE, "accum")
     ray = swap(ray, "layout(set = 0, binding = 2, std430) readonly buffer Scene {",
                "layout(std140) uniform Scene {", "the scene")
     ray = swap_re(ray, r"layout\(set = 0, binding = 3, std430\) readonly buffer Instances \{\s*Instance instances\[\];\s*\};",
@@ -367,8 +390,31 @@ def tracer_glsl(version: str) -> str:
     ray = swap(ray, "imageLoad(guide, pixel)", "texelFetch(u_guide, pixel, 0)", "the guide read")
     ray = swap(ray, "imageStore(accum, pixel, total);", "out_accum = total;", "the sum written")
     ray = swap(ray, "imageStore(guide, pixel, guided);", "out_guide = guided;", "the guide written")
+    # The denoise's own sums (photoreal29, page_denoise.frag): what the eye first met (its albedo and
+    # depth), and the even samples' light and kind apart, so each pixel's mean has two halves to
+    # measure its noise by, and to tell a pixel of one surface from a blurred edge's mean of several.
+    # Only the browser's tracer writes them; the desktop's is as it was.
+    ray = swap(ray, "vec4 guided = pass.reset != 0u ? vec4(0.0) : texelFetch(u_guide, pixel, 0);",
+               "vec4 guided = pass.reset != 0u ? vec4(0.0) : texelFetch(u_guide, pixel, 0);\n"
+               "\tvec4 rt_more_sum = pass.reset != 0u ? vec4(0.0) : texelFetch(u_more, pixel, 0);\n"
+               "\tvec4 rt_even_sum = pass.reset != 0u ? vec4(0.0) : texelFetch(u_even, pixel, 0);",
+               "the denoise's sums read")
+    ray = swap(ray, "\t\tvec4 first = vec4(0.0, 0.0, 0.0, 4.0);\n",
+               "\t\tvec4 first = vec4(0.0, 0.0, 0.0, 4.0);\n\t\trt_more = vec4(1.0, 1.0, 1.0, 0.0);\n",
+               "the first hit's albedo and depth begun")
+    ray = swap(ray, "\t\t\t\tmet = true;\n\t\t\t\tfirst = vec4(",
+               "\t\t\t\tmet = true;\n\t\t\t\trt_more = vec4(1.0, 1.0, 1.0, rt_depth(at));\n\t\t\t\tfirst = vec4(",
+               "the first hit's depth", 2)
+    ray = swap(ray, "luminance(surface_of(thing, at, hit.local, hit.unused, thing.info.z, hit.geometric).albedo)",
+               "rt_albedo(surface_of(thing, at, hit.local, hit.unused, thing.info.z, hit.geometric).albedo)",
+               "the first hit's albedo", 2)
+    ray = swap(ray, "\t\tguided += first;\n",
+               "\t\tguided += first;\n\t\trt_more_sum += rt_more;\n\t\tif ((sample_index & 1u) == 0u) {\n"
+               "\t\t\trt_even_sum += vec4(radiance, first.w);\n\t\t}\n", "the denoise's sums added")
+    ray = swap(ray, "out_guide = guided;", "out_guide = guided;\n\tout_more = rt_more_sum;\n\tout_even = rt_even_sum;",
+               "the denoise's sums written")
     ray = swap(ray, "gl_LaunchIDEXT", "rt_launch", "the launch", 0)
-    ray = swap(ray, "void main() {\n", "void main() {\n\trt_launch = uvec2(gl_FragCoord.xy);\n", "main")
+    ray = swap(ray, "void main() {\n", MORE_HELPERS + "void main() {\n\trt_launch = uvec2(gl_FragCoord.xy);\n", "main")
     ray = swap(ray, "gl_RayFlagsOpaqueEXT", "RT_OPAQUE", "the flags", 0)
     ray = swap(ray, "gl_RayFlagsTerminateOnFirstHitEXT", "RT_FIRST", "the flags", 0)
     # A shader has no calls: every trace() is copied in where it is called, and
@@ -455,7 +501,18 @@ def resolve_glsl() -> str:
     text = swap(text, "layout(set = 0, binding = 1, rgba8) uniform writeonly image2D picture;",
                 "uniform ivec2 u_size;\nlayout(location = 0) out vec4 out_picture;", "the picture")
     text = swap(text, "layout(set = 0, binding = 2, rgba32f) uniform readonly image2D guide;",
-                "uniform highp sampler2D u_guide;", "the guide")
+                "uniform highp sampler2D u_guide;\n"
+                "// The light the a-trous filter left (photoreal29, page_denoise.frag): its colour and\n"
+                "// coverage, read in place of the 7 x 7 clean when the page drew it (u_cleaned 1).\n"
+                "uniform highp sampler2D u_clean;\nuniform int u_cleaned;", "the guide")
+    text = swap(text, "\treturn params.denoise > 0.0 ? cleaned(pixel, size)",
+                "\tif (u_cleaned != 0) {\n\t\treturn texelFetch(u_clean, clamp(pixel, ivec2(0), size - ivec2(1)), 0);\n\t}\n"
+                "\treturn params.denoise > 0.0 ? cleaned(pixel, size)", "the clean light read")
+    # The camera's sharpening blurs the samples' own mean; once filtered, the filtered light, or its
+    # mask would carry back the grain the filter took out.
+    text = swap(text, "\t\t\t\tblur += mean_at(pixel + ivec2(x, y), size).rgb * w;",
+                "\t\t\t\tblur += (u_cleaned != 0 ? texelFetch(u_clean, clamp(pixel + ivec2(x, y), ivec2(0),\n"
+                "\t\t\t\t\tsize - ivec2(1)), 0) : mean_at(pixel + ivec2(x, y), size)).rgb * w;", "the sharpening's blur")
     text = swap(text, "layout(push_constant, std430) uniform Resolve {", "layout(std140) uniform Resolve {",
                 "the numbers")
     text = re.sub(r"imageLoad\(accum, ", "texelFetch(u_accum, ", text)
@@ -484,6 +541,7 @@ void main() {
 def shaders() -> dict[str, str]:
     out = {version: tracer_glsl(version) for version in VERSIONS}
     out["resolve"] = resolve_glsl()
+    out["denoise"] = PRELUDE + DENOISE.read_text()
     out["vertex"] = VERTEX
     return out
 

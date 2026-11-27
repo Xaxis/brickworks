@@ -45,6 +45,10 @@ const FRAME_SHRINK_SHARE = 1.0;
 const OWN_FRAMES = 3;
 // The most samples one pass gives every pixel (PathTracer.MOST_PER_PASS).
 const MOST_PER_PASS = 32;
+// The denoise (page_denoise.frag's u_tune): how hard the light, the normals, the depth and the
+// albedo stop it; and the most pixels one of its draws covers.
+const DENOISE_TUNE = [8, 128, 1, 0.04];
+const DENOISE_BAND = 1 << 19;
 
 // -- the trees ------------------------------------------------------------------
 
@@ -437,7 +441,10 @@ export class Tracer {
 	prepare(version) {
 		const gl = this.gl;
 		const out = [];
-		for (const name of [version, "resolve"]) {
+		// The denoise (photoreal29) is compiled with them; a tracer whose shaders have none (an
+		// older bench's) traces without it.
+		const names = [version, "resolve"].concat(this.shaders.denoise ? ["denoise"] : []);
+		for (const name of names) {
 			let p = this.programs[name];
 			if (!p) {
 				p = gl.createProgram();
@@ -482,7 +489,7 @@ export class Tracer {
 			const u = gl.getActiveUniform(p, i);
 			p.at[u.name] = gl.getUniformLocation(p, u.name);
 		}
-		const blocks = name === "resolve" ? ["Resolve"] : ["Scene", "Pass"];
+		const blocks = name === "resolve" ? ["Resolve"] : name === "denoise" ? [] : ["Scene", "Pass"];
 		p.blocks = {};
 		blocks.forEach((block, k) => {
 			const index = gl.getUniformBlockIndex(p, block);
@@ -625,30 +632,38 @@ export class Tracer {
 			gl.texStorage2D(gl.TEXTURE_2D, 1, internal, width, height);
 			return t;
 		};
-		for (const pair of this.pairs || []) {
-			gl.deleteFramebuffer(pair.fb);
-			gl.deleteTexture(pair.accum);
-			gl.deleteTexture(pair.guide);
-		}
-		if (this.picturePair) {
-			gl.deleteFramebuffer(this.picturePair.fb);
-			gl.deleteTexture(this.picturePair.texture);
-		}
+		this.freeTargets();
+		const alone = (texture) => {
+			const fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+			return fb;
+		};
+		// Each pair: the running sum, the guide, and the denoise's two (photoreal29): the first hit's
+		// albedo and depth, and the even samples' light apart (half floats: a noise measure).
 		this.pairs = [0, 1].map(() => {
 			const accum = made(gl.RGBA32F);
 			const guide = made(gl.RGBA32F);
+			const more = made(gl.RGBA32F);
+			const even = made(gl.RGBA16F);
 			const fb = gl.createFramebuffer();
 			gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, accum, 0);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, guide, 0);
-			return { accum, guide, fb };
+			[accum, guide, more, even].forEach((t, k) => {
+				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
+			});
+			return { accum, guide, more, even, fb, accumFb: alone(accum), guideFb: alone(guide) };
 		});
 		const texture = made(gl.RGBA8);
-		const fb = gl.createFramebuffer();
-		gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-		this.picturePair = { texture, fb };
+		this.picturePair = { texture, fb: alone(texture) };
 		const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+		// The measure's cells, a texel for each 16 x 16 pixels.
+		this.cells = [Math.ceil(width / 16), Math.ceil(height / 16)];
+		const cellTexture = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, cellTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, this.cells[0], this.cells[1]);
+		this.cellPair = { texture: cellTexture, fb: alone(cellTexture) };
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.pairs[0].fb);
 		const okFloat = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -657,6 +672,22 @@ export class Tracer {
 			return false;
 		}
 		return true;
+	}
+
+	freeTargets() {
+		const gl = this.gl;
+		for (const pair of this.pairs || []) {
+			for (const fb of [pair.fb, pair.accumFb, pair.guideFb]) gl.deleteFramebuffer(fb);
+			for (const t of [pair.accum, pair.guide, pair.more, pair.even]) gl.deleteTexture(t);
+		}
+		for (const pair of [this.picturePair, this.cellPair]) {
+			if (!pair) continue;
+			gl.deleteFramebuffer(pair.fb);
+			gl.deleteTexture(pair.texture);
+		}
+		this.pairs = null;
+		this.picturePair = null;
+		this.cellPair = null;
 	}
 
 	// A picture [width] x [height] begun again, traced by [version] with
@@ -681,6 +712,7 @@ export class Tracer {
 		gl.bufferData(gl.UNIFORM_BUFFER, full, gl.DYNAMIC_DRAW);
 		this.samples = 0;
 		this.row = 0;
+		this.noise = null;
 		this.askedAt = 0;
 		this.ownGaps = [];
 		this.ownGap = 0;
@@ -713,32 +745,32 @@ export class Tracer {
 		gl.bufferData(gl.UNIFORM_BUFFER, numbers, gl.DYNAMIC_DRAW);
 		gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, this.sceneBuffer);
 		gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, this.passBuffer);
-		const bound = [["u_accum", from.accum], ["u_guide", from.guide], ["u_records"], ["u_info"], ["u_meshes"],
-			["u_points"], ["u_normals"], ["u_indices"], ["u_nodes"], ["u_tris"], ["u_places"], ["u_table"],
-			["place_map"], ["surface_map"]];
+		const bound = [["u_accum", from.accum], ["u_guide", from.guide], ["u_more", from.more], ["u_even", from.even],
+			["u_records"], ["u_info"], ["u_meshes"], ["u_points"], ["u_normals"], ["u_indices"], ["u_nodes"],
+			["u_tris"], ["u_places"], ["u_table"], ["place_map"], ["surface_map"]];
 		bound.forEach(([name, texture], unit) => {
 			gl.activeTexture(gl.TEXTURE0 + unit);
 			gl.bindTexture(gl.TEXTURE_2D, texture || this.textures[name] || null);
 			if (p.at[name]) gl.uniform1i(p.at[name], unit);
 		});
 		if (p.at.u_top) gl.uniform1i(p.at.u_top, this.top);
+		const all = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2, gl.COLOR_ATTACHMENT3];
 		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, to.fb);
-		gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+		gl.drawBuffers(all);
 		gl.viewport(0, 0, w, h);
 		gl.enable(gl.SCISSOR_TEST);
 		gl.scissor(0, row, w, rows);
 		gl.disable(gl.BLEND);
 		gl.disable(gl.DEPTH_TEST);
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
-		// The band back into the sums the next pass reads.
+		// The band back into the sums the next pass reads, each of the four alone.
 		gl.bindFramebuffer(gl.READ_FRAMEBUFFER, to.fb);
 		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, from.fb);
-		gl.readBuffer(gl.COLOR_ATTACHMENT0);
-		gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.NONE]);
-		gl.blitFramebuffer(0, row, w, row + rows, 0, row, w, row + rows, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-		gl.readBuffer(gl.COLOR_ATTACHMENT1);
-		gl.drawBuffers([gl.NONE, gl.COLOR_ATTACHMENT1]);
-		gl.blitFramebuffer(0, row, w, row + rows, 0, row, w, row + rows, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+		all.forEach((attachment, k) => {
+			gl.readBuffer(attachment);
+			gl.drawBuffers(all.map((a, n) => (n === k ? a : gl.NONE)));
+			gl.blitFramebuffer(0, row, w, row + rows, 0, row, w, row + rows, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+		});
 		gl.disable(gl.SCISSOR_TEST);
 		gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
 		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
@@ -855,10 +887,14 @@ export class Tracer {
 		const [w, h] = this.size;
 		if (!this.pairs || this.samples <= 0) return null;
 		if (this.prepare(this.version) !== "ready") return null;
+		const values = floats(numbers);
+		// The product look's picture is cleaned (its denoise, the resolve's ninth number): by the
+		// a-trous filter where it compiled, else by the resolve's own 7 x 7 pass.
+		const clean = values[8] > 0 && this.programs.denoise && this.programs.denoise.state === "ready"
+			? this.denoise() : null;
 		const p = this.programs.resolve;
 		gl.useProgram(p);
 		gl.bindVertexArray(this.vao);
-		const values = floats(numbers);
 		const full = new Float32Array(Math.ceil(Math.max(p.blocks.Resolve || 64, 64) / 4));
 		full.set(values.subarray(0, Math.min(values.length, full.length)));
 		gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, this.resolveBuffer);
@@ -868,6 +904,10 @@ export class Tracer {
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, this.pairs[0].guide);
 		if (p.at.u_guide) gl.uniform1i(p.at.u_guide, 1);
+		gl.activeTexture(gl.TEXTURE2);
+		gl.bindTexture(gl.TEXTURE_2D, clean || this.pairs[0].accum);
+		if (p.at.u_clean) gl.uniform1i(p.at.u_clean, 2);
+		if (p.at.u_cleaned) gl.uniform1i(p.at.u_cleaned, clean ? 1 : 0);
 		gl.uniform2i(p.at.u_size, w, h);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.picturePair.fb);
 		gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
@@ -891,6 +931,108 @@ export class Tracer {
 		return out;
 	}
 
+	// The sums cleaned by page_denoise.frag (photoreal29): its light and variance from the sums
+	// (stage 0), five a-trous passes 1, 2, 4, 8 and 16 pixels apart (stage 1), the measure of what
+	// is left (stage 3, into this.noise), and the light times its albedo again (stage 2). The
+	// trace's spare pair (pairs[1], written only inside a pass) holds them, in turn. Each pass is
+	// drawn in bands of DENOISE_BAND pixels, flushed between, so none holds the card long. The
+	// texture the resolve reads in place of the sums. Not [filtered] (a look with no denoise): the
+	// measure of stage 0 alone, the raw grain. Not [composed] (a measure only): null.
+	denoise(filtered = true, composed = true) {
+		const gl = this.gl;
+		const [w, h] = this.size;
+		const p = this.programs.denoise;
+		const [sums, spare] = this.pairs;
+		const scratch = [[spare.accum, spare.accumFb], [spare.guide, spare.guideFb]];
+		gl.useProgram(p);
+		gl.bindVertexArray(this.vao);
+		[["u_accum", sums.accum], ["u_guide", sums.guide], ["u_more", sums.more], ["u_even", sums.even]]
+			.forEach(([name, texture], unit) => {
+				gl.activeTexture(gl.TEXTURE0 + unit);
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+				if (p.at[name]) gl.uniform1i(p.at[name], unit);
+			});
+		gl.uniform2i(p.at.u_size, w, h);
+		// Midway through a block the rows it has reached hold that many more samples.
+		gl.uniform4f(p.at.u_counts, this.samples, this.row > 0 ? this.blockCount : 0, this.row, 0);
+		gl.uniform4f(p.at.u_tune, ...DENOISE_TUNE);
+		if (p.at.u_in) gl.uniform1i(p.at.u_in, 4);
+		gl.disable(gl.BLEND);
+		gl.disable(gl.DEPTH_TEST);
+		const band = Math.max(8, Math.floor(DENOISE_BAND / w));
+		const stage = (number, step, from, into) => {
+			gl.uniform1i(p.at.u_stage, number);
+			if (p.at.u_step) gl.uniform1i(p.at.u_step, step);
+			gl.activeTexture(gl.TEXTURE4);
+			gl.bindTexture(gl.TEXTURE_2D, scratch[from][0]);
+			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, scratch[into][1]);
+			gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+			gl.viewport(0, 0, w, h);
+			gl.enable(gl.SCISSOR_TEST);
+			for (let row = 0; row < h; row += band) {
+				gl.scissor(0, row, w, Math.min(band, h - row));
+				gl.drawArrays(gl.TRIANGLES, 0, 3);
+				gl.flush();
+			}
+			gl.disable(gl.SCISSOR_TEST);
+		};
+		// Stage 0 reads no u_in; the other scratch is bound there, never the one written.
+		stage(0, 1, 1, 0);
+		let current = 0;
+		for (const step of filtered ? [1, 2, 4, 8, 16] : []) {
+			stage(1, step, current, 1 - current);
+			current = 1 - current;
+		}
+		this.measure(scratch[current][0]);
+		if (!composed) return null;
+		gl.useProgram(p);
+		stage(2, 1, current, 1 - current);
+		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+		return scratch[1 - current][0];
+	}
+
+	// How much grain the picture has left as [numbers] would resolve it (this.noise), measured
+	// without drawing or reading back the picture: Render asks it each second to decide whether the
+	// traced picture is clean enough to show (photoreal29). Null before a sample or the denoise.
+	gauge(numbers) {
+		if (!this.pairs || this.samples <= 0 || this.prepare(this.version) !== "ready") return null;
+		if (!this.programs.denoise || this.programs.denoise.state !== "ready") return null;
+		this.denoise(floats(numbers)[8] > 0, false);
+		return this.noise;
+	}
+
+	// What the denoise left (stage 3 over [left], the last pass's light and variance), summed over
+	// the cells into this.noise: the raw halves' noise and what is left, each relative to the
+	// light, over the model's plastic, and what is left over the whole picture.
+	measure(left) {
+		const gl = this.gl;
+		const [w, h] = this.size;
+		const p = this.programs.denoise;
+		const [cw, ch] = this.cells;
+		gl.uniform1i(p.at.u_stage, 3);
+		gl.activeTexture(gl.TEXTURE4);
+		gl.bindTexture(gl.TEXTURE_2D, left);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.cellPair.fb);
+		gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+		gl.viewport(0, 0, cw, ch);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+		const cells = new Float32Array(cw * ch * 4);
+		gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.FLOAT, cells);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		const sum = [0, 0, 0, 0];
+		for (let i = 0; i < cells.length; i++) sum[i & 3] += cells[i];
+		// The pixels sampled: 4 x 4 a cell, at 2, 6, 10 and 14 across and down, inside the picture.
+		const inside = (n, cellsAcross) => {
+			let count = 0;
+			for (let c = 0; c < cellsAcross; c++) for (let k = 0; k < 4; k++) if (c * 16 + 2 + 4 * k < n) count++;
+			return count;
+		};
+		const every = inside(w, cw) * inside(h, ch);
+		this.noise = { samples: this.samples, raw: sum[0] / Math.max(sum[2], 1), left: sum[1] / Math.max(sum[2], 1),
+			plastic: sum[2] / Math.max(every, 1), leftAll: sum[3] / Math.max(every, 1) };
+		return this.noise;
+	}
+
 	// The running sum's mean (RGBA floats, top row first), the light before any
 	// exposure, for the bench's colour measure.
 	mean() {
@@ -912,12 +1054,8 @@ export class Tracer {
 		this.finishFence();
 		for (const t of Object.values(this.textures)) gl.deleteTexture(t);
 		this.textures = {};
-		for (const pair of this.pairs || []) {
-			gl.deleteFramebuffer(pair.fb);
-			gl.deleteTexture(pair.accum);
-			gl.deleteTexture(pair.guide);
-		}
-		this.pairs = null;
+		this.freeTargets();
+		this.noise = null;
 		this.size = [0, 0];
 	}
 }
@@ -976,6 +1114,7 @@ export function start() {
 		trace: (count, seed, whole) => tracer.trace(count, seed, !!whole),
 		between: () => tracer.row === 0,
 		picture: (numbers) => tracer.picture(numbers),
+		gauge: (numbers) => JSON.stringify(tracer.gauge(numbers) || null),
 		mean: () => tracer.mean(),
 		release: () => tracer.release(),
 		stats: () => JSON.stringify({ passes: tracer.passes, rows: tracer.rows, perPass: tracer.perPass,

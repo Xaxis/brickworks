@@ -20,7 +20,7 @@ def test_port_writes_every_shader(tmp_path):
                            text=True, timeout=120)
     assert reply.returncode == 0, reply.stderr
     names = sorted(p.stem for p in tmp_path.glob("*.glsl"))
-    assert names == ["marks", "photo", "plain", "resolve", "vertex"]
+    assert names == ["denoise", "marks", "photo", "plain", "resolve", "vertex"]
     for name in names:
         text = (tmp_path / f"{name}.glsl").read_text()
         assert text.startswith("#version 300 es\n"), name
@@ -34,6 +34,16 @@ def test_port_writes_every_shader(tmp_path):
     # The trees are walked, and the closest hit is the desktop's, called as a function.
     assert "bool trace(vec3 from, vec3 way, float far, uint mask, uint flags)" in plain
     assert "void closest_hit() {" in plain
+    # The denoise (photoreal29): each tracer also writes what the eye first met and the even
+    # samples apart, and the resolve reads the filtered light in place of its 7 x 7 clean.
+    for name in ("marks", "photo", "plain"):
+        text = (tmp_path / f"{name}.glsl").read_text()
+        assert "out_more = rt_more_sum;" in text and "out_even = rt_even_sum;" in text, name
+        assert "rt_even_sum += vec4(radiance, first.w);" in text, name
+    assert "if (u_cleaned != 0) {" in (tmp_path / "resolve.glsl").read_text()
+    denoise = (tmp_path / "denoise.glsl").read_text()
+    for stage in ("prepare(p)", "atrous(p)", "measure(p)"):
+        assert stage in denoise, stage
 
 
 def test_port_fills_the_page_tracer(tmp_path):
