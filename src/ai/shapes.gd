@@ -1942,6 +1942,13 @@ class Plan extends RefCounted:
 	## a person sees, and where it curves a curved slope fits as well as a
 	## cheese slope, the curved one.
 	var flank: bool = false
+	## A turned cube's shell (lay_shell of one of _cube_shells): its first
+	## layer's rows between side studs are laid with the row beside them
+	## ([method _rows_paired]). A shape's own flank is not: its lowest row
+	## lies over the parts the shape laid under it, studs up, which a row
+	## kept there stands its edge on. A ship's hull planked at its bow ran 14
+	## times into the studs of the inverted slopes under it.
+	var pairs_rows: bool = false
 	## The round parts round_runs laid, put into [member made] by lay(), and
 	## the runs said, for a probe.
 	var round_made: Array = []
@@ -3893,6 +3900,7 @@ class Plan extends RefCounted:
 				return []
 			sub = Plan.new(local, depth, true, library)
 			sub.flank = true
+			sub.pairs_rows = shell.has("cubes")
 			sub.sides_smooth = false
 			sub.rounds = false
 			sub.wedges = wedges
@@ -5337,7 +5345,7 @@ class Plan extends RefCounted:
 					plates[cell] = at(cell, j)
 			for one: Dictionary in _wedged_off(plates, j):
 				made.append(one)
-			if flank and j == 0 and not held.is_empty():
+			if pairs_rows and j == 0 and not held.is_empty():
 				for one: Dictionary in _rows_paired(plates, tops, under, j):
 					made.append(one)
 					for cell: Vector2i in one["_cells"]:
