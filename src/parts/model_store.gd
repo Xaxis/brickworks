@@ -1285,6 +1285,36 @@ static func _brick_lines(text: String) -> PackedStringArray:
 
 
 func list_saved() -> Array[Entry]:
+	var found: Array[Entry] = _saved_unread()
+	for entry: Entry in found:
+		entry.bricks = _counted_bricks(entry)
+	return found
+
+
+## The [param count] models saved last, newest first, as File › Open recent
+## lists them: only those counted, each from [member _counted] unless its
+## file changed since. Every model on the shelf was read and counted each
+## time the submenu opened, on the main thread: with 50 saved models the
+## menu froze for the reading and opened late (menufix, 2026-11-27).
+func recent_saved(count: int) -> Array[Entry]:
+	var found: Array[Entry] = _saved_unread().slice(0, count)
+	for entry: Entry in found:
+		entry.bricks = _counted_bricks(entry)
+	return found
+
+
+## The [param count] models saved last counted ahead of File › Open recent,
+## one a frame: eight counted at once held one frame for 150 ms (menufix).
+func warm_recent(count: int) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	for entry: Entry in _saved_unread().slice(0, count):
+		_counted_bricks(entry)
+		if tree != null:
+			await tree.process_frame
+
+
+## The saved models' names and times, newest first, without reading any.
+func _saved_unread() -> Array[Entry]:
 	var found: Array[Entry] = []
 	var dir: DirAccess = DirAccess.open(SAVE_DIR)
 	if dir == null:
@@ -1296,11 +1326,29 @@ func list_saved() -> Array[Entry]:
 		entry.path = SAVE_DIR + file_name
 		entry.name = file_name.substr(0, file_name.length() - 4)
 		entry.modified = FileAccess.get_modified_time(entry.path)
-		entry.bricks = _count_bricks(entry.path)
 		found.append(entry)
 	found.sort_custom(func(a: Entry, b: Entry) -> bool:
 		return a.modified > b.modified)
 	return found
+
+
+## Each saved model's bricks as counted, by its path, with the time and the
+## size its file had then: [modified, size, bricks]. A file read again only
+## once it changed, here or in another window.
+var _counted: Dictionary = {}
+
+
+func _counted_bricks(entry: Entry) -> int:
+	var file: FileAccess = FileAccess.open(entry.path, FileAccess.READ)
+	if file == null:
+		return 0
+	var size: int = file.get_length()
+	var known: Array = _counted.get(entry.path, [])
+	if known.size() == 3 and int(known[0]) == entry.modified and int(known[1]) == size:
+		return int(known[2])
+	var bricks: int = count_in(file.get_as_text())
+	_counted[entry.path] = [entry.modified, size, bricks]
+	return bricks
 
 
 ## Whether any model is saved here: without reading each, as list_saved does.

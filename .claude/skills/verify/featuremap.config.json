@@ -3995,6 +3995,20 @@
       "area": "building"
     },
     {
+      "kind": "cli",
+      "label": "submenus probe",
+      "entry": "src/dev/submenu_probe.gd",
+      "reach": "tools/probe.sh submenu_probe -- --saves=50   (every submenu of File, Edit and View: open within 150 ms of the pointer resting, no frame over 50 ms, kept open straight and slanted into it, a rest-then-next move opens the next; SUBMENU lines)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "submenus in a browser",
+      "entry": "tools/web/submenu_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/submenu_flow.mjs --url=<preview>/app --saves=50 --out=DIR [--only=Import,Open recent] [--bar-ms=N]   (with .env sourced; preview_checks submenu: time to drawn by screencast, longest task, straight and slanted paths, Open recent opens a model; results.txt)",
+      "area": "building"
+    },
+    {
       "kind": "lib",
       "label": "a design drawn as any provider writes it",
       "entry": "src/ai/stream.gd",
