@@ -3375,11 +3375,33 @@ d33 against its pool's t31, every close-up higher: black_2x4 0.868 / 0.741, gree
 0.219 / 0.079 (photographs 0.97, 0.95, 0.95, 0.92, 0.87, 0.89). Close-up verdicts calling the plastic
 clean fell from 0.20 to 0.04.
 
-**Time.** The car at Best (tent, `photoreal_probe --car`, interleaved with pre261, median of three):
-pre261 8.17 and 5.31 s, the specks 8.69 and 5.52 (1.06 and 1.04 times; the box's load moved both
-between rounds). The sets 6532 and 6660 interleaved over pre261, b33 and c33 (set_6512 first in each
-run, taking the shader's compile): pre261 28.6 and 35.3 s, b33 24.0 and 35.5, c33 35.5 and 28.3.
-b33's tracer is d33's byte for byte (the source is set from GDScript), so its times are d33's.
+**Time.** The car at Best (`photoreal_probe --car`: Product, 1280x720, 256 samples, three renders a
+run), pre261 and this branch interleaved, three rounds: pre261's medians 5.10, 5.51 and 4.80 s, the
+specks' 4.77, 5.06 and 5.30 s (0.98 times). A new part asks for no speck and `mote_at` returns at its
+first line. A first timing ran against a pre261 snapshot whose `.godot` was copied from this branch's
+tree, so its imported tracer was this branch's (an imported RDShaderFile is what runs, not the
+`.glsl`); it is not counted. `scripts/snap33.sh` now takes `SNAP_FROM`, and pre261's snapshot copies
+the pre261 worktree's import.
+
+**The browser's Best and the desktop's agree** (`scripts/pair33.sh`: what the desktop gave its tracer
+at draw 11, packed as `page_tracer.js` packs it, run through `tracer_port.py`'s GLSL ES on the card at
+256 samples): black_2x4 differs from the desktop's by 1.6/255 a pixel on average and 0.26/255 over
+16 px blocks, set_6660 by 0.15/255 and 0.13/255, every speck in the same place on the hood and the
+windscreen (`sheets/pair_*_desktop_page.jpg`). The port needed no change.
+
+`render_open_check`'s first open (the Render dialog's draft in a software-drawn browser, budget 250
+ms a frame) ran over by 2 to 97 ms on the final export in 6 of 7 turns, and pre261's export, run at the
+same moment, over by 49 ms in 1 of 4: the longest frames 192 to 347 ms against 211 to 299. The draft
+links the same six programs at the same sizes in both, and the page's tracer is not fetched until
+Best is asked for, so nothing this round changed runs in it; the frames wait in `getParameter` on
+the browser's GPU process, with the box loaded by other projects' runs.
+
+**Checks** from a locked snapshot of the final code: pathtrace_probe 20 ok, product_render_probe 18,
+render_probe 55, lights_probe 102, motions_render_probe 33, none failed. source_probe fails only on
+its time, the car's Best on a table under an absolute 2.9 s: run beside pre261's snapshot, the final
+code went over on one table of four (the desk, 3.51 s), pre261 on three (the desk 3.44, leather 3.30,
+terrazzo 3.18); every other check passed in both (30 and 28 ok). `product_render_flow` fails the same four checks as pre261 (the red glass 0.39, 0.39 and 0.33% red
+against 0.5%; on white the model 1.5% of the picture against 2%).
 
 **Next.** The window's room is still the largest measured gap, and a source alone is not it: the
 photograph's top mirrors a window with a gradient across it and a stud's top mirrors it too, where
