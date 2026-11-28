@@ -209,6 +209,12 @@ var clearance: float = -1.0
 ## circles. 0 the sides as LDraw draws them. Below 0, StudioRender's
 ## PRODUCT_ROUNDING.
 var rounding: float = -1.0
+## The key's light falling off across a seamless backdrop (photoreal36),
+## path traced in the product look: how far the key stands from the model's
+## middle, in the model's radii, as table_light's lamp does (nearer falls
+## off more); 0 the backdrop lit evenly. A white paper exposed past white
+## hides it. Below 0, StudioRender's PRODUCT_BACKDROP_FALL.
+var backdrop_fall: float = -1.0
 ## How many stops brighter than the metered white card the product look on
 ## a backdrop is exposed (photoreal30): a high-key product photograph's
 ## white parts are as bright as its paper. Below 0, StudioRender's

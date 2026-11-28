@@ -522,7 +522,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var without: PackedStringArray = _arg("without", "").split(",", false)
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
-			"rubbed", "table", "table_light", "fill", "edge", "clearance", "rounding", "high_key", "source", "source_rise", "source_turn",
+			"rubbed", "table", "table_light", "fill", "edge", "clearance", "rounding", "backdrop_fall", "high_key", "source", "source_rise", "source_turn",
 			"source_wide", "source_tall", "source_fall", "source_key", "source_spill",
 			"peel", "sink", "polish", "scuff", "floor", "floor_boxes", "floor_over", "floor_key",
 			"floor_shade", "floor_bounce", "floor_f0", "floor_rough"]:

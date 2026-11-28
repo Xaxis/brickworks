@@ -176,7 +176,9 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// radii, 0 none), the model's radius (z, LDU), and how much the shade's
 	// fill is tinted as daylight is (w, 0 none, 1 as measured).
 	vec4 table;
-	// The way towards that light (xyz; w unused).
+	// The way towards that light (xyz), and how far the key whose light
+	// falls off across a seamless backdrop stands (w, the model's radii, 0
+	// none; photoreal36, read by the photo version's floor).
 	vec4 table_key;
 	// The large bright source a glossy top mirrors (photoreal14): a softbox
 	// or a window card standing above and behind the model as the camera
@@ -2095,6 +2097,43 @@ float floor_over(float amount) {
 	float white = smoothstep(0.8, 0.97, min(back.r, min(back.g, back.b)));
 	return mix(1.0, scene.photo.z, amount * white);
 }
+
+// The key's light falling off across a seamless backdrop (photoreal36): a
+// lamp scene.table_key.w of the model's radii from its middle, towards
+// scene.table_key, lights the paper by the inverse square of its distance
+// and the cosine at the paper ([param n]), the floor and the sweep's rise
+// alike, over what it gives the floor under the model; 1 for none. The
+// judge called our backdrops "plain", "clean", "even"; a photograph's paper
+// is lit by a lamp a few metres off, never evenly.
+float backdrop_fall(vec3 at, vec3 n) {
+	if (scene.table_key.w <= 0.0) {
+		return 1.0;
+	}
+	vec3 under = scene.sweep_origin.xyz;
+	vec3 light = under + normalize(scene.table_key.xyz) * scene.table_key.w * scene.table.z;
+	vec3 to_under = light - under;
+	vec3 to_at = light - at;
+	float d0 = length(to_under);
+	float d = max(length(to_at), 1e-3);
+	float there = max(dot(to_at, n), 0.0) / (d * d * d);
+	return there * (d0 * d0 * d0) / max(to_under.y, 1e-3);
+}
+
+// The same beyond the sweep, where a way from [param from] meets nothing:
+// the paper rising behind the model as far past it as the sweep reaches
+// (scene.sweep.w), facing the eye.
+float backdrop_fall_beyond(vec3 from, vec3 way) {
+	vec3 at = from + way * (length(scene.sweep_origin.xyz - from) + scene.sweep.w);
+	return backdrop_fall(at, -way);
+}
+
+// The open paper's light where it keeps [param kept] of the set's light and
+// the key's falloff gives it [param fall] of what it gives under the model:
+// a white paper exposed past white (floor_over) hides what it loses, never
+// what it gains; a coloured one shows both.
+vec3 backdrop_shown(vec3 kept, float fall, float amount) {
+	return min(kept * fall * floor_over(amount), vec3(max(fall, 1.0)));
+}
 #endif
 
 void main() {
@@ -2174,7 +2213,15 @@ void main() {
 					radiance += carried * sky_light(way);
 				} else if (straight) {
 					// What is behind everything, as the eye sees it.
-					radiance += carried * scene.background.rgb;
+					vec3 behind = scene.background.rgb;
+#ifdef PHOTO
+					// On a set's floor, the paper rising behind it lit by the
+					// key as the floor is (photoreal36).
+					if (scene.photo.x > 0.0 && scene.look.w > 0.5) {
+						behind *= backdrop_shown(vec3(1.0), backdrop_fall_beyond(from, way), scene.photo.x);
+					}
+#endif
+					radiance += carried * behind;
 				} else {
 					float weight = sharp ? 1.0 : balance(last_pdf, lit_pdf(way, last_n));
 #ifdef MARKS
@@ -2367,7 +2414,10 @@ void main() {
 					// glossy, the model mirrored in it.
 					float amount = scene.photo.x;
 					vec3 open = scene.background.rgb * lit * lit * table_paper(at, scene.wear.z) * table_falloff(at);
-					vec3 shown = open * min(floor_kept(at + ng * 0.02, n, amount) * floor_over(amount), vec3(1.0));
+					// The key's falloff across it (photoreal36), in what it
+					// shows and what it mirrors.
+					float fall = backdrop_fall(at, n);
+					vec3 shown = open * backdrop_shown(floor_kept(at + ng * 0.02, n, amount), fall, amount);
 					vec3 h = ggx_normal(n, v, scene.photo_gloss.y * scene.photo_gloss.y, rand2());
 					vec3 mirrored = reflect(way, h);
 					float f = schlick(vec3(scene.photo_gloss.x), max(dot(v, h), 0.0)).x * amount;
@@ -2377,7 +2427,7 @@ void main() {
 					}
 					radiance += carried * (1.0 - f) * shown;
 					carried *= f;
-					floor_open = open;
+					floor_open = open * backdrop_shown(vec3(1.0), fall, amount);
 					floor_mirror = true;
 					from = at + ng * 0.02;
 					way = mirrored;

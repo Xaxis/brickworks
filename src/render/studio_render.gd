@@ -212,6 +212,14 @@ const PRODUCT_CLEARANCE := 0.0
 ## PathTracer.rounded; docs/RENDERING.md 5ak): the most, in pixels, a round
 ## edge's middle may lie off its curve.
 const PRODUCT_ROUNDING := 0.5
+## The key's light falling off across a seamless backdrop (photoreal36,
+## RenderSettings.backdrop_fall; docs/RENDERING.md 5ak), the key that many
+## of the model's radii from its middle. The judge called d33's backdrops
+## "plain", "clean", "even" in 155 of 408 verdicts; the photographs' open
+## backdrops vary 0.21 to 0.54 stops across the frame where d33's grey and
+## coloured ones varied 0.03 to 0.06. At 48, set_6657's 0.20 (its
+## photograph 0.25); at 24, 0.16; at 96, 0.24.
+const PRODUCT_BACKDROP_FALL := 48.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
@@ -3312,7 +3320,10 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	var key_way: Vector3 = _stage_key_way(settings)
 	data.append_array([float(matched.get("table", 0.0)), float(matched.get("table_light", 0.0)),
 		maxf(_bounds.size.length() * 0.5, 10.0), float(matched.get("fill", 0.0))])
-	data.append_array([key_way.x, key_way.y, key_way.z, 0.0])
+	# The key's light falling off across a seamless backdrop (photoreal36),
+	# read only by the photo version's floor.
+	data.append_array([key_way.x, key_way.y, key_way.z,
+		maxf(_own(settings.backdrop_fall, PRODUCT_BACKDROP_FALL), 0.0) if worn else 0.0])
 	# The large source (photoreal14), read only by the shader's marks version.
 	data.append_array(_source_rows(settings, shot))
 	# Moulded ABS's own unevenness (photoreal15): the polish split and the
