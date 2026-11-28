@@ -5,6 +5,8 @@ rules:
   - In Simple a new model starts on a 16 x 16 plate.
   - Simple never changes a part in a sub-assembly, a locked part, a part turned off the quarter or tilted, or a bendy part.
   - Simple places at the model's top, on the studs, upright, a quarter turn at a time; Full's sub-assembly, snap, turn step and tool are put back as they were on the way out.
+  - Simple shows the whole model as it is: parts hidden in Full, the cut-away, x-ray, the exploded view, Stress and Stud directions are set aside while it is up and come back in Full as they were; the cut a file keeps is still saved.
+  - A part put down in Simple while Full's timeline was on a step goes into that step, as one put down in Full would, so Full comes back on the step showing it.
 title: Simple mode
 nav: Simple mode
 description: Build with big bricks and your fingers: a tray of 30 parts and 12 colours, drag to build, tap to select, and Full one tap away.
@@ -35,7 +37,7 @@ ui:simple's controls swapped in live
 
 You can also tap a part in the tray, then tap the model where one should go. Its see-through ghost shows where it will sit: tap the ghost to put it down, tap somewhere else to show it there instead, or drag the ghost where you want it and let go. With a mouse, the ghost follows the pointer and a click puts it down. Tap the part in the tray again to stop.
 
-A new model in Simple starts on a 16 x 16 plate that fills the view. Parts go on the plate or on other parts: let go beside the plate or over the sky and nothing goes down, and Simple says so. If there is no room where you let go, nothing goes down and Simple says that too. [[Esc]] lets go of the part you chose in the tray.
+A new model in Simple starts on a 16 x 16 plate that fills the view. Parts go on the plate or on other parts: let go on the side of a part and the new one goes down beside it, on whatever is under it, never in the air; let go beside the plate or over the sky and nothing goes down, and Simple says so. If there is no room where you let go, nothing goes down and Simple says that too. [[Esc]] lets go of the part you chose in the tray.
 
 ## Move, turn, copy and delete {#edit}
 
@@ -64,6 +66,8 @@ Holding a finger still on a part does nothing, so a resting thumb never deletes 
 A model you open or build in Full opens whole in Simple. Simple leaves some parts exactly as they are: parts inside a sub-assembly, parts you locked in Full, parts turned at an angle or tilted, and bendy parts such as hoses. It says once how many there are, and again if you tap one. Switch to **Full** to change them.
 
 Simple builds its own way whatever Full was set to: every part goes into the model itself, on the studs, upright, and turns a quarter at a time. If you were editing inside a sub-assembly in Full, or had chosen Half or Free snap, another turn step or another tool, Full has them all back as they were when you switch back.
+
+Simple also shows the whole model as it is, every part where it stands: parts you hid in Full are shown, and the cut-away, x-ray, the exploded view, Stress and Stud directions are set aside, so a brick you put down always stands on something you can see. Switch back to **Full** and each is as you left it: the same parts hidden, the same cut, the sections apart again (or together, if you changed the model). If Full's timeline was on a step, the parts you put down in Simple go into that step, as they would in Full, and Full comes back on that step with them showing.
 
 <!-- covers
 ui:simple mode

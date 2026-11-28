@@ -548,7 +548,8 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	var rise: int = lattice.rise_onto(covers[2], Builder.GROUND_CELL, shift.x, shift.z)
 	# A side face keeps the height it implies, as a single part does, to
 	# the plate: a whole group two LDU off every course reads as a fault.
-	if hit.is_valid() and hit.normal.y == 0:
+	# Not in Simple, where it rests on what is under it (Builder.stands_only).
+	if hit.is_valid() and hit.normal.y == 0 and not builder.stands_only:
 		var level: int = BrickLattice._floor_div(hit.adjacent().y,
 			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
 		rise = maxi(rise, level - _lowest(whole))
@@ -724,6 +725,32 @@ func stands_on_ground(builder: Builder) -> bool:
 		return _aimed and not whole.is_empty() and _lowest(whole) == Builder.GROUND_CELL
 	return _aimed and not whole.is_empty() \
 		and _lowest(whole) + roundi(_frame.origin.y / BrickLattice.CELL) == Builder.GROUND_CELL
+
+
+## Whether the group as aimed stands on what is under it: its footing no
+## higher over the highest surface under it (BrickLattice.rise_onto, the
+## cells it stood in free to it) than a stud's stop lifts it, [constant
+## RESTS_SLACK] cells. Posed on a joint, held there. What Simple offers a
+## dragged brick on (SimpleLayer._offered): a group put beside a side face at
+## its height stood a plate or more in the air.
+func rests(builder: Builder) -> bool:
+	if not _aimed or _posed:
+		return true
+	var covers: Array = _covers_for(builder)
+	var lattice: BrickLattice = builder.lattice
+	var was_free: bool = lattice.hand_free
+	lattice.hand_free = true
+	var rest: int = lattice.rise_onto(covers[2], Builder.GROUND_CELL,
+		roundi((_frame.origin.x - _reference.x) / BrickLattice.CELL),
+		roundi((_frame.origin.z - _reference.z) / BrickLattice.CELL))
+	lattice.hand_free = was_free
+	return roundi(_frame.origin.y / BrickLattice.CELL) <= rest + RESTS_SLACK
+
+
+## Cells a group may stand over the surface under it and still rest: a
+## cone's or a dome's stud stop lifts what goes on it 4 or 6 LDU
+## (Builder.stud_feet_lift); a plate in the air is 4 cells.
+const RESTS_SLACK := 3
 
 
 func placements(builder: Builder) -> Array:

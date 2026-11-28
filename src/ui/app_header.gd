@@ -141,9 +141,13 @@ static func dress_button(button: Button, pt: float) -> void:
 ## edge. One tap on the other changes the controls; [param pick] is called
 ## with &"simple" or &"full". Its buttons are named controls_simple and
 ## controls_full, for the page and the checks; Main says which is chosen
-## (show_controls). In points, [param pt], at a finger's height on a phone's
-## width ([param finger]) and the site's 36 elsewhere.
-static func controls_switch(pt: float, finger: bool, pick: Callable) -> PanelContainer:
+## (show_controls), and [param layer] is chosen from the start: made with
+## neither, the desktop's showed two words alike, and neither said it was on
+## to a screen reader, until the first switch (simplereview4 H1). In points,
+## [param pt], at a finger's height on a phone's width ([param finger]) and
+## the site's 36 elsewhere.
+static func controls_switch(pt: float, finger: bool, pick: Callable,
+		layer: StringName = &"full") -> PanelContainer:
 	var frame := PanelContainer.new()
 	frame.name = "controls_switch"
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -163,10 +167,11 @@ static func controls_switch(pt: float, finger: bool, pick: Callable) -> PanelCon
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.set_meta("controls", one[0])
-		var layer: StringName = one[0]
-		button.pressed.connect(func() -> void: pick.call(layer))
+		var mine: StringName = one[0]
+		button.pressed.connect(func() -> void: pick.call(mine))
 		row.add_child(button)
 	dress_switch(frame, pt, finger)
+	show_controls(frame, layer)
 	return frame
 
 
@@ -236,7 +241,12 @@ static func show_controls(frame: PanelContainer, layer: StringName) -> void:
 		return
 	for child: Node in frame.get_child(0).get_children():
 		var button: Button = child as Button
-		button.set_pressed_no_signal(button.get_meta("controls") == layer)
+		var chosen: bool = button.get_meta("controls") == layer
+		button.set_pressed_no_signal(chosen)
+		# Said as well as drawn: a toggle's pressed state, and "Chosen" for a
+		# reader that says only the name and the description.
+		button.accessibility_description = "Chosen" if chosen else ""
+		button.queue_accessibility_update()
 
 
 ## The site's home page, in this tab, as the site's own mark goes there.

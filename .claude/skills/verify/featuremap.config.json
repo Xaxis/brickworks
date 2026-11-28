@@ -7570,6 +7570,27 @@
       "entry": "src/dev/simplereview3_probe.gd",
       "reach": "PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- [--desktop] [--case=subedit,snap,locked,undomid,wayback] --pictures=DIR   (windowed; a tray brick while Full edits inside a sub-assembly, Full's Half and Free snap, a locked part tapped, Undo with a finger's ghost waiting, the way in and back on 10030-1 and Orthanc frame by frame)",
       "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple4 probe",
+      "entry": "src/dev/simple4_probe.gd",
+      "reach": "tools/probe.sh simple4_probe -- --headless-ok [--desktop] [--case=cut,shape,xray,explode,tints,planned,steps,switch]   (headless; what Full shows set aside in Simple and back in Full: the cut kept in the file, x-ray, the exploded view, Stress and Stud directions; a brick put in Simple on show when Full's timeline comes back; Simple | Full chosen from the start)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplesides probe",
+      "entry": "src/dev/simplesides_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplesides_probe; PROBE_SIZE=1280x800 tools/probe.sh simplesides_probe -- --desktop; tools/probe.sh simplesides_probe -- --headless-ok [--desktop]   (windowed, or headless; no part in the air in Simple whatever face a drop or drag is aimed at: a 7 x 7 grid over each of five parts' pictures from four views, ghosts, drops and drags counted, none in the air)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplereview4 probe",
+      "entry": "src/dev/simplereview4_probe.gd",
+      "reach": "tools/probe.sh simplereview4_probe -- --headless-ok [--desktop|--tablet] [--case=ctx,undo,unsaved,same,steps,carry,peer,hidden,session]; tools/probe.sh simplereview4t_probe -- --headless-ok [--desktop]   (headless; the fourth review's attacks: Full's whole context round trip, Undo and Save byte for byte, the timeline's step, a carry with Full's tool on Place, a part hidden in Full)",
+      "area": "building"
     }
   ]
 }

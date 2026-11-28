@@ -450,8 +450,14 @@ func _opened() -> void:
 	# A shared model's viewer only looks, with no strip to end a cut by: it
 	# shows the model whole.
 	var shell: Shell = get_parent() as Shell
-	if kept.is_empty() or (shell != null and shell.read_only):
+	if kept.is_empty() or (shell != null and shell.read_only) or aside:
 		return
+	_cut_as_kept(kept)
+
+
+## The cut on as [param kept] (BrickWorld.cut_kept) says it, in the file's
+## coordinates.
+func _cut_as_kept(kept: Dictionary) -> void:
 	var lift: Vector3 = store.lift() if store != null else Vector3.ZERO
 	leaves_ghosts = bool(kept.get("ghosts", false))
 	_ghost_box.set_pressed_no_signal(leaves_ghosts)
@@ -469,6 +475,54 @@ func _opened() -> void:
 	room = AABB(Vector3(from[0], from[1], from[2]) * LdrModel.FLIP + lift, Vector3.ZERO) \
 		.expand(Vector3(to[0], to[1], to[2]) * LdrModel.FLIP + lift)
 	_apply_cut()
+
+
+## Simple's controls are up (SimpleLayer): the cut and x-ray are Full's, set
+## aside so Simple shows the whole model as it is, every part drawn and in
+## the pointer's way (simplereview4 F2: a brick from Simple's tray landed on a
+## part cut away and stood on nothing to be seen). What the model keeps of
+## the cut (BrickWorld.cut_kept, a line its file writes) is left as it is, so
+## a save meanwhile writes it, and a model opened meanwhile keeps its own for
+## Full. Quietly: nothing said, as nothing was asked for.
+var aside: bool = false
+## X-ray as it was set aside: the parts seen through, what it keeps solid,
+## and the world's generation.
+var _xray_aside: Array = []
+
+
+## Set aside ([param on]) or put back as it was: the cut on again as the model
+## keeps it, and x-ray of the same parts on the same model.
+func set_aside(on: bool) -> void:
+	if on == aside:
+		return
+	aside = on
+	if on:
+		if cutting:
+			_end_cut()
+		_xray_aside = []
+		if seeing_through:
+			_xray_aside = [builder.lattice.see_through.duplicate(), _xray_path, world.generation()]
+			seeing_through = false
+			world.set_xray({})
+			builder.lattice.see_through = {}
+		return
+	var shell: Shell = get_parent() as Shell
+	if not cutting and not world.cut_kept.is_empty() and not (shell != null and shell.read_only):
+		_generation = world.generation()
+		_cut_as_kept(world.cut_kept.duplicate(true))
+	var was: Array = _xray_aside
+	_xray_aside = []
+	if was.is_empty() or seeing_through or int(was[2]) != world.generation():
+		return
+	var ghosts: Dictionary = {}
+	for brick_id: Variant in was[0]:
+		if world.get_brick(int(brick_id)) != null:
+			ghosts[brick_id] = true
+	seeing_through = true
+	_xray_path = str(was[1])
+	_generation = world.generation()
+	world.set_xray(ghosts)
+	builder.lattice.see_through = ghosts
 
 
 ## The cut off: the whole model drawn again. What the model keeps is the

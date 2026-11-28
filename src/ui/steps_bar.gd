@@ -1379,12 +1379,29 @@ func booklet_step() -> Instructions.Step:
 ## The step a part put down by hand goes in (Builder.place_step): the one
 ## showing, in the author's steps, when the part goes where that step is.
 func place_step(path: String) -> int:
+	return step_for(place_where(), _world, path)
+
+
+## Where a part put down by hand goes while the step showing is the one it
+## is on now: [that step in its author's numbering, the model whose steps
+## they are], or [] in no author's step. Kept by Main for Simple, which puts
+## the timeline away (Main._timeline_left).
+func place_where() -> Array:
 	if _mode != AUTHORS:
-		return -1
+		return []
 	var at: Instructions.Step = current_step()
-	if at == null or at.authored_step < 0 or at.authored_in != AuthorSteps.home(_world, path):
+	if at == null or at.authored_step < 0:
+		return []
+	return [at.authored_step, at.authored_in]
+
+
+## The step [param where] ([method place_where]) gives a part put down by
+## hand in the tree at [param path]: -1 where the part goes into another
+## model's steps than the step's own, or there is no step.
+static func step_for(where: Array, world: BrickWorld, path: String) -> int:
+	if where.is_empty() or str(where[1]) != AuthorSteps.home(world, path):
 		return -1
-	return at.authored_step
+	return int(where[0])
 
 
 ## The steps worked out again after the model or its steps changed, in the
