@@ -120,9 +120,11 @@ func _menus() -> void:
 	var twice: Array = homes.keys().filter(func(named: String) -> bool: return homes[named] > 1)
 	_check("no command is in two menus (%d commands in the menus%s)" % [homes.size(),
 		"" if twice.is_empty() else "; twice: " + ", ".join(twice)], twice.is_empty() and homes.size() > 150)
-	# Where Find a command says a command lives is the row a person opens.
-	_check("Instructions… in File › Export alone (%s)" % Keymap.menu_row("instructions"),
-		Keymap.menu_row("instructions") == "File › Export › Instructions…"
+	# Where Find a command says a command lives is the row a person opens:
+	# Instructions in File › Export, and in no other menu.
+	var home: String = Keymap.menu_row("instructions")
+	_check("Instructions in File › Export alone (Find a command says %s; in %d menus)" % [home,
+		int(homes.get("instructions", 0))], home == "File › Export › " + Keymap.words("instructions")
 		and homes.get("instructions", 0) == 1)
 	var edit: MenuButton = _shell.menu("Edit")
 	edit.show_popup()
