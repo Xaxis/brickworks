@@ -3390,7 +3390,14 @@ picture the assistant is shown.
   `"plastic": "played"` on every shot draws photoreal25's wear (age 1,
   handling 1, dust 0.4, seating 2.5: cream whites, see bench/results/
   photoreal26-2026-11-26/sheets/worn_new_vs_played.jpg); with none, the ten
-  shots and the car byte for byte as photoreal25's src0.
+  shots and the car byte for byte as photoreal25's src0. Played with also
+  carries a shelf's dust (photoreal33, docs/RENDERING.md 5ah; path_tracer.glsl
+  `mote_at`, `mote_amount`): sharp pale and dark specks on every level face
+  and a clear part's skin, fewer on the sides, each part its own, as many as
+  the dust times the age squared (none on New). Check: set_6660 at Best
+  (`photoreal_probe -- --shots=tools/photoreal/shots.json --only=set_6660`)
+  shows specks on its red hood and windscreen at 2x; set_6512 (age 0) draws
+  byte for byte as before.
 - `a large source on a table` (`RenderSettings.source` and `source_*`,
   `StudioRender.PRODUCT_SOURCE` at `SOURCE_LEVEL` 128 and `SOURCE_KEY` 0.05,
   `_source_rows`; photoreal14, on by default since photoreal16, docs/RENDERING.md
