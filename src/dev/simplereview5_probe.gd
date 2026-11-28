@@ -828,6 +828,7 @@ func _case_modes() -> void:
 		await _frames(10)
 		var a1: Dictionary = _view_state()
 		var differ: Array = _differ(a0, a1)
+		_note2("[A %s] Full's camera %s, back %s" % [variant, a0["camera"], a1["camera"]])
 		differ.erase("camera: %s -> %s" % [a0["camera"], a1["camera"]])
 		_check("[A %s] back in Full: view, tool and step as they were (%s)" % [variant, str(differ)], differ.is_empty())
 		steps.stop()
@@ -865,6 +866,7 @@ func _case_modes() -> void:
 		await _frames(6)
 		var b1: Dictionary = _view_state()
 		var differ_b: Array = _differ(b0, b1)
+		_note2("[B %s] Full's camera %s, back %s" % [variant, b0["camera"], b1["camera"]])
 		differ_b.erase("camera: %s -> %s" % [b0["camera"], b1["camera"]])
 		_check("[B %s] back in Full: sub-assembly, cut, x-ray, part in hand as they were (%s)" % [variant,
 			str(differ_b)], differ_b.is_empty())
