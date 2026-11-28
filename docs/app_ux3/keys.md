@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 234 | 115 | 110 | 112 | 114 |
-| Studio | 234 | 118 | 113 | 115 | 117 |
-| Mecabricks | 234 | 116 | 111 | 113 | 115 |
-| LDCad | 234 | 118 | 114 | 116 | 118 |
+| Brickworks | 236 | 115 | 110 | 112 | 116 |
+| Studio | 236 | 118 | 113 | 115 | 119 |
+| Mecabricks | 236 | 116 | 111 | 113 | 117 |
+| LDCad | 236 | 118 | 114 | 116 | 120 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -40,8 +40,10 @@ smalls4), each with a key under every preset, and File › Import › Into this 
 (intomodel3), View › Panels › Colour and Reset panel layout (panelfold), each with none: 232
 then, 112 without a key under the app's keys, 120 with one. View › Connection points
 (jointmarks) came with none and no row, which keys4 found; File › Compare › Compare with the
-set… (setcheck, APP_UX10 #4) added one more with none: 234 now, 114 without a key under the
-app's keys.
+set… (setcheck, APP_UX10 #4) added one more with none: 234, 114 without a key under the
+app's keys. Edit › Finish the surfaces… (finishpass, APP_UX10 #9) and Simple mode in the
+header's … (simple2) came with none and no row, which keys2 and keys4 found (greenreds2):
+236 now, 116 without a key under the app's keys.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -187,6 +189,7 @@ Ctrl-Shift-F.
 | `select_submodel` | Edit › Select by › Same sub-model | — | — | — | a few times a model | all | only on a model with sub-assemblies |
 | `lock` | Edit › Lock the selection | — | — | — | a few times a model | Studio | under Studio's keys only: L is Studio's Hide tool, and Studio has no lock |
 | `paint` | Edit › Paint the selection | — (Studio leaves Paint with none) | — | — | every few minutes | Studio, LDCad | under Studio's keys, as Studio has none; under LDCad's, C centres the view |
+| `finish_surfaces` | Edit › Finish the surfaces… | — | — | — | once a model | all | a pass over the whole model done once at the end, as a set designer finishes it; its bar lays it in one undo |
 | `printed_versions` | Make › Printed versions | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `brace` | (no menu row) | — | — | — | rarely | all | asks Claude to brace a weak part; on the part's own menu while Stress shows it weak |
 | `step_new` | Build › Build steps › New step from selection | Ctrl-T, Add a step | — | — (its Ctrl-Insert appends a step: Next step here) | every few minutes | LDCad | under LDCad's keys only: Shift-N leaves nesting, and Ctrl-Insert ends a step |
@@ -262,6 +265,7 @@ Ctrl-Shift-F.
 | `panel_outliner` | View › Panels › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_colour` | View › Panels › Colour | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `reset_panels` | View › Panels › Reset panel layout | — | — | — | rarely | all | every panel back as it was at first, after a layout has gone wrong |
+| `simple_mode` | the header's … (More on a phone), where the Simple and Full switch has no room | — | — | — | once a session | all | the header's Simple and Full switch is the way in, one tap; this row stands for it only where the switch is folded away |
 | `minifig` | Make › Minifigure builder | — | — | — | a few times a model | Mecabricks, LDCad | under Mecabricks' and LDCad's keys M is their Move |
 | `mosaic` | Make › Mosaic from a picture | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `part_maker` | Make › Part maker | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
