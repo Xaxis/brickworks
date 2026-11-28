@@ -1062,13 +1062,13 @@ func _case_full() -> void:
 ## after [faces] (the camera there is not the one big alone has): [part,
 ## quarter turns, origin, direction, what it was aimed at, what its box stood
 ## on]. The first at a 2 x 4 tile on the ground, its box's far edge over a
-## minifig's arm 52 LDU up; the second at a 1 x 2 plate, its box's far half
+## minifig's arm 52 LDU up; the second at a 1 x 2 tile, its box's far half
 ## over a 2 x 2 double slope's ridge (bigghost, 2026-11-28).
 const AIR_RAYS: Array = [
 	["3665a", 1, Vector3(1781.5161, 424.53134, 678.1275), Vector3(-0.9628271, -0.25840482, -0.07868184),
 		"a 2 x 4 tile, the box on a minifig's arm"],
 	["3665a", 0, Vector3(-448.39258, 1137.5686, -1203.7672), Vector3(0.2330554, -0.52178884, 0.8206227),
-		"a 1 x 2 plate, the box on a double slope's ridge"],
+		"a 1 x 2 tile, the box on a double slope's ridge"],
 ]
 
 

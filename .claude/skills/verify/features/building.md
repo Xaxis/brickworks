@@ -3361,9 +3361,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   sockets are held there (bigghost, 2026-11-28): held by nothing at either,
   the box stood on what is under the room the part has not, and stood the
   part in the air, so it rests by its cover. corner_shop's inverted slope
-  (3665a) aimed at a tile stood 54 LDU up on a minifig's arm under the far
-  edge of its sloped underside, and over a double slope's ridge 18 LDU off
-  it, in Simple and in Full. Every plain part, one box across, rests as
+  (3665a) aimed at a tile stood 52 LDU up on a minifig's arm under the far
+  edge of its sloped underside, 14 LDU over the hand under it, and over a
+  double slope's ridge 18 LDU off it, in Simple and in Full. Every plain part, one box across, rests as
   before. Probe: `placing_probe -- only=parts` (the two corner plates
   beside a 6157, as the set has them, aimed at their corner studs; the
   4488 on its wedge; each fails with its rule undone); `simplereview5_probe
