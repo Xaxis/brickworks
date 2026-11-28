@@ -156,6 +156,10 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 	if read != null:
 		read.close()
 	DirAccess.remove_absolute(answer)
+	# How long the session waited for it, the drawer's start included: the bench
+	# reads these (run.py's pictures_waited) to show no design waits on a queue.
+	print("leased shots: %s in %d ms" % [name, int(1000.0 * (Time.get_unix_time_from_system()
+		- (until - MOST_WAIT_S)))])
 	if not drawn is Dictionary or (drawn as Dictionary).is_empty():
 		return null
 	var got: Dictionary = drawn
