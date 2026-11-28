@@ -3357,8 +3357,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Builder._seated_by_sockets`): 5762-1's 4488 stands on a wedge plate by
   the block under half of it, where its sockets are, and the wedge's cover
   is short of its slanted edge under that block, so lowered by its cover
-  it sank a plate into the wing. That box's rest is kept only where its
-  sockets are held there (bigghost, 2026-11-28): held by nothing at either,
+  it sank a plate into the wing. That box's rest is kept only where what
+  holds the box up is drawn under one of its sockets (`_over_its_sockets`,
+  bigghost, 2026-11-28), as the wing is under the 4488's block; elsewhere
   the box stood on what is under the room the part has not, and stood the
   part in the air, so it rests by its cover. corner_shop's inverted slope
   (3665a) aimed at a tile stood 52 LDU up on a minifig's arm under the far

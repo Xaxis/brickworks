@@ -5566,19 +5566,50 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	# plate by the block under half of it, where its sockets are, the other
 	# half a plate over the wing; the wedge's cover is short of its slanted
 	# edge under that block, and lowered by its cover the 4488 sank a plate
-	# into the wing (2026-10-17). Its box's rest is kept only where its
-	# sockets are held there: where they are held by nothing at either, the
-	# box stood on what is under the room the part has not, and stood the
-	# part in the air. An inverted slope (3665a) over a minifig's arm, or a
-	# double slope's ridge, under its sloped underside stood 14 to 18 LDU
-	# over them, its foot over the tile it was aimed at, and Simple offered
-	# it (simplereview5's corner_shop, bigghost 2026-11-28). It rests by its
+	# into the wing (2026-10-17). Its box's rest is kept only where what
+	# holds the box up is under its sockets ([method _over_its_sockets]), as
+	# the wing is under the 4488's block. Elsewhere the box stood on what is
+	# under the room the part has not, and stood the part in the air: an
+	# inverted slope (3665a) whose box reached a minifig's arm, or a double
+	# slope's ridge, under its sloped underside stood 14 to 18 LDU over them,
+	# its foot over the tile it was aimed at, and Simple offered it
+	# (simplereview5's corner_shop, bigghost 2026-11-28). It rests by its
 	# cover, as the same part carried does (Carry.aim).
 	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
 			and not _seated_by_sockets(part, basis, snapped, cover, rise) \
-			and _seated_by_sockets(part, basis, snapped, cover, rest_cell - low):
+			and _over_its_sockets(part, basis, snapped, cover, rest_cell):
 		return 0.0
 	return maxf(0.0, (rest_cell - rise) * BrickLattice.CELL - _rotated_bounds(part, basis).position.y)
+
+
+## Whether a part whose top is [param rest_cell] under [param cover] (the
+## part in hand's, across at [param snapped]) stands, as drawn, under one of
+## its sockets: what holds its box up holds it there, though that part's
+## own cover falls short of where it is drawn (a wedge plate's slanted edge).
+func _over_its_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
+		cover: PackedInt32Array, rest_cell: int) -> bool:
+	if world == null:
+		return false
+	var lo := Vector2i(1 << 30, 1 << 30)
+	var hi := Vector2i(-(1 << 30), -(1 << 30))
+	var n: int = 0
+	while n < cover.size():
+		lo = Vector2i(mini(lo.x, cover[n]), mini(lo.y, cover[n + 2]))
+		hi = Vector2i(maxi(hi.x, cover[n + 3]), maxi(hi.y, cover[n + 5]))
+		n += 6
+	var layer := PackedInt32Array([lo.x, rest_cell - 1, lo.y, hi.x, rest_cell, hi.y])
+	for id: int in lattice.blockers_boxes(layer, 0):
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh == null:
+			continue
+		var drawn: AABB = brick.transform * mesh.bounds
+		for socket: Vector2 in part.sockets:
+			var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y) + snapped
+			if drawn.position.x < at.x and at.x < drawn.end.x \
+					and drawn.position.z < at.z and at.z < drawn.end.z:
+				return true
+	return false
 
 
 ## Whether a socket of [param part] (turned by [param basis], across at
