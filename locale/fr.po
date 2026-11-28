@@ -17413,6 +17413,12 @@ msgstr "Commencez un modèle à vous : Nouveau modèle, la construction rapide d
 msgid "New model"
 msgstr "Nouveau modèle"
 
+msgid "Start in Simple"
+msgstr "Commencer en Simple"
+
+msgid "Start in Simple to drag big bricks from a tray with a finger, or New model for every part and tool. This week's quick build and the gallery are below; the example car is behind this."
+msgstr "Commencer en Simple pour glisser de grandes briques d'un bac avec le doigt, ou Nouveau modèle pour chaque pièce et chaque outil. La construction rapide de la semaine et la galerie sont en dessous ; la voiture d'exemple est derrière."
+
 msgid "Put this away (Esc): the model is behind it"
 msgstr "Masquer (Échap) : le modèle est derrière"
 

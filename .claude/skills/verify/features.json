@@ -1804,7 +1804,7 @@
       "id": "cli:firststart probe",
       "kind": "cli",
       "entry": "src/dev/firststart_probe.gd",
-      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, New model strong, one press an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, Start in Simple strong where it is offered (New model where not), New model shown, one press of New model an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
       "area": "web",
       "tests": []
     },
@@ -3812,6 +3812,14 @@
       "kind": "cli",
       "entry": "src/dev/simplesides_probe.gd",
       "reach": "PROBE_SIZE=390x844 tools/probe.sh simplesides_probe; PROBE_SIZE=1280x800 tools/probe.sh simplesides_probe -- --desktop; tools/probe.sh simplesides_probe -- --headless-ok [--desktop]   (windowed, or headless; no part in the air in Simple whatever face a drop or drag is aimed at: a 7 x 7 grid over each of five parts' pictures from four views, ghosts, drops and drags counted, none in the air)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:simplestart probe",
+      "kind": "cli",
+      "entry": "src/dev/simplestart_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplestart_probe; PROBE_SIZE=820x1180 tools/probe.sh simplestart_probe -- --tablet; PROBE_SIZE=1280x800 tools/probe.sh simplestart_probe   (windowed, -- --pictures=DIR; a first visit on a phone or tablet: Start in Simple the strong button beside New model, one press into Simple on an empty plate, kept; in Simple, Save and Share top left a fingertip tall in nobody's way, dimmed while nothing is built; Save asks the name and saves under it, Share opens the share panel over Simple)",
       "area": "building",
       "tests": []
     },
@@ -8622,7 +8630,7 @@
       "id": "ui:simple mode",
       "kind": "ui",
       "entry": "src/ui/simple_layer.gd",
-      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe; docs/simple)",
+      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; Save and Share top left over the model (Save asks a new model's name, Share the studio's share panel); a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe, simplestart_probe; docs/simple)",
       "area": "building",
       "tests": []
     },
@@ -9345,7 +9353,7 @@
       "id": "ui:the studio's first screen",
       "kind": "ui",
       "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button; on a phone or tablet in Full, Start in Simple the strong one beside it (Main._offer_simple: into Simple on a new plate)",
       "area": "web",
       "tests": []
     },

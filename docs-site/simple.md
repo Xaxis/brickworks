@@ -3,6 +3,8 @@ ai: Simple is a second set of controls for the same studio, picked in the header
 rules:
   - Simple and Full edit the same model: switching keeps every part, the undo steps and the save.
   - In Simple a new model starts on a 16 x 16 plate.
+  - On a phone or tablet, a first visit's welcome offers Start in Simple beside New model.
+  - Simple has its own Save and Share, top left over the model: Save asks a new model's name first; Share opens the studio's share panel.
   - Simple never changes a part in a sub-assembly, a locked part, a part turned off the quarter or tilted, or a bendy part.
   - Simple places at the model's top, on the studs, upright, a quarter turn at a time; Full's sub-assembly, snap, turn step and tool are put back as they were on the way out.
   - Simple shows the whole model as it is: parts hidden in Full, the cut-away, x-ray, the exploded view, Stress and Stud directions are set aside while it is up and come back in Full as they were; the cut a file keeps is still saved.
@@ -18,7 +20,7 @@ Simple is Brickworks with fewer, bigger controls: a tray of common parts along t
 
 ## Switch between Simple and Full {#switch}
 
-Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Your choice is kept on that device, and Brickworks always starts in Full until you pick Simple. Where Full's header has no room for both, on a phone or in a narrow window, **Simple mode** is in **More** (on a phone) or in **…** (on a computer) instead, so Redo and the menus keep their places.
+Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Your choice is kept on that device, and Brickworks always starts in Full until you pick Simple. On a phone or a tablet, the studio's welcome on your first visit offers **Start in Simple** beside **New model**: one tap and you are building on an empty plate in Simple. Where Full's header has no room for both, on a phone or in a narrow window, **Simple mode** is in **More** (on a phone) or in **…** (on a computer) instead, so Redo and the menus keep their places.
 
 Switching changes only the controls. Every part, your undo steps and your saved file stay as they are, and the view comes back where you left it in Full. Simple starts with nothing selected: what you selected in Full waits for you there, and Simple's buttons only ever change what you pick in Simple.
 
@@ -60,6 +62,15 @@ Holding a finger still on a part does nothing, so a resting thumb never deletes 
 - **Fit**, under the header, frames the plate and everything on it again. The view never zooms out so far that the studs get too small to aim at.
 - With a mouse, the left button is your finger; drag on empty space to turn the view, and use the wheel to zoom.
 - With a keyboard, [[Delete]] deletes the selected part, [[Ctrl+Z]] and [[Ctrl+Shift+Z]] undo and redo, and [[Ctrl+C]], [[Ctrl+V]] and [[Ctrl+D]] copy, paste and duplicate. Full's other keys wait for Full, so none of them opens anything you cannot see.
+
+## Save and share {#save}
+
+**Save** and **Share** are at the top left of the model, across from Fit, as soon as there is a part on the plate.
+
+- **Save** keeps the model under its name. A new model asks what to call it first, as File › Save does in Full.
+- **Share** opens the same share panel as in Full, over Simple's controls: publish the model for a link anyone can open, or ask the builders about it.
+
+You never have to switch to Full to keep or show what you built.
 
 ## Models from Full {#from-full}
 

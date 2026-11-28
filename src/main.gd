@@ -12220,12 +12220,23 @@ func _maybe_start() -> void:
 		# the studio started, and not touched since.
 		if _sample_untouched and _shell != null and _shell.first_build != null \
 				and not _shell.first_build.fits_here():
-			_studio_start_now().call("open", saved, false, true)
+			_studio_start_now().call("open", saved, false, true, _offer_simple())
 		return
 	_start_decided = true
-	_studio_start_now().call("open", saved, saved.is_empty())
+	_studio_start_now().call("open", saved, saved.is_empty(), false, _offer_simple())
 	if saved.is_empty() and _cloud != null:
 		_studio_start.call("set_listed", _cloud.account_list)
+
+
+## Whether the studio's first screen offers Start in Simple beside New model:
+## on a touch screen's layout (a phone's or a tablet's) still in Full. There
+## Simple | Full has no room in a phone's bar and was a tile inside More, so
+## a phone's first visit never met it (appwalk2, 2026-11-28). A desktop has
+## the switch in its header, and Build your first model.
+func _offer_simple() -> bool:
+	# The layer wanted too: a device left in Simple goes into it a frame
+	# after the studio is built (call_deferred), maybe after this is asked.
+	return _phone != null and _layer == &"full" and _controls_wanted() == &"full" and _viewing.is_empty()
 
 
 ## StudioStart, made the first time: over the model, under the sign-in screen.
@@ -12260,6 +12271,9 @@ func _studio_start_now() -> Control:
 	_studio_start.set("copy", _start_copy)
 	_studio_start.set("came_wanted", _open_came)
 	_studio_start.set("begin_new", func() -> void: _bar.ask_for_new())
+	_studio_start.set("begin_simple", func() -> void:
+		use_controls(&"simple")
+		_bar.ask_for_new())
 	$HUD.add_child(_studio_start)
 	if _gate != null:
 		$HUD.move_child(_studio_start, _gate.get_index())
