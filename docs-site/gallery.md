@@ -103,7 +103,7 @@ ui:a list's pages
 
 The gallery's front (Top, all time, nothing searched) has shelves among the cards:
 
-- **Week's pick**, a row of its own across the top with its picture large, with a line saying why and **Build it** and **Open in Brickworks** beside it; rest the pointer on its picture to turn the model in 3D. It is chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. A pick the site's owner made says *Chosen by Brickworks*.
+- **Week's pick**, a row of its own across the top with its picture large, with a line saying why and **Build it** and **Open in Brickworks** beside it; rest the pointer on its picture to turn the model in 3D. It is chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. Its line says only what is true of it: *Built twice this week*; *New this week* for a model shared in the past seven days; and in a quiet week, when the pick was shared earlier, the day it was shared (*Shared 24 Oct, and Tested*). A pick the site's owner made says *Chosen by Brickworks*.
 - **Today in the gallery**: one model a day, by its past 30 days' likes, builds, comments, remixes and the Tested mark, not again for four weeks; and one set from [the LDraw library](/docs/ldraw-library), never the same twice in 90 days.
 - **You can build now**, signed in: models you own every part for, from [your collection](/docs/collection). With no collection yet it says how to add one (in the app, **Build › My collection…**).
 - **Small builds**: under 200 parts, an evening's build, the most built and remixed first, with **See every small build**.

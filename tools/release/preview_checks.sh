@@ -309,6 +309,11 @@ declare -A CMD=(
   # (/challenge.png); the test challenge's How it runs panel (challengehonours,
   # supabase/challenge_rounds.sql). Read only, signed out but the panel.
   [challengehome]="tools/web/challengehome_check.mjs --url=$P --out=$S/${TAG}_challengehome --admin"
+  # The week's pick said truly (never "new this week" for an older model, the
+  # home's first post never "this week's pick · <its day>"), and View in 3D
+  # drawn on a set's page and the pick's page, in a browser that carries the
+  # preview's bypass as a cookie alone, as a person's does (weekpick). Read only.
+  [weekpick]="tools/web/weekpick_check.mjs --url=$P --out=$S/${TAG}_weekpick"
   # The home's feed (homefeed): its posts in the HTML as served, Like, a
   # comment and Follow asking a visitor to sign in on the spot, 3D, the
   # studio in a post on the engine without threads; signed in (throwaways,

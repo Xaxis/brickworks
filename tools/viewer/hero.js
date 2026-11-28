@@ -138,7 +138,8 @@ export async function hero3d(stage, given = {}) {
   const markTime = (what) => { if (!timings[what]) timings[what] = Math.round(performance.now()); };
   markTime("code");
   const still = given.still ?? matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const answer = await fetch(given.scene || "/hero/mark.json", { credentials: "omit" });
+  // The site's own, with its cookies (a preview's bypass), as inline.js asks it.
+  const answer = await fetch(given.scene || "/hero/mark.json", { credentials: "same-origin" });
   if (!answer.ok) throw new Error(`the mark answered ${answer.status}`);
   const s = await answer.json();
   const d = await unpack(s);
