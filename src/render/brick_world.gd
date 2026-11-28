@@ -1130,6 +1130,16 @@ func _copy_head() -> BrickWorld:
 	# Read, never changed: the lines the file carried, and where its
 	# sub-models' parts stood in them (Assemblies._read_frames).
 	copy.kept_lines = kept_lines
+	# And the file's names, lines and frames for each sub-model, which the
+	# frames are read by (LdrModel.read_levels) and a section is named past
+	# (Assemblies.names_in). A copy without them read the file's sub-models
+	# as ones made here, so a Save with a section broken out framed every copy
+	# anew: 5,312 of 10179-1's 11,052 lines rewritten, each part where it was
+	# (sectionsave_probe). Each table is swapped whole by the history's steps
+	# but emptied in place by [method clear], so each is the copy's own.
+	copy.section_files = section_files.duplicate()
+	copy.section_lines = section_lines.duplicate()
+	copy.section_frames = section_frames.duplicate()
 	copy._next_id = _next_id
 	copy.unit_chains = unit_chains.duplicate()
 	return copy
