@@ -4308,13 +4308,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   plain, its line naming both (`StudioStart.begin_simple`,
   `Main._offer_simple`); one press: the screen gone, Simple up and kept
   (ShellPrefs controls), an empty plate, nothing asked. On a desktop the
-  header's Simple and New. Then Simple's Save and Share (`SimpleLayer._save`,
+  header's Simple over the untouched example car (`Main._simple_over_example`):
+  the car put away for Simple's own empty plate, nothing asked, no Build your
+  first model offer (its steps name Full's controls). Then Simple's Save and Share (`SimpleLayer._save`,
   `_share`, `button("save")`): at least 44 points tall, inside the window,
   over none of Fit, Undo, Redo, Turn, Copy, Delete, the tray or the header,
   dimmed while only the plate is there; two bricks put down light them; Save
   asks the name (ModelBar.ask_name), answered it saves under it, still in
-  Simple; Share opens the share panel in front of Simple's layer. On pre261
-  it finds no Start in Simple and no Save in Simple. In a browser:
+  Simple; Share opens the share panel in front of Simple's layer; to Full and
+  back the saved house and its name stay. On pre261 it finds no Start in
+  Simple, the car still under Simple, and no Save in Simple. In a browser:
   `simple_save`, `simple_share` and `start_simple` are in
   window.brickworksControls.
 - `simplereview4 probe` (`src/dev/simplereview4_probe.gd` and

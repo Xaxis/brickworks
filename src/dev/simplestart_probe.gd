@@ -119,17 +119,26 @@ func _run() -> void:
 		_check(not shown or simple_button == null,
 			"(a) a desktop's window: no Start in Simple on a first screen (%s)"
 			% ("none shown" if not shown else "offered"))
+		var car: int = world.brick_count() - store.scenery.size()
+		var untouched: bool = bool(_main.get("_sample_untouched"))
+		# The header's Simple, as its switch calls it.
 		_main.call("use_controls", &"simple")
-		await _a_while(10)
-		bar.ask_for_new()
 		for _n: int in 180:
 			await process_frame
 			if world.brick_count() <= store.scenery.size():
 				break
 		await _settle()
-		_check(StringName(_main.call("controls_layer")) == &"simple" and world.brick_count() <= store.scenery.size(),
-			"(b) the header's Simple and New: controls %s, %d parts on the baseplate"
-			% [_main.call("controls_layer"), world.brick_count() - store.scenery.size()])
+		var asked: bool = false
+		for node: Node in root.find_children("*", "AcceptDialog", true, false):
+			asked = asked or (node as Window).visible
+		var first_build: Node = (_main.get("_shell") as Shell).first_build
+		var offer: String = str(first_build.call("step_name")) if first_build != null else ""
+		_check(untouched and car > 30 and StringName(_main.call("controls_layer")) == &"simple"
+			and world.brick_count() <= store.scenery.size() and store.title == ModelStore.UNTITLED
+			and not asked and offer != "offer",
+			"(b) the header's Simple over the untouched example car (%d parts, untouched %s): Simple's own empty plate (%d parts, \"%s\"), nothing asked (%s), no Build your first model offer (%s)"
+			% [car, untouched, world.brick_count() - store.scenery.size(), store.title, asked,
+			offer if not offer.is_empty() else "none"])
 	var layer: Control = _main.get("_simple")
 	if layer == null or not layer.is_visible_in_tree():
 		_check(false, "Simple's controls are up")
@@ -224,6 +233,18 @@ func _run() -> void:
 	_check(over and screen.intersects(panel.get_global_rect()),
 		"(e) Share pressed: the share panel open over Simple's controls (%s)"
 		% ("open, in front" if over else ("open, behind" if panel != null and panel.visible else "not open")))
+	if panel != null:
+		panel.visible = false
+	# (f) The person's own model is never replaced on the way into Simple:
+	# to Full and back, the house and its name stay.
+	var kept: int = world.brick_count()
+	_main.call("use_controls", &"full")
+	await _a_while(10)
+	_main.call("use_controls", &"simple")
+	await _a_while(20)
+	_check(world.brick_count() == kept and bar.model_name() == CALLED,
+		"(f) to Full and back into Simple: the house kept (%d parts, was %d), \"%s\""
+		% [world.brick_count(), kept, bar.model_name()])
 	_finish()
 
 

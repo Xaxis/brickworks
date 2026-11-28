@@ -384,6 +384,10 @@ func _wanted() -> bool:
 	for opened: String in ["_viewing", "_copying", "_from_library"]:
 		if not str(shell.app.get(opened)).is_empty():
 			return false
+	# Nor in Simple, whose controls its seven steps do not name (appwalk2):
+	# Simple begins on its own plate instead (Main._simple_over_example).
+	if StringName(shell.app.call("controls_layer")) == &"simple":
+		return false
 	return fits_here()
 
 

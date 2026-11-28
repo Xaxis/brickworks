@@ -20,7 +20,7 @@ Simple is Brickworks with fewer, bigger controls: a tray of common parts along t
 
 ## Switch between Simple and Full {#switch}
 
-Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Your choice is kept on that device, and Brickworks always starts in Full until you pick Simple. On a phone or a tablet, the studio's welcome on your first visit offers **Start in Simple** beside **New model**: one tap and you are building on an empty plate in Simple. Where Full's header has no room for both, on a phone or in a narrow window, **Simple mode** is in **More** (on a phone) or in **…** (on a computer) instead, so Redo and the menus keep their places.
+Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Your choice is kept on that device, and Brickworks always starts in Full until you pick Simple. On a phone or a tablet, the studio's welcome on your first visit offers **Start in Simple** beside **New model**: one tap and you are building on an empty plate in Simple. Picking Simple while the example car of a first visit is still untouched puts the car away and gives you an empty plate too; a model of yours always stays. Where Full's header has no room for both, on a phone or in a narrow window, **Simple mode** is in **More** (on a phone) or in **…** (on a computer) instead, so Redo and the menus keep their places.
 
 Switching changes only the controls. Every part, your undo steps and your saved file stay as they are, and the view comes back where you left it in Full. Simple starts with nothing selected: what you selected in Full waits for you there, and Simple's buttons only ever change what you pick in Simple.
 
