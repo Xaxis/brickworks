@@ -3294,6 +3294,99 @@ along the two tangents as well as the normal (King et al. 2013), with the edge's
 At a set's scale, dust and fine scratches on clear parts are what a windscreen shows. A hazed
 windscreen was tried in handled plastic (5u) and moved no set; sharp specks were not.
 
+## 5ah. A shelf's dust, and the window a part mirrors (photoreal33)
+
+The lead's read of photoreal32's black_2x4 sheet named five tells, largest first: the room a black
+part mirrors, wear, edges, focus, the floor. This round measured all five on the bench, built the two
+largest, and judged them as photoreal31 did (5af): photoreal30's `shots.json`, Best's 256 samples,
+sets drawn 21-24 and close-ups 21-23, the fixed solo judge at 3 trials x 4 rounds, base today's
+desktop Best (t31, still pre261's renderer). Results and scripts are in
+`bench/results/photoreal33-2026-11-27/` (`measure/`, `sheets/`, `solo_*`).
+
+**Measured** (photograph against t31 at the judge's frames; `scripts/measure33.py`,
+`tools/photoreal/reflect_measure.py`):
+
+| tell | measure | photograph | t31 |
+| --- | --- | --- | --- |
+| 1 the room mirrored | black_2x4 top over its side | +7.42 stops | -1.22 |
+| | green_plate's top over its side | +3.05 | -1.04 |
+| | black_2x4's top, L* | 65 | 12 |
+| 2 wear | the sets' fine texture, sd of L* a 2 px blur takes out (6532 red, yellow, blue; 6660 red, blue) | 2.8, 1.0, 4.0; 1.7, 1.6 | 1.4, 1.4, 1.9; 1.4, 1.8 |
+| | the judge's set verdicts calling the plastic clean | 0.00 | 0.75 |
+| 3 edges | the line of light along an edge, px wide (grey_1x3's top edge; three_2x2_top's stud rim) | 10.2; 3.5 | 3.9; 2.1 |
+| 4 focus | an edge's width behind the part over on it (black_2x4; green_plate) | 1.95; 4.33 | 0.87; 3.09 |
+| 5 floor | black_2x4's leather, thin dark lines (ridge p90/p50) | 5.5 | 25.7 |
+
+The room is the largest gap by far on the two close-ups photographed by a window; the studio table
+(red slope, +1.77 against +1.47) and the daylight grey 1x3 (+0.95 against +1.18) are near their
+photographs already. On the sets the judge's commonest tells after the white background are "no
+dust or scratches" and the clear parts.
+
+**Built: dust specks on played plastic** (path_tracer.glsl `mote_at`, `mote_amount`). A set that has
+stood on a shelf carries sharp grit and fluff a tenth of a millimetre to half a millimetre across on
+every top and windscreen, where photoreal4's soft dust film is never a point. One speck in a 2 LDU
+cell's chance, its size and pale or dark colour from the cell's hash and the part's own number, laid
+flat on the face it lands on. Its amount is the dust asked for times the age squared: Played with
+(age 1, dust 0.4) has them all, a new part none, the close-ups' slightly aged parts (age 0.3, dust
+0.5 to 0.6) a ninth to a seventh as many.
+Tops take them, sides an eighth as many, a clear part's skin 0.6 as many, where it hides what is
+behind it. The browser's port takes the same code. Three bugs found on the way:
+
+- A speck was a sphere kept inside its cube, and a part's faces lie on whole LDU, on the cubes'
+  sides: no speck met a face. It is now measured across the face, on a grid set off whole LDU.
+- `surface_of`'s normal is the triangle's as its file wound it, out of the part or into it; a speck
+  asked for one facing up and met none on the 6660's hood. A level face now takes them either way.
+  photoreal4's dust film reads the same normal the same way and so lies on only some tops; it is
+  left as the judge has seen it all along (a next step to measure).
+- A clear part's scratches were read at whatever its mirrored ray met, not at the glass.
+
+**Built and taken out: the window's room mirrored.** photoreal14's large source (5r), on by default
+on a studio table, was given to the window and daylight places. Daylight lost its sun's shadow (the
+6657) and blackened the grey 1x3's sides, so it went at once. By the window it closed the measured
+gap: black_2x4's top +6.07 stops over its side (photograph +7.42), green_plate's +2.52 (+3.05). The
+judge then read the black 2x4 as a render in 36 of 36 verdicts (t31: 3 of 36; 0.72 to 0.03). Its
+logos, legible at last, were called mirrored in 34 (they are not, 5ab), and its top a CG mirror in
+25: one flat white, where the photograph's has a gradient across it and its studs' tops mirror the
+window too. The green plate rose a little (0.84 to 0.90). It is not kept.
+
+**Judged** (s1 the sets; c1 the close-ups; b33 the specks with the window source, c33 the same with
+specks up to 1 mm in a 3 LDU cell, branch `photoreal33c`; d33 the specks alone, this branch):
+
+| arm | sets | against t31 | close-ups | against t31 |
+| --- | --- | --- | --- | --- |
+| t31: today's desktop Best | 0.302 | | 0.679 | |
+| b33: specks, window source | 0.631 | +0.328 (+0.105 .. +0.474) | 0.640 | -0.040 (-0.310 .. +0.117) |
+| c33: larger specks, window source | 0.647 | +0.345 (+0.106 .. +0.534) | 0.567 | -0.112 (-0.358 .. +0.047) |
+| d33: specks (pool c1d, its own t31 0.687) | (b33's pictures) | (b33's) | 0.784 | +0.097 (+0.068 .. +0.127) |
+
+By set (t31 / b33 / c33): 6532 0.459 / 0.877 / 0.895, 6657 0.225 / 0.723 / 0.814, 6660 0.491 / 0.887 /
+0.846; 6512, new plastic and so speckless, drew byte for byte in every arm and scored 0.035 in each.
+The judge names what it sees: "dust specks on the dump bed and tires", "uneven scuffed gloss on the
+red". The share of set verdicts calling the plastic clean (`scripts/pristine33.py`, which reads
+"clean" only of the plastic) fell from 0.75 to 0.28 (b33) and 0.25 (c33), and those naming its age
+as a photograph's evidence rose from 0.29 to 0.71 and 0.75. No set is lit by the window, so d33's
+sets are b33's, byte for byte (drawn again at draw 21 to be sure), and b33's set result is d33's.
+
+By close-up (t31 / b33 / c33): black_2x4 0.722 / 0.032 / 0.032, green_plate 0.839 / 0.902 / 0.891,
+grey_1x3 0.781 / 0.926 / 0.842, red slope 0.887 / 0.923 / 0.924, three_2x2_top 0.767 / 0.846 /
+0.606, trans_round 0.080 / 0.210 / 0.109. The larger specks read as blobs on three_2x2_top's tops.
+d33 against its pool's t31, every close-up higher: black_2x4 0.868 / 0.741, green_plate 0.916 /
+0.821, grey_1x3 0.923 / 0.818, red slope 0.927 / 0.885, three_2x2_top 0.849 / 0.777, trans_round
+0.219 / 0.079 (photographs 0.97, 0.95, 0.95, 0.92, 0.87, 0.89). Close-up verdicts calling the plastic
+clean fell from 0.20 to 0.04.
+
+**Time.** The car at Best (tent, `photoreal_probe --car`, interleaved with pre261, median of three):
+pre261 8.17 and 5.31 s, the specks 8.69 and 5.52 (1.06 and 1.04 times; the box's load moved both
+between rounds). The sets 6532 and 6660 interleaved over pre261, b33 and c33 (set_6512 first in each
+run, taking the shader's compile): pre261 28.6 and 35.3 s, b33 24.0 and 35.5, c33 35.5 and 28.3.
+b33's tracer is d33's byte for byte (the source is set from GDScript), so its times are d33's.
+
+**Next.** The window's room is still the largest measured gap, and a source alone is not it: the
+photograph's top mirrors a window with a gradient across it and a stud's top mirrors it too, where
+ours drew one flat white and black studs. The leather's cells are named in 34 of t31's own 36
+black_2x4 verdicts, though they called it a photograph. Then the dust film's tops (above) and the
+edges' line of light.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
