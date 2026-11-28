@@ -8796,6 +8796,80 @@ tool.
 Results: `bench/results/design48-2026-11-28/` (FINDINGS.txt, pictures/,
 pair48_score.txt, pair48aa_score.txt).
 
+### A bench that can see a lever: faced views, two designs a label, the run spread measured (2026-11-28, design49, bench only)
+
+**Why.** design48's A/A (one code against itself, one design a subject a
+label) scored -390 on 8 subjects. A round could see nothing under about 225 ELO
+on 24 subjects. This round found where that spread comes from, took out what
+belongs to the bench, and measured the A/A again.
+
+**Where the spread came from.** design48's A/A, 8 subjects, mean square 231,456
+(481 a subject):
+
+| source | share | how measured |
+|---|---|---|
+| the judge's own noise | 3% | two halves of each pair's 8 verdicts |
+| the order shown | 0% (9% with one order) | AB against BA; both orders cancel it |
+| framing | 0% | every view is already framed on its own model |
+| facing | 0% (-8%) | the same two designs judged again, faced |
+| the design itself | ~97% | what is left |
+
+Facing moved 4 of 8 subjects but not the spread. One wolf went from -607 to
+-177 once its head faced the camera.
+
+**The bench now** (branch design49, `tools/bench/`; no designer change).
+- **Faced views** (`realset face`, `facing.py`). The design is drawn from its
+  four sides, numbered only. The judge's model sees them beside the set's own
+  front and corner views and names the side that shows what the set's front
+  view shows. The design is turned a quarter at a time to bring that side to
+  the front camera, and its views are drawn again.
+  - The set's views define the front. When the look asked for each model's own
+    front, it put two telehandlers at opposite ends.
+  - 48 designs faced: 27 turned. The outline alone had 10 of 48 end to end.
+- **Both orders**, 2 verdicts each way.
+- **k designs a label** (`realset pair --label lev=A1+A2 --label base=B1+B2`).
+  Every lever design meets every base design. A subject scores as its lever
+  designs' mean ELO minus its base designs' mean.
+- **The run spread** is measured from each label's own designs (`--within`),
+  and its fallback `pairwise.RUN_SD` goes from 194 to 326.
+
+**The A/A again.** 12 subjects, four designs of one code each (two a label),
+every pair judged both orders: 320 verdicts.
+
+| lev (d48a+d49c) minus base (d48b/d49b+d49d), 12 subjects | ELO | judge's 95% | with-runs 95% | run spread | floor on 24 |
+|---|---|---|---|---|---|
+| overall | +131 | (+46, +182) | (-80, +312) | 312 (326 from all four) | 138 |
+
+The interval contains 0, and the floor fell from 225 to 138. Surface came out
+"better" (+43 to +411) on one code: call a round on overall.
+
+The floor is not at 112.5, and two designs a label cannot bring it there. What
+is left is the designer's own spread, 326 ELO a design, and only more designs
+average it down. Projected from the 326, with the measured k=2 floor's 7%
+above its projection:
+
+| designs a label | floor on 24 |
+|---|---|
+| 3 and 3 | 106 to 113 |
+| 4 and 4 | 92 to 98 |
+| a lever of 3 against a kept base of 4 | 100 to 107 |
+
+**The cost of a round** (24 subjects). The bench ran 28 sessions in 2.2 hours
+in one heavy slot of 5, about 12.6 an hour. Facing runs on the GPU beside it.
+The judge gives about 13 verdicts a minute.
+- **k=2, the bench as built:** 96 sessions (7.6 h) and 384 verdicts (30 min).
+  Keeping the base while the designer's code is unchanged halves it to 48
+  sessions (3.8 h).
+- **Under 112.5:** a lever of 3 against a kept base of 4. That is 72 sessions
+  (5.7 h) and 1,152 verdicts (1.5 h) a round, after one base build of 36
+  sessions. Or 4 and 4: 192 sessions (15 h).
+
+**Leaks and limits.** Leaks 0 of 28 (two searches for the held-out set's own
+number found nothing), limits 0 of 28 sessions and 0 of 320 verdicts.
+
+Results: `bench/results/design49-2026-11-28/` (FINDINGS.txt, sources48.txt,
+pair48faced_score.txt, pairaa_score.txt, aa_k.txt).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
