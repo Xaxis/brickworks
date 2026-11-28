@@ -215,11 +215,15 @@ async function makeAda() {
     body: { name, author: "Ada First", model, image: picture, listed: true, kind: "castle" } });
   castle = shared.body.id || "";
   // Finished builds of it, each on its own device, enough that Top builds
-  // ranks it over a tested model (api/_directory.js SCORE: a build is 3, a
-  // test passed 5), so it is among the six castles a newcomer who chose
-  // castles is shown. One build ranked it under live's seven tested castles.
-  const score = (await api(`/api/share?op=list&sort=top${T ? "&tests=1" : ""}`)).body.score || {};
-  const builds = Math.floor((Number(score.tested) || 0) / Math.max(1, Number(score.builds) || 1)) + 1;
+  // ranks it over the sixth castle there is now (api/_directory.js SCORE,
+  // weighed off each card), so it is among the six castles a newcomer who
+  // chose castles is shown however many castles the gallery holds.
+  const top = (await api(`/api/share?op=list&sort=top&kind=castle${T ? "&tests=1" : ""}`)).body || {};
+  const weight = top.score || {};
+  const scored = (one) => (Number(weight.builds) || 0) * (Number(one.builds) || 0)
+    + (Number(weight.remixes) || 0) * (Number(one.remixes) || 0) + (one.tested === true ? Number(weight.tested) || 0 : 0);
+  const sixth = (Array.isArray(top.models) ? top.models : []).map(scored).sort((a, b) => b - a)[5] || 0;
+  const builds = Math.floor(sixth / Math.max(1, Number(weight.builds) || 1)) + 1;
   let counted = 0;
   for (let n = 0; castle && n < builds; n++) {
     const built = await api(`/api/share?op=built&id=${castle}`, { method: "POST", body: { device: randomBytes(16).toString("hex") },
