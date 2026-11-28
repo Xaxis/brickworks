@@ -3357,10 +3357,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Builder._seated_by_sockets`): 5762-1's 4488 stands on a wedge plate by
   the block under half of it, where its sockets are, and the wedge's cover
   is short of its slanted edge under that block, so lowered by its cover
-  it sank a plate into the wing. Every plain part, one box across, rests as
+  it sank a plate into the wing. That box's rest is kept only where its
+  sockets are held there (bigghost, 2026-11-28): held by nothing at either,
+  the box stood on what is under the room the part has not, and stood the
+  part in the air, so it rests by its cover. corner_shop's inverted slope
+  (3665a) aimed at a tile stood 54 LDU up on a minifig's arm under the far
+  edge of its sloped underside, and over a double slope's ridge 18 LDU off
+  it, in Simple and in Full. Every plain part, one box across, rests as
   before. Probe: `placing_probe -- only=parts` (the two corner plates
   beside a 6157, as the set has them, aimed at their corner studs; the
-  4488 on its wedge; each fails with its rule undone).
+  4488 on its wedge; each fails with its rule undone); `simplereview5_probe
+  -- --headless-ok --case=ghosts` (the two inverted slopes' rays alone over
+  corner_shop, Simple and Full; fails with the rule undone).
 - `held below the ground` (`Builder._held_below_ground`, `place`,
   2026-10-17, never moving the model since 2026-10-24): a part the model
   holds below the ground (resting on a part of it with what hangs past it
@@ -4282,8 +4290,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or an underside on what is under it, where Full puts it beside the face at
   its height or hangs it under, and offers no side studs; and
   `SimpleLayer._offered` offers a ghost or a dragged brick over the plate
-  only standing on a part (`_stands`, `Carry.rests`) or held on a joint (a
-  wheel on its axle). A carry under way goes
+  only standing on a part (`_stands`, `Carry.rests`, each by the part's own
+  cover, never its box: an inverted slope's box stood on a minifig's arm
+  under its sloped underside, the part 14 LDU over it, bigghost) or held on
+  a joint (a wheel on its axle). A carry under way goes
   down on a tap whatever Full's tool (Place kept for a part Full picked).
   Simple | Full is made with the controls' own chosen
   (`AppHeader.controls_switch`'s layer), pressed and described "Chosen".
