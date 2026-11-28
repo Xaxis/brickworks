@@ -52,6 +52,15 @@ CENTRE = 1000.0
 # Half a virtual tie: a quarter of a win each way, between every two designs.
 PRIOR = 0.25
 DRAWS = 1000
+# A design's ELO about its code's mean, one design against another of the same brief on the
+# same code. 194 was measured 2026-10-14 on 1-10 scores; design48's A/A (2026-11-28) showed it
+# far too small for designs judged head to head (one design a subject an arm: about 480 a
+# subject's difference). design49's A/A (2026-11-28) measured 326 on `overall`: four designs
+# of one code on each of 12 subjects, faced, every pair judged both orders, each design's ELO
+# about its subject's mean (36 degrees of freedom; 199 to 328 on the other dimensions).
+# realset.py pair measures it from each round's own designs when it can; this is what it
+# falls back to (docs/DESIGN_SCORES.md, round forty-nine).
+RUN_SD = 326.0
 
 RUBRIC: dict[str, str] = {
     "likeness": "Likeness, silhouette and proportion: from the references, which reads as the "

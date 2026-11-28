@@ -1989,7 +1989,7 @@
       "kind": "cli",
       "label": "test designs against real sets",
       "entry": "tools/bench/realset.py",
-      "reach": "python3 tools/minitest.py tests/test_realset.py; godot --headless --path . --script src/dev/holdout_probe.gd; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; godot --headless --path . --script src/dev/holdout_probe.gd; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare | heavy ... face --arm A --software (a drawn arm turned to face as its sets) | pair --label lev=A1+A2 --label base=B1+B2 --within (k designs a label, run spread measured); tests/test_bench.py proves face and pair; the recipe is Real sets in features/assistant.md)",
       "area": "assistant"
     },
     {
