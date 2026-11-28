@@ -99,6 +99,9 @@ var _sampler: RID
 ## all again, a quarter of a second of the window's frame), freed when the
 ## last of them is.
 static var _shapes: Dictionary = {}
+## The same for each mesh made round ([member round_to]), by [mesh, the
+## sag it was made round to as a power of two].
+static var _round_shapes: Dictionary = {}
 static var _holders: int = 0
 ## What one picture is built of, freed when the next is staged.
 var _tlas: RID
@@ -193,6 +196,12 @@ var marked: bool = false
 ## RenderSettings.floor), set before [method stage]: it is then
 ## traced by the shader's "photo" version.
 var photo: bool = false
+## Round parts drawn round (photoreal36, RenderSettings.rounding): mesh ->
+## the sag, in the mesh's own units, a round edge may keep at the picture's
+## size, set before [method shape_of] and [method stage]. A mesh named here
+## is drawn as [method rounded] makes it, kept apart from its shape as LDraw
+## draws it; one not named, as LDraw draws it.
+var round_to: Dictionary = {}
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
@@ -359,9 +368,18 @@ func _make_marked() -> bool:
 ## or asked for ahead (StudioRender asks a few a frame: each is the mesh
 ## read back from the card and a structure built, and the car's forty in
 ## one frame held the window half a second).
-func shape_of(mesh: Mesh) -> Array:
-	if _shapes.has(mesh):
-		return _shapes[mesh]
+## [param sag], above 0: the mesh made round to it ([method rounded]), kept
+## by the power of two at or below it.
+func shape_of(mesh: Mesh, sag: float = 0.0) -> Array:
+	var round_it: bool = sag > 0.0
+	var cache: Dictionary = _round_shapes if round_it else _shapes
+	var key: Variant = mesh
+	if round_it:
+		var power: int = floori(log(sag) / log(2.0))
+		sag = pow(2.0, power)
+		key = [mesh, power]
+	if cache.has(key):
+		return cache[key]
 	if not _make():
 		return []
 	var arrays: Array = mesh.surface_get_arrays(0)
@@ -379,8 +397,13 @@ func shape_of(mesh: Mesh) -> Array:
 		normals.resize(points.size())
 	var shape: Array = []
 	if points.is_empty() or indices.is_empty():
-		_shapes[mesh] = shape
+		cache[key] = shape
 		return shape
+	if round_it:
+		var made: Array = rounded(points, normals, indices, sag)
+		points = made[0]
+		normals = made[1]
+		indices = made[2]
 	if OS.has_feature("web"):
 		# The page builds the shape's tree of triangles itself (page_tracer.js),
 		# known by a number; its corners are the shape's own, indexed.
@@ -390,7 +413,7 @@ func shape_of(mesh: Mesh) -> Array:
 		var index_data: PackedByteArray = indices.to_byte_array()
 		PageTracer.shape(_page_key, point_data, normal_data, index_data)
 		shape = [RID(), RID(), point_data, normal_data, index_data, points.size(), _page_key]
-		_shapes[mesh] = shape
+		cache[key] = shape
 		return shape
 	var bits: int = RenderingDevice.BUFFER_CREATION_DEVICE_ADDRESS_BIT \
 		| RenderingDevice.BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT
@@ -420,11 +443,204 @@ func shape_of(mesh: Mesh) -> Array:
 		RenderingDevice.ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT)
 	if not blas.is_valid() or _rd.blas_build(blas) != OK:
 		push_error("path tracer: a shape of %d triangles was refused" % (indices.size() / 3))
-		_shapes[mesh] = shape
+		cache[key] = shape
 		return shape
 	shape = [blas, vertices, point_bytes, normals.to_byte_array(), index_bytes, points.size()]
-	_shapes[mesh] = shape
+	cache[key] = shape
 	return shape
+
+
+## Past this two normals were smoothed over a corner, not along a curve
+## ([method rounded]).
+const ROUND_MOST := 0.77  # cos 39.6 degrees
+## How many times [method rounded] cuts an edge's halves again, at most.
+const ROUND_LEVELS := 3
+## A corner's normal put right turns at most this far (cos 12 degrees); one
+## that would turn further was set so on purpose, or its triangles disagree.
+const ROUND_TRUE := 0.978
+
+
+## Round parts drawn round (photoreal36). LDraw draws a part's cylinders,
+## cones, discs and rings from 16-sided primitives, and Best's close-up of a
+## 1 x 1 round brick showed every side: the judge named its "faceted,
+## polygonal cylinder silhouette" in 32 of 36 verdicts, and the clear wall's
+## refraction broke into the flat sides' bands. The normals are put right
+## first ([method true_normals]). They then say where the part is round
+## (smoothed across every edge but a crease), so each edge whose ends'
+## normals part as an arc's do (the two ends leaning off the edge alike) and
+## whose middle lies more than [param sag] off the curve they describe is cut
+## at the point on the curve (Phong tessellation at a half: on a circle,
+## within 0.06% of its radius), and every triangle on that edge is cut with
+## it, round or flat, so a stud's top disc follows its wall and no crack
+## opens between them. Again on the halves, up to ROUND_LEVELS times (a
+## 16-sided circle drawn with up to 128 sides). StudioRender gives the sag a
+## part of the picture's own size may keep (PRODUCT_ROUNDING of a pixel), so
+## a close-up is cut finely and a whole set hardly at all. Returns [points,
+## normals, indices], the arrays given when nothing is cut.
+static func rounded(points: PackedVector3Array, normals: PackedVector3Array,
+		indices: PackedInt32Array, sag: float) -> Array:
+	normals = true_normals(points, normals, indices)
+	for level: int in ROUND_LEVELS:
+		# The corners at one place are one point, whatever their normals.
+		var welded: Dictionary = {}
+		var ids := PackedInt32Array()
+		ids.resize(points.size())
+		for v: int in points.size():
+			var key := Vector3i((points[v] * 1024.0).round())
+			var id: int = welded.get(key, -1)
+			if id < 0:
+				id = welded.size()
+				welded[key] = id
+			ids[v] = id
+		var count: int = welded.size()
+		# Each edge to cut (its two points' numbers, lower first) -> where.
+		# Seen from two triangles across a crease, the one that bends it more
+		# says (the wall's round, not the disc's flat).
+		var cuts: Dictionary = {}
+		var triangles: int = indices.size() / 3
+		for t: int in triangles:
+			for k: int in 3:
+				var a: int = indices[t * 3 + k]
+				var b: int = indices[t * 3 + (k + 1) % 3]
+				var na: Vector3 = normals[a]
+				var nb: Vector3 = normals[b]
+				var bend: float = na.dot(nb)
+				if bend > 0.9998 or bend < ROUND_MOST:
+					continue
+				var pa: Vector3 = points[a]
+				var pb: Vector3 = points[b]
+				var along: Vector3 = pb - pa
+				var lean_a: float = along.dot(na)
+				var lean_b: float = along.dot(nb)
+				# An arc's ends lean off it alike (a circle's chord: -s and +s);
+				# a flat face's corner beside a smoothed edge leans one way only.
+				if absf(lean_a + lean_b) > 0.25 * (absf(lean_a) + absf(lean_b)):
+					continue
+				var out: Vector3 = (nb * lean_b - na * lean_a) * 0.125
+				if out.length_squared() <= sag * sag:
+					continue
+				var mid: Vector3 = (pa + pb) * 0.5
+				var ia: int = ids[a]
+				var ib: int = ids[b]
+				var edge: int = mini(ia, ib) * count + maxi(ia, ib)
+				var was: Variant = cuts.get(edge)
+				if was == null or ((was as Vector3) - mid).length_squared() < out.length_squared():
+					cuts[edge] = mid + out
+		if cuts.is_empty():
+			break
+		var made := PackedInt32Array()
+		made.resize(indices.size() * 2)
+		var filled: int = 0
+		for t: int in triangles:
+			var c0: int = indices[t * 3]
+			var c1: int = indices[t * 3 + 1]
+			var c2: int = indices[t * 3 + 2]
+			var corners: Array[int] = [c0, c1, c2]
+			# The new corner on each side (c[k] to c[k + 1]), -1 for none.
+			var on: Array[int] = [-1, -1, -1]
+			var cut: int = 0
+			for k: int in 3:
+				var a: int = corners[k]
+				var b: int = corners[(k + 1) % 3]
+				var ia: int = ids[a]
+				var ib: int = ids[b]
+				var where: Variant = cuts.get(mini(ia, ib) * count + maxi(ia, ib))
+				if where == null:
+					continue
+				var n: Vector3 = normals[a] + normals[b]
+				on[k] = points.size()
+				points.append(where)
+				normals.append(n.normalized() if n.length_squared() > 1e-12 else normals[a])
+				cut += 1
+			if filled + 12 > made.size():
+				made.resize(made.size() * 2)
+			if cut == 0:
+				made[filled] = c0
+				made[filled + 1] = c1
+				made[filled + 2] = c2
+				filled += 3
+				continue
+			if cut == 3:
+				for tri: Array in [[c0, on[0], on[2]], [on[0], c1, on[1]], [on[2], on[1], c2],
+						[on[0], on[1], on[2]]]:
+					made[filled] = tri[0]
+					made[filled + 1] = tri[1]
+					made[filled + 2] = tri[2]
+					filled += 3
+				continue
+			# Turned so the (first) cut side is c[s] to c[s + 1].
+			var s: int = 0
+			if cut == 1:
+				s = 0 if on[0] >= 0 else (1 if on[1] >= 0 else 2)
+			else:
+				s = 0 if on[2] < 0 else (1 if on[0] < 0 else 2)
+			var p: int = corners[s]
+			var q: int = corners[(s + 1) % 3]
+			var r: int = corners[(s + 2) % 3]
+			var m: int = on[s]
+			var tris: Array = []
+			if cut == 1:
+				tris = [[p, m, r], [m, q, r]]
+			else:
+				# Sides s and s + 1 are cut: the corner between them alone, the
+				# rest a four-sided piece split on its shorter diagonal.
+				var n: int = on[(s + 1) % 3]
+				tris = [[m, q, n]]
+				if points[p].distance_squared_to(points[n]) <= points[m].distance_squared_to(points[r]):
+					tris.append_array([[p, m, n], [p, n, r]])
+				else:
+					tris.append_array([[p, m, r], [m, n, r]])
+			for tri: Array in tris:
+				made[filled] = tri[0]
+				made[filled + 1] = tri[1]
+				made[filled + 2] = tri[2]
+				filled += 3
+		made.resize(filled)
+		indices = made
+	return [points, normals, indices]
+
+
+## Each corner's normal again, from its triangles weighted by their angle at
+## it. The parts' normals were averaged by triangle area, and a cylinder's
+## wall is quads each split corner to corner the same way, so a corner owns a
+## whole quad on one side and half of one on the other: every normal round a
+## 16-sided circle leaned 3.75 degrees along it (the 1 x 1 round brick's,
+## measured), the two ends of each arc leaned unequally, and rounded() saw no
+## arc. By angle, the quad on each side counts 90 degrees and the normal
+## points straight out of the circle. A corner keeps its own normal when the
+## new one would turn past ROUND_TRUE.
+static func true_normals(points: PackedVector3Array, normals: PackedVector3Array,
+		indices: PackedInt32Array) -> PackedVector3Array:
+	var sums := PackedVector3Array()
+	sums.resize(points.size())
+	for t: int in indices.size() / 3:
+		var a: int = indices[t * 3]
+		var b: int = indices[t * 3 + 1]
+		var c: int = indices[t * 3 + 2]
+		var pa: Vector3 = points[a]
+		var pb: Vector3 = points[b]
+		var pc: Vector3 = points[c]
+		var face: Vector3 = (pb - pa).cross(pc - pa)
+		if face.length_squared() < 1e-12:
+			continue
+		face = face.normalized()
+		var at_a: float = (pb - pa).angle_to(pc - pa)
+		var at_b: float = (pc - pb).angle_to(pa - pb)
+		var at_c: float = PI - at_a - at_b
+		# A triangle counts on the side its corner's normal faces, whichever
+		# way round its corners were written.
+		sums[a] += (face if face.dot(normals[a]) >= 0.0 else -face) * at_a
+		sums[b] += (face if face.dot(normals[b]) >= 0.0 else -face) * at_b
+		sums[c] += (face if face.dot(normals[c]) >= 0.0 else -face) * at_c
+	var put_right := PackedVector3Array(normals)
+	for v: int in points.size():
+		var sum: Vector3 = sums[v]
+		if sum.length_squared() < 1e-12:
+			continue
+		var normal: Vector3 = sum.normalized()
+		if normal.dot(normals[v]) >= ROUND_TRUE:
+			put_right[v] = normal
+	return put_right
 
 
 ## Put the set on the card: every brick of [param batches] (the copy of the
@@ -547,7 +763,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			else multimesh.instance_count
 		if count <= 0:
 			continue
-		var shape: Array = shape_of(multimesh.mesh)
+		var shape: Array = shape_of(multimesh.mesh, float(round_to.get(multimesh.mesh, 0.0)))
 		if shape.is_empty():
 			continue
 		if not shape_index.has(multimesh.mesh):
@@ -1141,11 +1357,12 @@ func release() -> void:
 		_holders -= 1
 	if _holders <= 0:
 		_holders = 0
-		for shape: Array in _shapes.values():
+		for shape: Array in _shapes.values() + _round_shapes.values():
 			if not shape.is_empty():
 				for rid: RID in [shape[0], shape[1]]:
 					_free(rid)
 		_shapes.clear()
+		_round_shapes.clear()
 	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler,
 			_tile_sampler, _marked_sbt, _marked_pipeline, _marked_shader, _photo_sbt, _photo_pipeline,
 			_photo_shader]:

@@ -202,6 +202,13 @@ var edge: float = -1.0
 ## little under its grid (0.5 LDU, 0.2 mm), so parts side by side leave a
 ## slot. 0 the grid's own size. Below 0, StudioRender's PRODUCT_CLEARANCE.
 var clearance: float = -1.0
+## Round parts drawn round (photoreal36), path traced in the product look:
+## the most, in pixels of the picture, the middle of a round edge LDraw
+## draws straight may lie off its curve; each edge further off is cut onto
+## the curve (PathTracer.rounded), so a close-up's round brick and studs are
+## circles. 0 the sides as LDraw draws them. Below 0, StudioRender's
+## PRODUCT_ROUNDING.
+var rounding: float = -1.0
 ## How many stops brighter than the metered white card the product look on
 ## a backdrop is exposed (photoreal30): a high-key product photograph's
 ## white parts are as bright as its paper. Below 0, StudioRender's
