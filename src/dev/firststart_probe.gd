@@ -90,9 +90,13 @@ func _run() -> void:
 		% [state.get("title", ""), int(state.get("continue", -1))])
 	var named: Dictionary = start.call("controls_by_name") if shown else {}
 	var new_button: Button = named.get("start_new") as Button
-	var strong: bool = new_button != null and (new_button.get_theme_stylebox("normal") as StyleBoxFlat) != null \
-		and (new_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color.is_equal_approx(Look.STRONG)
-	_check(strong, "...New model its strong button")
+	# Where the studio offers Simple (a phone's Full, appwalk2) Start in
+	# Simple is the strong one, New model beside it; elsewhere New model.
+	var simple_button: Button = named.get("start_simple") as Button
+	var lead: Button = simple_button if simple_button != null else new_button
+	_check(new_button != null and _strong(lead),
+		"...%s its strong button, New model shown (%s)"
+		% ["Start in Simple" if lead == simple_button else "New model", "yes" if new_button != null else "no"])
 	if new_button == null:
 		_finish()
 		return
@@ -131,3 +135,9 @@ func _run() -> void:
 		"...up again, a model opened behind it (%d parts): the screen goes (%s)"
 		% [placed, "gone" if not start.visible else "still up"])
 	_finish()
+
+
+## Whether [param button] wears the strong face (StudioStart._face's main).
+func _strong(button: Button) -> bool:
+	var face: StyleBoxFlat = button.get_theme_stylebox("normal") as StyleBoxFlat if button != null else null
+	return face != null and face.bg_color.is_equal_approx(Look.STRONG)

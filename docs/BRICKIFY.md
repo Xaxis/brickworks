@@ -5463,7 +5463,126 @@ model has orange flames.
 - **Turned share.** Exact colour costs 6.9 points over the fourteen. The
   judge prefers it anyway; turned share is now a fact to report, not a bar.
 
+### The twenty-second round: what a turned side cuts off (2026-11-28)
+
+The twenty-first round's arm was preferred by the judge but left three
+faults: two joints past their load on the fox, cells of the face `pre261`
+covers left showing on eight models, and the milk truck's right mirror.
+Unit `snot22`, from that arm (`2187a6fd`) with `pre261` merged in. Scripts,
+logs and pictures are in `bench/results/snot22-2026-11-28`.
+
+**In short: NO-GO. The fox holds and the truck keeps both mirrors, but the
+judge no longer prefers the arm beyond its own noise: 0.562 (0.348 to
+0.768) against 0.473, with the armadillo, Bob, the bunny, the fox and
+Smithsonian-2 less.** Turned share falls to 23.8% over the fourteen, from
+the twenty-first round's 42.9%, and three of the six models timed at the
+same moment as `pre261` take more than 1.5 times as long.
+
+#### What was found
+
+All three come back to one thing. No part crosses a turned shell's plates,
+so a few parts of the core that meet the rest only through a shell are a
+piece apart. The stitch tries to join each piece; where it cannot, the lay
+takes it out (`Plan.cut_off`) and the face over it shows through.
+
+- **The avocado's skin edge** (27 cells, x 1, plates 29 to 53) is a column of
+  1 x 1 bricks a stud across between two cubes turned from either side of
+  it. Its foot meets the core side by side, and no way of the stitch joins
+  it.
+- **The milk truck's mirror** stands on a green row of plates beside the cab
+  corner's shell. The row is cut off, the stitch's last way joins the
+  mirror's black row only by splitting off 14 plates, and the mirror goes
+  with it.
+- **The fox** is not cut off. Its head hangs by a 1 x 2 plate on two studs
+  beside the neck's shells. The upright patch (`_upright_about`) does hold it,
+  but it leaves 0.6% of the fox in no part and 20 more cells of its face
+  showing, so it is refused.
+
+A patch laid upright and refused also changed the model beside it: the
+copy shared the model's placements, and the mend that checked the patch
+moved them. The avocado came back with four parts run into each other.
+The patch now works on copies (`Placement.copied_into`).
+
+#### The arm (`a5`, `6ec28195`)
+
+Where the lay leaves a piece of 16 parts or fewer beside a shell, the model
+is laid again once, with every shell beside such a piece given back to the
+core before the core is laid (`Plan.beside_cut_off`, `Plan.give_back`;
+`Shapes.last["cubes"]["beside"]`). The second lay is kept where it leaves
+no more pieces apart.
+
+Tried before it, and dropped:
+
+- **Pieces found by cells before the lay** (a piece of the core of 64 cells
+  or fewer touching a shell, face to face). The avocado's column reaches
+  the core through its foot, so by cells it is never apart; only the
+  stitch's failure shows it.
+- **The shell's plates laid upright after the stitch,** a course at a time,
+  for the stitch to join again. The new plates ran into the surface's parts:
+  450 parts mended on the avocado, and the fox fell to 86.7% in a part.
+- **The cubes beside the piece alone,** not their whole shell. The turned
+  share stayed (the avocado 975 turned parts, `a4` 994), but the next cut's
+  cube took the same plates: the truck's mirror still went, and the fox
+  still hung.
+- **The upright patch kept where it shows no more of the face** (holes of 4
+  cells or more) and leaves up to 1% unfilled. On the fox it still showed
+  20 more cells.
+
+#### The numbers, `a5` against `pre261`
+
+| Bar | Result |
+| --- | --- |
+| Judge preferred beyond A/A, no model less | **FAIL**: 0.562 (0.348 to 0.768); the armadillo 0.000, Bob 0.000, the bunny 0.062, the fox 0.125, Smithsonian-2 0.188 |
+| Parts 1.06x or fewer | pass: 0.824 to 1.000 |
+| One piece, 97% or more in a part | pass: one piece each, 98.2% or more |
+| No joint past load | pass: none on the fourteen (the fox's two are gone) |
+| No hole `pre261` lacks (`outline.py`) | **FAIL** on 7. The largest is the truck's, a row of 20 cells at plate 31 (x 4 to 23, z 46), and the truck leaves out 2 parts `pre261` laid. The rest are 4 to 6 cells (the avocado, Bob, the figure, Smithsonian-1, Spot, the toy car). `a4` failed on 8, the largest 27 cells. |
+| The truck's both mirrors | pass: both laid, and the windscreen all dark green |
+| Time 1.5x or less, same-moment pair | **FAIL**: the avocado 1.87x, the truck 1.60x, the fox 1.59x; the bunny 1.43x, the toy car 1.31x, Smithsonian-2 1.25x |
+| Probes, Python suite | not run: a NO-GO round's code is not merged |
+
+The judge prefers the arm 16 times of 16 on the avocado, the figure, the
+milk truck and Smithsonian-1. Where it prefers `pre261`, it names scattered
+dark grey parts on the armadillo's shell and the bunny's head, and stray tan
+parts on Bob's neck. Upright off-colour, as a share of the face, rises on
+the armadillo from 0.00% to 1.63% and on the bunny from 0.00% to 1.48%;
+the avocado's from 3.60% to 8.71%. Those models gave back the most shells
+(the armadillo 264 cubes, the bunny 383). Not traced: most likely the
+core, laid where a shell stood, lays its hidden colour where the face now
+shows.
+
+#### What is left
+
+- **Give back the cubes, and lay again until none cuts a piece off.** Cube
+  by cube keeps the turned share; the truck's mirror needs the next cut's
+  cube refused too.
+- **Off-colour where a shell was given back.** Trace the armadillo's dark
+  grey parts to the step that lays them.
+- **The fox's head** needs its neck laid upright without the patch's gaps:
+  the cubes about the joint refused in the lay itself, as a cut-off piece's
+  would be.
+- **Time.** The second lay is most of the extra time (the avocado took 1.87
+  times `pre261`'s). Lay again only the region about the piece.
+
 ### Proof
+
+The twenty-second round's runs (`snot22`, 2026-11-28; NO-GO), all in
+`bench/results/snot22-2026-11-28`, from locked snapshots: `snot22s`
+(`6ec28195`, `a5`) and `snot22b` (`pre261`, `7333f35b`, for the
+same-moment pairs). `quick/base` is the twentieth round's, linked.
+
+- **The fourteen at 48 studs** (`scripts/quick.sh`), measured by
+  `scripts/measure.sh` into `judge/a5/` (`table4.txt`, `outline.txt`,
+  `hold.txt`).
+- **The same-moment pairs** (`scripts/pair.sh`, `quick/pa_a5` and
+  `quick/pb_a5`): both Godots in one queued job.
+- **The renders and the judge** (`scripts/views_all.sh`,
+  `scripts/judge_two.sh`; `views/a5`, `judge/a5_both.txt`, every verdict in
+  `judge/a5/judge_a5.json` and `judge/a52/judge_a52.json`).
+- **The traces** (`diag/`): one model at a time from the working tree with a
+  watched box, for each of the tries above.
+- Probes and the Python suite were started and stopped once the outline
+  and the time had failed.
 
 The twenty-first round's runs (`snot21`, 2026-11-28; NO-GO), all in
 `bench/results/snot21-2026-11-28`, from locked snapshots: `snot21v`

@@ -155,6 +155,7 @@ func _doors() -> void:
 		if not open_at.has(brick.id) and not _store.scenery.has(brick.id) and brick.id != lead:
 			other = brick.id
 			break
+	var parts_before: int = _world.brick_count()
 	_builder.remove_brick_id(other)
 	said = await _say("list_motions", {"suggest": false})
 	_check("a part taken off elsewhere leaves the motion as it was",
@@ -167,9 +168,20 @@ func _doors() -> void:
 	var text: String = _store.to_text("Doors")
 	_check("...and its lines stay in the file (%d)" % _motion_lines(text).size(),
 		_motion_lines(text).size() == lines.size())
-	await _say("undo", {"steps": 2})
+	# The person took both parts off, so the person's Undo puts them back: a
+	# session's undo takes back only its own steps since rel-m350
+	# (AppTools._undo), and leaves the person's.
+	said = await _say("undo", {"steps": 2})
+	_check("a session's undo leaves the person's taking off as it was: %s" % said.left(90),
+		said.contains("is the person's own") and _world.get_brick(lead) == null)
+	var verbs: EditVerbs = _main.get("_verbs")
+	await verbs.press("undo")
+	await verbs.press("undo")
 	said = await _say("list_motions", {"suggest": false})
-	_check("undone, the part is back and the motion finds it again", not said.contains("is gone"))
+	# Each part comes back under a new id (Builder._renumbered), so counted.
+	_check("undone with the person's Undo, both parts are back (%d of %d) and the motion finds its joint again"
+		% [_world.brick_count(), parts_before], _world.brick_count() == parts_before
+		and said.contains("\"Open the doors\"") and not said.contains("is gone"))
 
 
 func _racer() -> void:

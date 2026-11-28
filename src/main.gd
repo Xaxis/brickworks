@@ -1410,6 +1410,7 @@ func use_controls(layer: StringName) -> bool:
 		_layer = layer
 		_properties_put_away(true)
 		_simple.call("entered")
+		_simple_over_example()
 	else:
 		_layer = layer
 		_simple.call("left")
@@ -1434,6 +1435,22 @@ func use_controls(layer: StringName) -> bool:
 	_show_notices()
 	_hover_again()
 	return true
+
+
+## Simple chosen over the example car of a first visit, untouched: the car
+## is the app's demo and nobody's model, so Simple starts on its own empty
+## plate, as Start in Simple does on a phone. At 1280 a newcomer who picked
+## Simple in the header got the car on its wide grey plate, a click on the
+## plate put nothing down (off Simple's world), and Simple has no New
+## (appwalk2, 2026-11-28, before2/1280/1_08_walls_put.png). Build your
+## first model's offer goes with it: its seven steps name Full's controls.
+## A model of the person's, or the car once anybody has touched it, stays.
+func _simple_over_example() -> void:
+	if not _sample_untouched or _builder.history_depth() > 0 or _store.laying or not _viewing.is_empty():
+		return
+	if _shell.first_build != null and str(_shell.first_build.call("step_name")) == "offer":
+		_shell.first_build.call("_withdraw")
+	_bar.ask_for_new()
 
 
 ## Both properties panels, down the right and under the bin, put away with
@@ -2415,6 +2432,9 @@ func _ready() -> void:
 		if placed == 0 and not empty and not _start_bare:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
+			# A device left in Simple: its own plate, never the car.
+			if _sample_untouched and _layer == &"simple":
+				call_deferred("_simple_over_example")
 		if placed == 0 and not empty and not _start_bare:
 			placed = _build_demo()
 	_lay_baseplate()
@@ -10945,6 +10965,10 @@ func _tell_bin_selection() -> void:
 ## Open a model through the store, the one way models open: stood on the
 ## ground, and parts not yet fetched put down as they arrive (_on_part_fetched).
 func _open(path: String) -> int:
+	# Whatever this opens is no longer the example car untouched; the car's
+	# own opens say so again after (_ready, _maybe_start). Simple over the
+	# car puts it away (_simple_over_example): a model opened here must stay.
+	_sample_untouched = false
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
 		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
@@ -12216,16 +12240,30 @@ func _maybe_start() -> void:
 			_sample_untouched = _open(SAMPLE_MODEL) > 0
 			_lay_baseplate()
 			_camera.frame(_built_bounds())
+			# A device left in Simple: its own plate, never the car.
+			if _sample_untouched and _layer == &"simple":
+				call_deferred("_simple_over_example")
 		# The car opened here, or in _ready when the sign-in came after
 		# the studio started, and not touched since.
 		if _sample_untouched and _shell != null and _shell.first_build != null \
 				and not _shell.first_build.fits_here():
-			_studio_start_now().call("open", saved, false, true)
+			_studio_start_now().call("open", saved, false, true, _offer_simple())
 		return
 	_start_decided = true
-	_studio_start_now().call("open", saved, saved.is_empty())
+	_studio_start_now().call("open", saved, saved.is_empty(), false, _offer_simple())
 	if saved.is_empty() and _cloud != null:
 		_studio_start.call("set_listed", _cloud.account_list)
+
+
+## Whether the studio's first screen offers Start in Simple beside New model:
+## on a touch screen's layout (a phone's or a tablet's) still in Full. There
+## Simple | Full has no room in a phone's bar and was a tile inside More, so
+## a phone's first visit never met it (appwalk2, 2026-11-28). A desktop has
+## the switch in its header, and Build your first model.
+func _offer_simple() -> bool:
+	# The layer wanted too: a device left in Simple goes into it a frame
+	# after the studio is built (call_deferred), maybe after this is asked.
+	return _phone != null and _layer == &"full" and _controls_wanted() == &"full" and _viewing.is_empty()
 
 
 ## StudioStart, made the first time: over the model, under the sign-in screen.
@@ -12260,6 +12298,12 @@ func _studio_start_now() -> Control:
 	_studio_start.set("copy", _start_copy)
 	_studio_start.set("came_wanted", _open_came)
 	_studio_start.set("begin_new", func() -> void: _bar.ask_for_new())
+	_studio_start.set("begin_simple", func() -> void:
+		use_controls(&"simple")
+		# Over the untouched example car Simple began its own plate already
+		# (_simple_over_example); over a model of the person's, a new one.
+		if _world.brick_count() > _store.scenery.size() or _store.title != ModelStore.UNTITLED:
+			_bar.ask_for_new())
 	$HUD.add_child(_studio_start)
 	if _gate != null:
 		$HUD.move_child(_studio_start, _gate.get_index())

@@ -50,6 +50,7 @@ rules
 angled
 section
 sections
+sectionsave   # a Save with a section broken out writes the bytes a Save with it put back writes, and the file before it came out (greenreds2: the copy at home lacked the file's sub-model names, and every copy was framed anew)
 scale
 bigmodel
 quit

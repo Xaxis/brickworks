@@ -17413,6 +17413,12 @@ msgstr "Fang ein eigenes Modell an: Neues Modell, der Schnellbau dieser Woche od
 msgid "New model"
 msgstr "Neues Modell"
 
+msgid "Start in Simple"
+msgstr "Einfach anfangen"
+
+msgid "Start in Simple to drag big bricks from a tray with a finger, or New model for every part and tool. This week's quick build and the gallery are below; the example car is behind this."
+msgstr "Einfach anfangen, um große Steine mit dem Finger aus einer Ablage zu ziehen, oder Neues Modell für jedes Teil und jedes Werkzeug. Der Schnellbau dieser Woche und die Galerie stehen darunter; das Beispielauto steht dahinter."
+
 msgid "Put this away (Esc): the model is behind it"
 msgstr "Ausblenden (Esc): das Modell liegt dahinter"
 

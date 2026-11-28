@@ -1989,7 +1989,7 @@
       "kind": "cli",
       "label": "test designs against real sets",
       "entry": "tools/bench/realset.py",
-      "reach": "python3 tools/minitest.py tests/test_realset.py; godot --headless --path . --script src/dev/holdout_probe.gd; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; godot --headless --path . --script src/dev/holdout_probe.gd; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare | heavy ... face --arm A --software (a drawn arm turned to face as its sets) | pair --label lev=A1+A2 --label base=B1+B2 --within (k designs a label, run spread measured); tests/test_bench.py proves face and pair; the recipe is Real sets in features/assistant.md)",
       "area": "assistant"
     },
     {
@@ -7085,7 +7085,7 @@
       "kind": "ui",
       "label": "the studio's first screen",
       "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button; on a phone or tablet in Full, Start in Simple the strong one beside it (Main._offer_simple: into Simple on a new plate)",
       "area": "web"
     },
     {
@@ -7281,7 +7281,7 @@
       "kind": "cli",
       "label": "firststart probe",
       "entry": "src/dev/firststart_probe.gd",
-      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, New model strong, one press an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, Start in Simple strong where it is offered (New model where not), New model shown, one press of New model an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
       "area": "web"
     },
     {
@@ -7547,7 +7547,7 @@
       "kind": "ui",
       "label": "simple mode",
       "entry": "src/ui/simple_layer.gd",
-      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe; docs/simple)",
+      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; Save and Share top left over the model (Save asks a new model's name, Share the studio's share panel); a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe, simplestart_probe; docs/simple)",
       "area": "building"
     },
     {
@@ -7597,6 +7597,13 @@
       "label": "simplereview4 probe",
       "entry": "src/dev/simplereview4_probe.gd",
       "reach": "tools/probe.sh simplereview4_probe -- --headless-ok [--desktop|--tablet] [--case=ctx,undo,unsaved,same,steps,carry,peer,hidden,session]; tools/probe.sh simplereview4t_probe -- --headless-ok [--desktop]   (headless; the fourth review's attacks: Full's whole context round trip, Undo and Save byte for byte, the timeline's step, a carry with Full's tool on Place, a part hidden in Full)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplestart probe",
+      "entry": "src/dev/simplestart_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplestart_probe; PROBE_SIZE=820x1180 tools/probe.sh simplestart_probe -- --tablet; PROBE_SIZE=1280x800 tools/probe.sh simplestart_probe   (windowed, -- --pictures=DIR; a first visit on a phone or tablet: Start in Simple the strong button beside New model, one press into Simple on an empty plate, kept; in Simple, Save and Share top left a fingertip tall in nobody's way, dimmed while nothing is built; Save asks the name and saves under it, Share opens the share panel over Simple)",
       "area": "building"
     }
   ]
