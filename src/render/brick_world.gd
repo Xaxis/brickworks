@@ -1052,7 +1052,8 @@ func _in_order() -> void:
 
 ## The model's bricks, copied into a world of their own that draws nothing
 ## and is in no tree, to be read on another thread while this one goes on
-## changing. The caller frees it.
+## changing. The caller frees it. [ReadingCopy] makes the same copy a slice
+## at a time.
 func copy_for_reading() -> BrickWorld:
 	_in_order()
 	var copy := BrickWorld.new()
@@ -1061,18 +1062,104 @@ func copy_for_reading() -> BrickWorld:
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue
-		var brick: Brick = _bricks[brick_id]
-		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
-			brick.transform)
-		# And its sub-model's path (Assemblies.path_of), by which a hose's
-		# pieces are one hose: read on a worker without it, 42080-1's
-		# pneumatic tubes were one thing in pieces with the parts round them,
-		# glued to them, and neither cylinder raised its crane (grabfloor,
-		# 2026-11-04).
-		_same_paths(twin, brick)
-		copy._bricks[brick_id] = twin
+		copy._bricks[brick_id] = _reading_twin(_bricks[brick_id])
 	copy._next_id = _next_id
 	return copy
+
+
+## [param brick] as a copy to be read holds it.
+static func _reading_twin(brick: Brick) -> Brick:
+	var twin := Brick.new(brick.id, brick.part_id, brick.color_code, brick.transform)
+	# And its sub-model's path (Assemblies.path_of), by which a hose's
+	# pieces are one hose: read on a worker without it, 42080-1's
+	# pneumatic tubes were one thing in pieces with the parts round them,
+	# glued to them, and neither cylinder raised its crane (grabfloor,
+	# 2026-11-04).
+	_same_paths(twin, brick)
+	return twin
+
+
+## [method copy_for_reading] and [method BrickLattice.copy_for_reading]
+## made a slice at a time while the person goes on, for a worker to read
+## once whole: copied at once, Orthanc's 10,119 parts held the frame after
+## it opened 97 ms (GrabDrag, simple3 2026-11-27). The same copies, the
+## parts in the same order. A change to the model or to its lattice
+## meanwhile lets it go ([member dropped]), as a reading of the model before
+## a change is not kept: the caller begins again.
+class ReadingCopy extends RefCounted:
+	## The copies, whole once [method step] says so; the caller's then, to
+	## let go of (WorkerTasks.let_go).
+	var world: BrickWorld = null
+	var lattice: BrickLattice = null
+	## The parts in the copy by part id, in the order it first has each.
+	var part_ids: Dictionary = {}
+	## Whether the model changed under it, and it was let go of.
+	var dropped: bool = false
+	var _from: BrickWorld
+	var _cells: BrickLattice
+	var _revision: int = 0
+	var _cells_revision: int = 0
+	var _ids: Array = []
+	var _at: int = 0
+	var _keys: Array = []
+	var _key_at: int = -1
+
+	func _init(from: BrickWorld, cells: BrickLattice) -> void:
+		_from = from
+		_cells = cells
+		_revision = from.revision
+		_cells_revision = cells.revision
+		from._in_order()
+		world = BrickWorld.new()
+		world.library = from.library
+		world.keeps_history = false
+		world._next_id = from._next_id
+		_ids = from._bricks.keys()
+
+	## Whether it copies [param from] and [param cells].
+	func copies(from: BrickWorld, cells: BrickLattice) -> bool:
+		return from == _from and cells == _cells
+
+	## Copied on until the clock (Time.get_ticks_usec) passes [param until],
+	## or to the end when it is 0: whether it is whole. False from the moment
+	## the model or its lattice has changed since it began, let go of then.
+	## The lattice's boxes are copied at the start of a slice of their own,
+	## each a whole Dictionary at once: 10,119 parts' are a few ms.
+	func step(until: int) -> bool:
+		if dropped:
+			return false
+		if _from.revision != _revision or _cells.revision != _cells_revision:
+			drop()
+			return false
+		# Whether this slice has copied nothing yet.
+		var fresh: bool = true
+		while _at < _ids.size():
+			fresh = false
+			var brick: Brick = _from._bricks.get(_ids[_at])
+			_at += 1
+			if brick != null and not _from._ghosts.has(brick.id):
+				world._bricks[brick.id] = BrickWorld._reading_twin(brick)
+				part_ids[brick.part_id] = true
+			if until > 0 and _at % 32 == 0 and Time.get_ticks_usec() > until:
+				return false
+		if _key_at < 0:
+			if not fresh and until > 0:
+				return false
+			lattice = _cells.copy_begun()
+			_keys = _cells.bucket_keys()
+			_key_at = 0
+			if until > 0:
+				return false
+		_key_at = _cells.copy_buckets(lattice, _keys, _key_at, until)
+		return _key_at >= _keys.size()
+
+	## Let go of, on a worker: the model changed under it, or its reader went.
+	func drop() -> void:
+		dropped = true
+		var copies: Array = [world, lattice]
+		world = null
+		lattice = null
+		WorkerTasks.let_go(copies)
 
 
 ## The model's bricks where they stand in the model as built ([method

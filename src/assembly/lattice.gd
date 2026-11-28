@@ -2243,14 +2243,41 @@ func clear() -> void:
 ## parts, "Index 1 is out of bounds", 2026-10-21). Each list is its own
 ## here, its contents shared until either side writes.
 func copy_for_reading() -> BrickLattice:
+	var copy: BrickLattice = copy_begun()
+	copy._bucket = _bucket.duplicate(true)
+	return copy
+
+
+## [method copy_for_reading] but for its buckets, which [method
+## copy_buckets] copies a slice at a time (BrickWorld.ReadingCopy) by the
+## keys [method bucket_keys] gives.
+func copy_begun() -> BrickLattice:
 	var copy := BrickLattice.new()
 	copy.keeps_columns = false
 	copy._boxes = _boxes.duplicate()
-	copy._bucket = _bucket.duplicate(true)
 	copy._bounds = _bounds.duplicate()
 	copy._rows = _rows.duplicate()
 	copy._extent = _extent.duplicate()
 	return copy
+
+
+func bucket_keys() -> Array:
+	return _bucket.keys()
+
+
+## Of [param keys] from [param at] on, each bucket's list copied into
+## [param copy] as [method copy_for_reading] copies it (its own, not
+## shared), until the clock (Time.get_ticks_usec) passes [param until], or
+## to the end when it is 0: where it got to.
+func copy_buckets(copy: BrickLattice, keys: Array, at: int, until: int) -> int:
+	while at < keys.size():
+		var key: Variant = keys[at]
+		at += 1
+		if _bucket.has(key):
+			copy._bucket[key] = _bucket[key].duplicate()
+		if until > 0 and at % 64 == 0 and Time.get_ticks_usec() > until:
+			break
+	return at
 
 
 ## [member _extent] grown round a box, low corner and high.

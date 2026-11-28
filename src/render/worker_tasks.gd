@@ -45,6 +45,8 @@ static var _watching: bool = false
 ## Kinds of work [method first_here] has run: kind -> true.
 static var _run_here: Dictionary = {}
 static var _first_lock := Mutex.new()
+## Tasks [method let_go] set going, collected once done: main thread only.
+static var _letting_go: Array[int] = []
 
 
 ## Run [param work] here and now, on this thread, if nothing of [param kind]
@@ -165,6 +167,35 @@ static func collect_group(group: int) -> void:
 		WorkerThreadPool.wait_for_group_task_completion(group)
 
 
+## The last references to [param things] let go of on a worker, and those
+## of them that are not RefCounted freed there: copies of a model read on a
+## worker and the reading they replace (GrabDrag) were 40 to 75 ms of the
+## frame Orthanc's 10,119 parts were let go of in, on the main thread
+## (simple3, 2026-11-27). The caller keeps no other reference to them, nor
+## to [param things], which is emptied. Here and now where there are no
+## threads, or on a thread of the app's own.
+static func let_go(things: Array) -> void:
+	if OS.has_feature("nothreads") or OS.get_thread_caller_id() != OS.get_main_thread_id():
+		WorkerTasks._free_all(things)
+		return
+	var done: Array[int] = []
+	for task: int in _letting_go:
+		if WorkerThreadPool.is_task_completed(task):
+			done.append(task)
+	for task: int in done:
+		_letting_go.erase(task)
+		collect(task)
+	_letting_go.append(add(WorkerTasks._free_all.bind(things), false, "let go of a copy"))
+
+
+## [method let_go]'s work.
+static func _free_all(things: Array) -> void:
+	for thing: Variant in things:
+		if thing is Object and is_instance_valid(thing) and not (thing is RefCounted):
+			(thing as Object).free()
+	things.clear()
+
+
 ## Every task, group and thread not collected yet, collected.
 static func collect_all() -> void:
 	_lock.lock()
@@ -172,6 +203,7 @@ static func collect_all() -> void:
 	var groups: Array = _groups.keys()
 	var threads: Array = _threads.keys()
 	_lock.unlock()
+	_letting_go.clear()
 	for task: int in tasks:
 		collect(task)
 	for group: int in groups:

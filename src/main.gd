@@ -11349,10 +11349,14 @@ func _weigh() -> void:
 	if _world.generation() != generation:
 		return
 	if report != null and report.balance != null:
+		# The weighing it replaces let go of on a worker, as its copies are.
+		var replaced: Array = [_weighed]
 		_weighed = report
+		WorkerTasks.let_go(replaced)
 		_weighed_revision = revision
 	if report == null:
-		# For a part the library had to add: weighed again.
+		# For a part the library had to add, or a change while the model
+		# was copied: weighed again.
 		_stability_revision = -1
 		return
 	_stability_text = report.summary()
@@ -11408,23 +11412,46 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		report = _stability.check(_world)
 		_stability.with_margins = true
 	else:
+		# The model and its lattice copied a slice a frame, and let go of on
+		# a worker after: copied and freed each in one frame, Orthanc's 10,119
+		# parts held a frame 97 ms at every change, as GrabDrag's reading did
+		# (grabtake). A change while it is copied is weighed next, as a part
+		# the library adds meanwhile is.
+		var copy := BrickWorld.ReadingCopy.new(_world, _builder.lattice)
+		_weigh_copying = true
+		while not copy.step(Time.get_ticks_usec() + FramePace.light_us()):
+			if copy.dropped:
+				_weigh_copying = false
+				_weigh_copies_dropped += 1
+				return null
+			await get_tree().process_frame
+		_weigh_copying = false
 		var judge := Stability.new()
 		judge.library = _library
 		judge.with_margins = margins
 		judge.floor_ids = scenery.duplicate()
-		judge.lattice = _builder.lattice.copy_for_reading()
-		var still: BrickWorld = _world.copy_for_reading()
+		judge.lattice = copy.lattice
+		# The judge (and its lattice) and the copy held only here, so the
+		# worker letting go of them is the last to hold them: the lambdas
+		# hold this array, not the judge, and outlive the let-go until this
+		# coroutine ends.
+		var job: Array = [copy.world, judge]
+		copy.world = null
+		copy.lattice = null
+		judge = null
 		var weighed: Array = [null]
 		_library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
-			weighed[0] = judge.check(still), false, "weigh the model")
-		_library.reading_in(task, func() -> void: judge.stopped = true)
+			weighed[0] = (job[1] as Stability).check(job[0] as BrickWorld), false, "weigh the model")
+		_library.reading_in(task, func() -> void:
+			if not job.is_empty():
+				(job[1] as Stability).stopped = true)
 		while not WorkerThreadPool.is_task_completed(task):
 			await get_tree().process_frame
 		WorkerTasks.collect(task)
 		_library.end_reading(task)
-		still.free()
 		report = weighed[0]
+		WorkerTasks.let_go(job)
 	if report == null:
 		return null
 	report.total_grams -= floor_grams
@@ -11685,6 +11712,10 @@ var _main_process_us: int = 0
 ## What the last telling of the page took, piece by piece, in ms.
 var _told_laps: Dictionary = {}
 var _weighed_us: int = 0
+## Whether weigh_joints is copying the model a slice a frame now, and how
+## many of its copies a change let go of (weighsame_probe reads both).
+var _weigh_copying: bool = false
+var _weigh_copies_dropped: int = 0
 
 
 func _process_main(_delta: float) -> void:
