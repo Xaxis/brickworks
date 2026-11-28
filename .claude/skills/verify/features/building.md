@@ -4557,6 +4557,12 @@ node tools/web/fit_check.mjs --url=<preview>/app --bypass=…
 godot --headless --path . --script src/dev/sections_probe.gd
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/sections_probe.gd -- --shots=shots/sections
+# the bytes Save writes with a section broken out, against Save with it put
+# back, before it came out and undone home, on 31025-1, 42093-1, 10179-1
+# and 21016-1: all one file (each kept in --keep=DIR to diff). Red, a copy at
+# home missing the file's sub-model names framed every copy anew: 5,312 of
+# 10179-1's lines rewritten, every part where it was (greenreds2)
+tools/probe.sh sectionsave_probe [--sets=31025-1.mpd,...] [--keep=DIR]
 # ...and in a browser, by clicks and keys on 21016-1: suggested, renamed,
 # split, merged, accepted, evaluated, Y out and back, undone and redone,
 # Shift+Y apart and together
