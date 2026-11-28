@@ -146,7 +146,8 @@ function draws() {
 /// ([cache] "no-store") or as the page's own 3D view reads it ("default").
 async function sceneAt(at, coarse, cache) {
   if (!draws()) return { how: "cannot-draw" };
-  const answer = await fetch(at, { credentials: "omit", cache }).catch(() => null);
+  // The site's own, with its cookies (a preview's bypass), as inline.js asks it.
+  const answer = await fetch(at, { credentials: "same-origin", cache }).catch(() => null);
   if (!answer || !answer.ok) return { how: "cannot-draw" };
   const scene = sceneShape(await answer.json().catch(() => null));
   if (!scene || scene.count < 1) return { how: "cannot-draw" };
