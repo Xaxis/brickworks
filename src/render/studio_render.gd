@@ -228,14 +228,6 @@ const PRODUCT_CLEARANCE := 0.0
 ## its middle, and how much of a staged table's near key stays beside it.
 const SOURCE_LEVEL := 128.0
 const PRODUCT_SOURCE := SOURCE_LEVEL
-## The photographed places whose room has the source too (photoreal33): a
-## part photographed by a window mirrors the bright window behind it, where
-## the panorama's own room, kept dark round the model (PRODUCT_ROOM), left a
-## black 2x4's top 1.2 stops under its side against 7.4 over in its
-## photograph (docs/RENDERING.md 5ah). Not daylight: out of doors the sun is
-## the light, and beside the source its shadow went and a grey 1x3's sides
-## went near black.
-const SOURCE_ROOMS: Array[String] = ["window"]
 const SOURCE_RISE_LOW := 15.0
 const SOURCE_RISE_HIGH := 65.0
 const SOURCE_TURN := 0.0
@@ -3337,16 +3329,13 @@ func _floor_of(settings: RenderSettings) -> float:
 
 
 ## How bright the large source (photoreal14) that [param settings] ask for
-## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE
-## wherever the model is photographed in a room: on a table under the
-## studio's light, and in a photographed place (SOURCE_ROOMS) whatever it
-## stands on; none in the tent. Only where the product look is drawn as a
-## camera draws (on a backdrop).
+## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE on a
+## table under the studio's light, and none elsewhere. Only where the
+## product look is drawn as a camera draws (on a backdrop).
 func _source_level(settings: RenderSettings) -> float:
 	if settings.look != "product" or not _photographic(settings):
 		return 0.0
-	var room: bool = (_table(settings) and settings.lighting == "studio") or settings.lighting in SOURCE_ROOMS
-	var fallback: float = PRODUCT_SOURCE if room and not _tented(settings) else 0.0
+	var fallback: float = PRODUCT_SOURCE if _table(settings) and settings.lighting == "studio" else 0.0
 	return maxf(_own(settings.source, fallback), 0.0)
 
 
