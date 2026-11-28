@@ -3530,6 +3530,76 @@ close-ups were not built.
 Best's time is unchanged: the car at 256 samples 5.39 s against pre261's 5.73 (medians of three
 runs each, interleaved).
 
+## 5ak. What "clean" and "background" mean, and round parts drawn round (photoreal36, not kept)
+
+5aj counted the judge's tells by kind; this round read the two big kinds, "clean" and "background",
+verdict by verdict (d33's 408 against the photographs' 108, photoreal35's pools), sorted each tell
+into the first cluster whose words it has, and built what was left once the clusters shared with the
+photographs were set aside. It is not kept. The lever is
+`bench/results/photoreal36-2026-11-28/round36.patch` (bb50d1d0b on pre261 d9fae31e0).
+
+**The clusters** (verdicts naming it, d33 / photograph; `clusters_all.txt` in the results):
+
+| cluster | d33 | photo | where |
+| --- | --- | --- | --- |
+| even backdrop: "plain clean white background" | 155 | 28 | 6657 47, 6532 37, red slope 34, three 2x2 32 |
+| clean plastic: "very clean uniform black faces" | 75 | 0 | 6512 44, black 2x4 15, 6657 13 |
+| cut-out white: "pure white featureless background" | 69 | 13 | 6660 39, 6512 18, 6532 11 |
+| no shadow: "pure white background with no ground shadow" | 44 | 15 | trans round 34 (its photograph 7) |
+| idealised refraction: "idealized clean transparent refraction" | 37 | 0 | trans round 29, 6512 8 |
+| saturated colour: "very saturated, uniform green" | 37 | 0 | green plate 19 |
+| procedural pattern: "looks almost like a procedural Voronoi texture" | 36 | 0 | black 2x4's leather 23, 6512 12 |
+| soft CG shadow, crisp geometry, even light | 22, 15, 12 | 0, 0, 3 | mostly 6512 (itself a render) |
+
+The backdrop clusters are the photographs' too: the judge calls the photographs' white backdrops
+"plain" and "clean" and still says photograph (p 0.83 where d33 is so named). Measured, the
+photographs' open backdrop does vary more (0.21 to 0.54 stops across it against d33's 0.03 to 0.36),
+but 6657's is the only coloured seamless one, and the table's own falloff (5n's table_light) laid
+on it darkens the far paper top to bottom (24 radii: 0.47 stops) where its photograph's 0.19 stops
+run across the frame. Not built. What is left is the clear round brick: 0.21 against its
+photograph's 0.90, named "faceted, polygonal cylinder silhouette" in 35 of 36 verdicts.
+
+**Why it showed its sides.** LDraw draws it from 16-sided primitives, and its normals leaned: the
+part meshes average a corner's normal by triangle area, and a cylinder's wall is quads each split
+corner to corner the same way, so a corner owns a whole quad on one side and half of one on the
+other and its normal turns 3.75 degrees along the circle (measured on the 1 x 1 round brick: every
+arc's ends leaned unequally). Interpolated across the two triangles of a quad, the wall's refraction
+broke into diagonal bands. This is in every look and every round part, not only Best's.
+
+**The lever** (`PathTracer.rounded`, `true_normals`; `RenderSettings.rounding`, PRODUCT_ROUNDING 0.5):
+each corner's normal again by its triangles' angles (the quad on each side counts 90 degrees, so it
+points straight out), then each edge whose ends' normals part as an arc's do is cut at the point on
+the curve they describe (Phong tessellation at a half, within 0.06% of a circle's radius), for every
+triangle on it so no crack opens, up to three times, wherever its middle lies more than half a pixel
+of the picture off the curve at the nearest of that part's bricks. A close-up's round brick goes
+from 384 triangles to 2,400 (16 sides to 64); the car, whose studs are under a pixel, from 13,729 to
+16,432 in 66 ms, once. The browser draws the same shapes (they are made before PageTracer.shape):
+desktop and browser agree on the clear brick and the black 2x4 (mean 1.0 and 1.6 of 255).
+
+**Judged** (fixed solo judge, 3 trials x 4 rounds, base d33; draws 21-23, sets 21-24):
+
+| pool | d33 | r36 | against d33 (95%) |
+| --- | --- | --- | --- |
+| black 2x4 + green plate | 0.889 | 0.905 | +0.015 (-0.004 .. +0.041) |
+| grey 1x3, red slope, three 2x2, trans round | 0.727 | 0.719 | -0.008 (-0.030 .. +0.009) |
+| the four sets | 0.633 | 0.628 | -0.005 (-0.030 .. +0.013) |
+
+The tell went: the clear brick's "faceted" or "polygonal" from 35 of 36 verdicts to 12. Its score
+did not (0.213 to 0.171, called a photograph 0 of 36 either way): what is left of it is "pure white
+background with no shadow" (36 of 36; its photograph is a cut-out with none either), "perfectly
+clean transparent plastic with no dust or scratches", "idealized, uniform refraction" (32), and a
+bright cyan where the photographed brick is a dark, aged teal. The black 2x4's studs, round at last
+(`sheets/black_2x4_studs_zoom.jpg`), took it from 0.864 to 0.895, inside the pool's interval. No
+pool is better beyond its interval: NO-GO on the judge.
+
+Best's time is unchanged: the car 6.20 s against pre261's 6.31 (medians of three runs each,
+interleaved, the box loaded).
+
+For a later round: the normals' lean is a fault of the part meshes themselves
+(`tools/ldraw/geometry.py compute_normals`, by area), seen in every look; weighting by angle there
+fixes it for the raster too, and needs the meshes built again. The clear brick's remaining tells
+are its plastic, not its shape.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

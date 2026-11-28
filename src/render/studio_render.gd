@@ -208,10 +208,6 @@ const PRODUCT_EDGE := 1.0
 ## a slot. 0 unless asked: at 0.5 the judge called the sets photographs no
 ## more often (-0.037 against none, 95%: -0.130 to +0.022).
 const PRODUCT_CLEARANCE := 0.0
-## Round parts drawn round (photoreal36, RenderSettings.rounding,
-## PathTracer.rounded; docs/RENDERING.md 5ak): the most, in pixels, a round
-## edge's middle may lie off its curve.
-const PRODUCT_ROUNDING := 0.5
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
@@ -2807,24 +2803,12 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_doing("putting the set on the card")
 	var batches: Array = []
 	var pace := FramePace.new()
-	# Round parts drawn round (photoreal36): each mesh to the sag a part of
-	# PRODUCT_ROUNDING of a pixel is, at the nearest of its bricks.
-	var pixels: float = _own(settings.rounding, PRODUCT_ROUNDING) if settings.look == "product" else 0.0
-	_tracer.round_to = {}
-	for child: Node in _stage.get_children():
-		if pixels > 0.0 and shot != null and child is MultiMeshInstance3D:
-			var batch := child as MultiMeshInstance3D
-			if batch.multimesh != null and batch.multimesh.mesh != null:
-				var sag: float = _round_sag(batch, pixels, shot, picture)
-				if sag > 0.0:
-					_tracer.round_to[batch.multimesh.mesh] = minf(sag,
-						float(_tracer.round_to.get(batch.multimesh.mesh, sag)))
 	for child: Node in _stage.get_children():
 		if child is MultiMeshInstance3D:
 			batches.append(child)
 			var multimesh: MultiMesh = (child as MultiMeshInstance3D).multimesh
 			if multimesh != null and multimesh.mesh != null:
-				_tracer.shape_of(multimesh.mesh, float(_tracer.round_to.get(multimesh.mesh, 0.0)))
+				_tracer.shape_of(multimesh.mesh)
 			if pace.due():
 				await pace.next()
 				if _cancelled:
@@ -3446,28 +3430,6 @@ func _stage_key_way(settings: RenderSettings) -> Vector3:
 ## A product look's setting, or the look's own where none is asked (below 0).
 static func _own(asked: float, fallback: float) -> float:
 	return asked if asked >= 0.0 else fallback
-
-
-## The sag, in [param batch]'s mesh's own units, that [param pixels] of a
-## pixel of [param picture] is at the nearest of its bricks to the camera; 0
-## when it has none.
-static func _round_sag(batch: MultiMeshInstance3D, pixels: float, shot: Shot,
-		picture: Vector2i) -> float:
-	var multimesh: MultiMesh = batch.multimesh
-	var box: AABB = multimesh.mesh.get_aabb()
-	var reach: float = maxf(box.position.abs().length(), box.end.abs().length())
-	var nearest: float = INF
-	var unit: float = 0.0
-	for n: int in multimesh.instance_count:
-		var placed: Transform3D = batch.global_transform * multimesh.get_instance_transform(n)
-		var size: float = placed.basis.x.length()
-		unit = maxf(unit, size)
-		nearest = minf(nearest, maxf(placed.origin.distance_to(shot.origin) - reach * size,
-			reach * size * 0.25))
-	if unit <= 0.0 or is_inf(nearest):
-		return 0.0
-	var pixel: float = 2.0 * nearest * tan(deg_to_rad(shot.fov) * 0.5) / float(maxi(picture.y, 1))
-	return pixels * pixel / unit
 
 
 ## The product look's own wear for the plastic [param settings] picks
