@@ -456,6 +456,12 @@ whole cycle.
 
 ### Fixed
 
+- The gallery called this week's pick "New this week" when it was an older
+  model the quiet week's pick fell to, and the home's first post called it
+  "this week's pick · 24 Oct". The pick's line now says "New this week" only
+  for a model shared in the past seven days, and otherwise the day it was
+  shared; the home's post says who shared it and when, with the Week's pick
+  mark on its picture.
 - A wheel or another part held by its hole over the middle of an axle lost
   the turn R or T had given it as soon as the pointer moved a pixel: the
   ghost jumped between the axle's two ends, and each jump undid the turn. It

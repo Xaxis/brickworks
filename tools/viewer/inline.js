@@ -201,7 +201,12 @@ export function open3d(shell, given) {
     if (!data) {
       let answer;
       try {
-        answer = await fetch(given.scene, { credentials: "omit" });
+        // The site's own scene, asked as its other fetches are: with this
+        // origin's cookies, so a protected preview's bypass goes with it
+        // ("omit" was sent to Vercel's sign-in, and every View in 3D on a
+        // preview said the network did not answer: weekpick, 2026-11-28).
+        // Never to another host: the parts' store is asked with "omit".
+        answer = await fetch(given.scene, { credentials: "same-origin" });
       } catch {
         return failed(say("the network did not answer"));
       }
@@ -647,7 +652,7 @@ export function open3d(shell, given) {
     if (changes) return changes;
     if (!changing) {
       changing = (async () => {
-        const answer = await fetch(given.changes, { credentials: "omit" });
+        const answer = await fetch(given.changes, { credentials: "same-origin" });
         if (!answer.ok) throw new Error(answer.status === 404 ? say("what it changed is not counted yet") : say("the site said {status}", { status: answer.status }));
         const said = await answer.json();
         // Counted against the packing this page drew: one of another count
