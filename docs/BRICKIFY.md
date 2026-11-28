@@ -5198,7 +5198,148 @@ the plinth.
   open air turned, keeps them but gives colour away.
 - **The figure's two parts on two studs,** still unmended.
 
+### The twentieth round: a turned side cut as one, colour spent to a budget (2026-11-28)
+
+This round takes the two paths the nineteenth left: cut a turned side as
+one run, so planned cubes bond into shells, and spend a colour budget, so a
+model's turned parts may be as off-colour as its upright ones. Unit
+`snot20`, from `pre261` at `b64866a5`, with the bench's colour measure, the
+bunny cap, the `bare` list and the nineteenth round's plan brought over.
+Scripts, logs and pictures are in `bench/results/snot20-2026-11-28`.
+
+**In short: NO-GO. Neither change gives back the turned share that exact
+colour costs.** Change 1 (`s1`) plans each side that the first cut lays in
+two colours as one dynamic programme along the side: each column takes one
+stack of one-colour cubes, one cut's or the most that stack up it, and
+neighbouring columns pay half a cube for every seam where their cuts differ.
+Change 2 (`c2b`, over the nineteenth round's column plan) lets the cheapest
+two-colour cubes of the first cut turn, up to an estimate of the model's
+upright off-colour, never a cube whose off cells are of a piece of their
+colour under 400 cells (a mirror, a beak, an eye). Over fourteen at 48 studs, turned falls
+from 49.8% to 44.4% (1), 46.4% (2) and 46.3% (1+2), against the
+nineteenth's 45.7%. Change 1 lays fewer parts than the nineteenth (the milk
+truck 1.038 times `pre261`'s, against 1.101) but turns less; change 2 turns
+more but its estimate overspends, and the turned parts come out over the
+upright figure on three or four models.
+
+#### Per model
+
+Each arm on the nine models with colour runs at 48 studs: parts against
+`pre261`'s, turned share, then off-colour under turned parts / under upright
+parts, in percent of the show face they cover; **bold** where turned is
+over upright, the bar. The armadillo, the benchy, the bunny, the teapot and
+the objaverse scene have no two-colour cube, and neither change touches
+them.
+
+| Model | `pre261` | 1: one cut a side | 2: a budget | 1+2 |
+|---|---|---|---|---|
+| Avocado | 63%, **9.32**/3.60 | 1.047, 51%, 0.31/3.27 | 1.033, 56%, 2.06/3.33 | 1.026, 52%, 2.25/3.34 |
+| Bob | 66%, **4.88**/3.95 | 1.014, 63%, 2.22/3.55 | 1.012, 63%, 2.67/3.68 | 1.013, 63%, 2.62/3.47 |
+| Character | 35%, **7.44**/5.73 | 0.984, 29%, 0.00/5.65 | 1.017, 30%, 1.45/5.41 | 1.008, 30%, 1.42/5.41 |
+| Fox | 52%, **1.25**/0.38 | 1.001, 52%, 0.21/0.38 | 0.997, 52%, **0.62**/0.38 | 0.988, 53%, **0.61**/0.38 |
+| Milk truck | 71%, **5.46**/0.71 | 1.038, 57%, **1.73**/0.57 | 1.011, 66%, **2.80**/0.79 | 1.010, 66%, **3.55**/0.83 |
+| Smithsonian-1 | 45%, **10.13**/3.03 | 1.011, 32%, 1.26/2.80 | 1.020, 33%, 3.13/3.45 | 1.011, 33%, **3.36**/2.76 |
+| Smithsonian-2 | 38%, **4.38**/0.78 | 0.966, 31%, 0.34/1.64 | 0.948, 32%, 0.38/1.62 | 0.966, 31%, 0.34/1.64 |
+| Spot | 68%, **4.15**/3.69 | 1.014, 60%, 0.80/2.62 | 1.033, 62%, 1.76/3.19 | 1.008, 63%, 2.02/2.86 |
+| Toy car | 50%, **3.34**/0.91 | 1.007, 36%, 0.00/0.45 | 1.007, 46%, **1.31**/0.91 | 1.005, 46%, **1.40**/0.88 |
+| Turned, nine | 54.2% | 45.8% | 48.9% | 48.7% |
+| Turned, fourteen | 49.8% | 44.4% | 46.4% | 46.3% |
+| Outline bare | | 7 of 9 | 7 of 9 | 7 of 9 |
+
+Every arm lays each model in one piece, at least 97.8% in a part. Change 1
+leaves joints past their load where `pre261` has none: two on the figure,
+two on the fox and one on Smithsonian-2; 1+2 the fox's and Smithsonian-2's;
+change 2 none.
+
+The seam's weight moves change 1 back toward the column plan: at 0.1 of a
+cube (`s1l`) turned is 47.6% on the nine and the milk truck lays 1.056
+times. A side that shares its cuts bonds its cubes but fits fewer
+one-colour cubes than each column's own best cut, and turns less: what
+exact colour costs is the cubes it refuses, not their anchoring.
+
+Change 1 puts a white row across the top of the milk truck's windscreen,
+48 cells over 16 studs, plates 55 to 57, where the model is dark green:
+cubes the plan took as one colour. Change 2, over the column plan, has 12.
+Not traced.
+
+#### The budget
+
+The upright figure is known only once the model is laid. The budget
+estimates it before: the share of the show face at a change of colour, times
+0.1. That share does not follow the figure: upright off-colour over it runs
+from 0.021 (the fox) to 0.256 (Spot). At 0.1 the milk truck may spend 3.08%
+against its 0.71%; at 0.01 (`s12k`) almost no model spends anything and the
+arm is change 1's. Spent freely, it buys back 2.9 of change 1's 8.4 points
+on the nine, and no more: it opens only the first cut's cubes.
+
+On the milk truck, the toy car and Smithsonian-2, upright parts are off on
+under 1% of their face. The nineteenth round's final and every arm of this
+one whose turned parts there are under that figure turn 5 to 14 points less
+on them than `pre261`. A turned row is 2.5 plates, and these models draw
+colours a plate or two apart; there the two bars, colour to the upright
+figure and turned share, do not both hold.
+
+#### The truck's mirror
+
+The nineteenth round left open why refusing two-colour cubes loses the
+milk truck's right mirror. It is not a miss of `_cube_holds`. `pre261` lays
+the mirror studs up, a black 1 x 4 plate at plate 42 over x 24 to 27 with
+plates and tiles on it, reaching one stud into the cab's corner column. With
+no plan (`trace`), the two cubes of the cab's corner under it (x 24 to 25,
+z 34 to 37, plates 40 to 44, facing +x) are refused, dark grey at plate 40
+under green; the core lays the corner again and the 1 x 4 has nothing to
+reach into. The mirror rides on how the cab's corner is laid: 1+2 and the
+nineteenth round's final keep it; 1 alone, 2 alone, `s1l` and `s12k` lose
+it. A rule that keeps a cube turned when a piece of its own
+colour in it meets the model only side by side (`_piece`, behind
+`SNOT20_HANG=1`) is built but was not run.
+
+#### As a builder
+
+`views/` holds 1+2's milk truck, Bob and avocado beside `pre261`'s
+(`base-*`); looked at were the truck's front and corner, Bob's front and the
+avocado's corner. **The milk truck keeps both mirrors.** Its windscreen's
+top three plates are white across, a colour the model lacks there; the
+bright green part `pre261` set in the windscreen, and the one in its side
+window, are dark green. The grille is `pre261`'s, but its lamps now show the
+model's orange over the tan. **Bob's beak and eye are as `pre261`'s**; the
+ring's blue and purple patches are laid in other parts. **The avocado's cut
+face** is laid in more, shorter rows, and a green part shows on the stone's
+top and another under it, where `pre261` shows brown and pale flesh; the
+bench's colour measure does not count them. Not traced.
+
+#### What is left
+
+- **The upright figure, measured.** Lay upright first, count, then spend;
+  an estimate before laying misses by ten times either way.
+- **Colour inside a turned row.** Where a model's colours are a plate or
+  two apart, no cut of 2.5-plate rows follows them; only a part that
+  changes colour inside a row would.
+- **The windscreen's white row,** the avocado's green parts on its stone,
+  and the hang rule, each untried.
+
 ### Proof
+
+The twentieth round's runs (`snot20`, 2026-11-28; NO-GO), all in
+`bench/results/snot20-2026-11-28`, from locked snapshots: `snot20a`
+(`28ccb86f`, the round's code), `snot20b` (`pre261` with the bench's colour
+measure, the bunny cap and the `bare` list, `7333f35b`) and `snot20t`
+(`edb2973f`, the mirror's trace). `0eda0312` is `snot20a` with the hang
+rule behind its switch and `_piece` remembering every cell of a large piece;
+by reading, it lays the same parts with no switch set:
+
+- **The fourteen at 48 studs** from `snot20b` (`quick/base`), and **the arms**
+  on the nine with colour runs, each its own queued job
+  (`scripts/quick.sh`): `s1` (`SNOT20_BUDGET=0`), `c2b`
+  (`SNOT20_PLAN=column`), `s12`, `s1l` (`SNOT20_LAMBDA=0.1`), `s12k`
+  (`SNOT20_K=0.01`) and `s12kl`. Judged by `scripts/judge.sh` into
+  `judge/*/`; `scripts/table4.py` makes the table (`judge/table4.txt`),
+  `scripts/budget.py` sets the budget's estimate beside each figure. Not
+  laid at the same moment: times are not judged.
+- **The trace,** `quick/trace` (`SNOT20_PLAN=none`, `SNOT20_TRACE`), its
+  grid in `run.log`.
+- **The renders,** `scripts/view.sh`, one GPU call each (`views/`).
+- No probes or Python suite: a NO-GO round's code is not merged.
 
 The nineteenth round's runs (`snot19`, 2026-11-27; NO-GO), all in
 `bench/results/snot19-2026-11-28`, from locked snapshots: `snot19c2` (the
