@@ -239,10 +239,14 @@ func close() -> void:
 	_stop_program()
 	_port_sims.clear()
 	visible = false
-	_aside = false
+	# Set aside, it draws nothing of its own to take off: what the world
+	# draws is Simple's (a part seating).
 	if world != null:
 		_draw_turned({})
 		_tint_turned({})
+	_aside = false
+	_aside_drawn = {}
+	_aside_tints = {}
 	if shell != null and shell._balance_mark != null:
 		shell._balance_mark.clear()
 	sim = null
@@ -647,12 +651,20 @@ func _stop() -> void:
 		_play.text = "Play"
 
 
+## The turned parts drawn, or kept for Full while set aside: a driver
+## weighed or a reading finished after Simple came up draws nothing there.
 func _draw_turned(placed: Dictionary) -> void:
+	if _aside:
+		_aside_drawn = placed.duplicate()
+		return
 	world.set_drawn(placed)
 	_drew = world.drawn_ids()
 
 
 func _tint_turned(tints: Dictionary) -> void:
+	if _aside:
+		_aside_tints = tints.duplicate()
+		return
 	world.set_tinted(tints)
 	_tinted_with = world.tinted_ids()
 
@@ -668,19 +680,22 @@ func _tint_turned(tints: Dictionary) -> void:
 func set_aside(on: bool) -> void:
 	if on == _aside or (on and (not visible or world == null)):
 		return
-	_aside = on
 	if on:
 		_aside_at = Time.get_ticks_usec()
 		_aside_model = [world.generation(), world.revision]
 		var drawn: Dictionary = world.drawn_ids()
-		_aside_drawn = drawn.duplicate() if not drawn.is_empty() and is_same(drawn, _drew) else {}
+		var mine_drawn: bool = not drawn.is_empty() and is_same(drawn, _drew)
 		var tints: Dictionary = world.tinted_ids()
-		_aside_tints = tints.duplicate() if not tints.is_empty() and is_same(tints, _tinted_with) else {}
-		if not _aside_drawn.is_empty():
+		var mine_tints: bool = not tints.is_empty() and is_same(tints, _tinted_with)
+		if mine_drawn:
 			_draw_turned({})
-		if not _aside_tints.is_empty():
+		if mine_tints:
 			_tint_turned({})
+		_aside_drawn = drawn.duplicate() if mine_drawn else {}
+		_aside_tints = tints.duplicate() if mine_tints else {}
+		_aside = true
 		return
+	_aside = false
 	_program_began += Time.get_ticks_usec() - _aside_at
 	set_process(true)
 	if _aside_model == [world.generation(), world.revision]:
