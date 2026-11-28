@@ -13,10 +13,12 @@
 ## --case= apart, views, pick (all when not said):
 ##   apart   Full's exploded view, its picks taken at each part where it is
 ##           drawn apart. In Simple: nothing drawn moved, SectionsUi.pick_drawn
-##           moves no ray, a tap where each part is drawn picks it, a finger's
-##           tap chooses it and a finger's drag carries it (Undo exact). Back
-##           in Full: every part drawn exactly where it was, the camera as it
-##           was, and each of Full's picks the same part as before.
+##           moves no ray, a tap where each part is drawn picks it and a
+##           finger's tap chooses it. Back in Full: every part drawn exactly
+##           where it was, the camera as it was, each of Full's picks the same
+##           part as before. Then in Simple a finger's drag carries the part it
+##           is on (Undo exact), and Full, its model changed, comes back
+##           together, a click picking the part drawn there.
 ##   views   every other piece of Full's view a pick, a ghost or a drop reads,
 ##           one at a time and all at once: the timeline on step 2, Show only
 ##           the selection, a plane cut, a box cut, x-ray, inside a
@@ -206,13 +208,11 @@ func _case_apart() -> void:
 			and full_points.size() >= 4):
 		sections.call("explode_now", false)
 		return
+	# A finger's taps change nothing: Full comes back exactly as it was.
 	await _to_simple()
 	await _settle()
 	_simple_picks_right("apart")
-	# A finger's tap, then a finger's drag, on each part where it is drawn.
-	var text: String = _text()
 	var chose: int = 0
-	var carried: int = 0
 	var tried: int = 0
 	for one: Array in _points_as_drawn():
 		var at: Vector2 = one[1]
@@ -227,6 +227,31 @@ func _case_apart() -> void:
 			_note2("  a tap on %d at %s chose %s" % [seen, str(at.round()), str(_builder.selection.keys())])
 		_simple.call("_pick", [])
 		await _frames(2)
+	_check("[apart] a finger's tap chooses the part it is on (%d of %d)" % [chose, tried],
+		chose == tried and tried >= 4)
+	await _to_full()
+	await _frames(4)
+	var differ: Array = _differ(full_view, _full_view_now())
+	_check("[apart] back in Full every part drawn where it was, apart (%s)" % str(differ),
+		differ.is_empty() and _drawn_apart() > 0)
+	_check("[apart] ...the camera as it was", _camera.global_transform.is_equal_approx(full_camera))
+	var back_picks: Array = _picked_at(full_points)
+	_check("[apart] ...and a click at each part drawn apart picks the same part (%s, was %s)" % [
+		str(back_picks), str(full_picks)], str(back_picks) == str(full_picks))
+	# A finger's drag carries the part it is on, and Undo takes it back. The
+	# model changed meanwhile, so Full comes back together, as any change
+	# brings the exploded view together (SectionsUi.set_aside).
+	await _to_simple()
+	await _settle()
+	var text: String = _text()
+	var carried: int = 0
+	var dragged: int = 0
+	for one: Array in _points_as_drawn():
+		var at: Vector2 = one[1]
+		var seen: int = _drawn_under(at)
+		if seen == 0:
+			continue
+		dragged += 1
 		var to: Vector2 = _base_point(0.55, 0.55)
 		_simple.call("_press", at, 0)
 		for k: int in range(1, 9):
@@ -248,20 +273,14 @@ func _case_apart() -> void:
 			_restore(text)
 		_simple.set("last_drop", {})
 		_builder.clear_selection()
-	_check("[apart] a finger's tap chooses the part it is on (%d of %d)" % [chose, tried],
-		chose == tried and tried >= 4)
-	_check("[apart] a finger's drag carries the part it is on (%d of %d), Undo exact" % [carried, tried],
-		carried == tried and _text() == text)
+	_check("[apart] a finger's drag carries the part it is on (%d of %d), Undo exact" % [carried, dragged],
+		carried == dragged and dragged >= 4 and _text() == text)
 	await _to_full()
 	await _frames(4)
-	var back_view: Dictionary = _full_view_now()
-	var differ: Array = _differ(full_view, back_view)
-	_check("[apart] back in Full every part drawn where it was, apart (%s)" % str(differ),
-		differ.is_empty() and _drawn_apart() > 0)
-	_check("[apart] ...the camera as it was", _camera.global_transform.is_equal_approx(full_camera))
-	var back_picks: Array = _picked_at(full_points)
-	_check("[apart] ...and a click at each part drawn apart picks the same part (%s, was %s)" % [
-		str(back_picks), str(full_picks)], str(back_picks) == str(full_picks))
+	var together: Array = _picks_as_drawn(_points_as_drawn())
+	_check("[apart] back in Full after drags in Simple: together (%s, %d drawn moved), a click picks the part drawn there (%d)"
+		% [str(sections.call("is_exploded")), _drawn_apart(), together[0]], not bool(sections.call("is_exploded"))
+		and _drawn_apart() == 0 and (together[1] as Array).is_empty())
 	sections.call("explode_now", false)
 	await _frames(2)
 

@@ -860,8 +860,9 @@ func _case_modes() -> void:
 		var b_in: Dictionary = _view_state()
 		_check("[B %s] in Simple: at the top, no cut, no x-ray" % variant, str(b_in["entered"]).is_empty()
 			and not b_in["cutting"] and not b_in["xray"])
+		var put2: int = 0
 		if variant == "put":
-			var put2: int = await _put("3003", 4, _base_point(0.4, 0.4))
+			put2 = await _put("3003", 4, _base_point(0.4, 0.4))
 			await _seat_done()
 			_check("[B put] a brick put in Simple (%d)" % put2, put2 != 0)
 		await _switch_by_header("full")
@@ -870,11 +871,22 @@ func _case_modes() -> void:
 		var differ_b: Array = _differ(b0, b1)
 		_note2("[B %s] Full's camera %s, back %s" % [variant, b0["camera"], b1["camera"]])
 		differ_b.erase("camera: %s -> %s" % [b0["camera"], b1["camera"]])
+		# Simple puts its brick at the model's top, outside the sub-assembly
+		# Full's x-ray keeps solid: seen through with the rest (simplefix5).
+		if put2 != 0:
+			var through: Array = (b0["see_through"] as Array) + [put2]
+			through.sort()
+			if str(through) == str(b1["see_through"]):
+				differ_b.erase("see_through: %s -> %s" % [str(b0["see_through"]), str(b1["see_through"])])
 		_check("[B %s] back in Full: sub-assembly, cut, x-ray, part in hand as they were (%s)" % [variant,
 			str(differ_b)], differ_b.is_empty())
 		shell.see_inside.set_xray(false)
 		shell.see_inside.set_cut(false)
 		_verbs.set_mode("select")
+		# Out of the sub-assembly, as an open by the menu leaves it (Shell's
+		# bar.opened): the next model opens by Main._open, which does not, and
+		# the next variant's A began "inside" a wing its model has not.
+		shell.assemblies.leave_to("")
 		await _frames(2)
 
 
