@@ -249,30 +249,41 @@ func _awkward() -> void:
 		await _one("2420 corner plate round the wheel holder's arm", _screen(foot), at)
 	await _shot("corner_plate")
 
-	# ...but only where it is held by its sockets: 5762-1's 4488 stands on
-	# a wedge plate by the block under half of it, where its sockets are,
-	# the other half a plate over the wing; the wedge's cover is short of
-	# its slanted edge under that block, and lowered by its cover the 4488
-	# sank a plate into the wing (Builder._seated_by_sockets).
+	# ...but only where it is held by its sockets. 5762-1's 4488 on its
+	# wing, both as the set has them: its sockets are under its pin block,
+	# and the block is past the wing's straight edge (the block 44 to 56 LDU
+	# along, the wing's drawn bounds to 40), so nothing holds it there. At
+	# the file's height its plate stands a plate over the wing and touches
+	# nothing; until bigghost (2026-11-28) the box kept it so, and an
+	# inverted slope stood in the air the same way. It rests by its plate on
+	# the wing's studs, the block hanging past the edge, as on a real wing.
 	_main.call("clear_model")
-	_put_ldr("54384", 15, [80, -16, -10, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	_put_ldr("54384", 15, [80, -16, -10, 0, 0, -1, 0, 1, 0, 1, 0, 0])
 	_camera.frame(AABB(Vector3(0, 0, -60), Vector3(160, 50, 140)))
 	await _frames(40)
 	await _hold("4488")
-	var nacelle: Transform3D = _ldr([80, -32, -40, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+	var nacelle: Transform3D = _ldr([80, -24, -40, 0, 0, 1, 0, 1, 0, -1, 0, 0])
 	await _turn_to(nacelle.basis)
-	# Aimed between its sockets, at the bottom of the block they are under,
-	# and moved across by where its ghost stands, as the build flow aims.
-	var at_sockets: Vector2 = _screen(nacelle * Vector3(10, -16, 0))
+	# Aimed under the middle of its plate, on the wing, and moved across by
+	# where its ghost stands, as the build flow aims.
+	var on_wing: Vector2 = _screen(nacelle * Vector3(-10, -8, 0))
 	for _n: int in 4:
-		await _move(at_sockets)
+		await _move(on_wing)
 		if _builder.ghost_place() == null:
 			break
 		var ghost: Vector3 = _builder.ghost_transform().origin
 		if Vector2(ghost.x, ghost.z).distance_to(Vector2(nacelle.origin.x, nacelle.origin.z)) < 0.5:
 			break
-		at_sockets += _screen(Vector3(nacelle.origin.x, ghost.y, nacelle.origin.z)) - _screen(ghost)
-	await _one("4488 on the wedge plate by its sockets, not sunk into it", at_sockets, nacelle)
+		on_wing += _screen(Vector3(nacelle.origin.x, ghost.y, nacelle.origin.z)) - _screen(ghost)
+	var put: int = await _one("4488 on the wing by its plate, its pin block past the edge, never a plate over it",
+		on_wing, nacelle)
+	if put != 0:
+		var wing: int = _world.bricks()[0].id
+		var boxes: PackedInt32Array = _builder.lattice.boxes_of(put)
+		var over: int = _builder.lattice.rise_onto(boxes, Builder.GROUND_CELL, 0, 0, {put: true})
+		var into: PackedInt64Array = _builder.lattice.blockers_boxes(boxes, put)
+		_check("...its plate on the wing and into nothing (%d cells to rise onto what is under it, %d parts in it)" % [
+			over, into.size()], over == 0 and not into.has(wing))
 	await _shot("on_its_sockets")
 
 	# Below the ground, held by the model: a bracket on the edge of the plate

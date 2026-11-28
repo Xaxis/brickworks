@@ -3353,21 +3353,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   plates go round the arm of a wheel holder (6157) in their missing corners,
   and by their box they stood on the arm, a plate up, in the build flow and
   by hand. Only ever lower than by the box, never below what is under it,
-  and only where the part is held by its sockets there
-  (`Builder._seated_by_sockets`): 5762-1's 4488 stands on a wedge plate by
-  the block under half of it, where its sockets are, and the wedge's cover
-  is short of its slanted edge under that block, so lowered by its cover
-  it sank a plate into the wing. That box's rest is kept only where what
-  holds the box up is drawn under one of its sockets (`_over_its_sockets`,
-  bigghost, 2026-11-28), as the wing is under the 4488's block; elsewhere
-  the box stood on what is under the room the part has not, and stood the
-  part in the air, so it rests by its cover. corner_shop's inverted slope
-  (3665a) aimed at a tile stood 52 LDU up on a minifig's arm under the far
-  edge of its sloped underside, 14 LDU over the hand under it, and over a
-  double slope's ridge 18 LDU off it, in Simple and in Full. Every plain part, one box across, rests as
+  and the box's rest is kept only where a socket is seated at it and none
+  at its cover's (`Builder._seated_by_sockets`, bigghost 2026-11-28): held
+  by nothing at either, the box stood on what is under the room the part
+  has not, and stood the part in the air, so it rests by its cover.
+  corner_shop's inverted slope (3665a) aimed at a tile stood 52 LDU up on a
+  minifig's arm under the far edge of its sloped underside, 14 LDU over the
+  hand under it, and over a double slope's ridge 18 LDU off it, in Simple
+  and in Full. 5762-1's 4488 on its wing stood so as well (kept on
+  2026-10-17 as the file has it): its sockets are under its pin block, the
+  block past the wing's straight edge, and its plate a plate over the wing,
+  touching nothing; it rests by its plate on the wing's studs, the block
+  hanging past the edge. Every plain part, one box across, rests as
   before. Probe: `placing_probe -- only=parts` (the two corner plates
   beside a 6157, as the set has them, aimed at their corner studs; the
-  4488 on its wedge; each fails with its rule undone); `simplereview5_probe
+  4488 on its wing as the set has them, on the wing and into nothing); `simplereview5_probe
   -- --headless-ok --case=ghosts` (the two inverted slopes' rays alone over
   corner_shop, Simple and Full; fails with the rule undone).
 - `held below the ground` (`Builder._held_below_ground`, `place`,
