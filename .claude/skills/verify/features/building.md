@@ -4119,7 +4119,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   is let go of at the switch, a moved part back where it was. The
   timeline is put away going in (the whole model shown; its key opens
   nothing in Simple) and opens again on the same step coming back
-  (`StepsBar.show_step`). A finger's hold opens nothing in Simple, nor a
+  (`StepsBar.show_step`), or on a later step that holds a part put in
+  Simple where that part could not go in the step left on (another model's
+  steps), so it is never out of sight (`Main._timeline_back`; simple_switch's
+  steps case on 6685-1). A finger's hold opens nothing in Simple, nor a
   right click (Full's part menu), nor First acts' Add parts, and of the
   studio's keys Simple keeps only `Main.SIMPLE_KEEPS` (file, undo, redo,
   copy, paste, Duplicate, Delete, turn the part in hand, Fit, the app's) and
