@@ -148,6 +148,31 @@ func _pose_of(ids: Array, up: float) -> Dictionary:
 	return frame
 
 
+## simplefix5's _simple_picks_right at the points where nothing stands
+## before the part: the middle of each part's top that no other part's box
+## comes before. Simple's lens at 390 put brick 1's middle behind the stud
+## layer of the green stack in front, where a box (the probe's) and the mesh
+## (the app's pick) part ways by a stud's gap, on pre261 as on this branch.
+func _simple_picks_seen(tag: String) -> void:
+	var left: Array = _view_left()
+	_check("[%s] in Simple nothing of Full's view left (%s)" % [tag, ", ".join(left)], left.is_empty())
+	var right: int = 0
+	var seen: int = 0
+	var wrong: Array = []
+	for one: Array in _points_as_drawn():
+		var at: Vector2 = one[1]
+		if _drawn_under(at) != int(one[0]):
+			continue
+		seen += 1
+		var found: int = _verbs.brick_at(at)
+		if found == int(one[0]):
+			right += 1
+		else:
+			wrong.append("at %s: drawn %d, picked %d" % [str(at.round()), int(one[0]), found])
+	_check("[%s] ...a tap where each part is seen picks the part drawn there (%d of %d seen: %s)" % [tag, right,
+		seen, ", ".join(wrong)], right == seen and seen >= 3)
+
+
 func _drawn_now() -> String:
 	var out: Array = []
 	for id: Variant in _world.drawn_ids():
@@ -175,7 +200,7 @@ func _case_pose() -> void:
 	_check("[pose held] Full: two parts drawn posed (%s)" % held, _world.drawn_ids().size() == 2)
 	await _to_simple()
 	await _frames(10)
-	_simple_picks_right("pose held")
+	_simple_picks_seen("pose held")
 	await _to_full()
 	await _frames(6)
 	_check("[pose held] back in Full the pose drawn exactly as it was (%s, was %s)" % [_drawn_now(), held],
@@ -364,13 +389,18 @@ func _pixels_agree(tag: String) -> void:
 		var pixel: Color = image.get_pixelv(Vector2i(clampi(roundi(at.x), 0, image.get_width() - 1),
 			clampi(roundi(at.y), 0, image.get_height() - 1)))
 		var strongest: int = 0 if pixel.r >= maxf(pixel.g, pixel.b) else (1 if pixel.g >= pixel.b else 2)
+		# Whose pixel it is, as the app's own pick says through that point:
+		# the part itself, or one standing before it (in Simple at 390 the
+		# green stack hides brick 1's middle).
+		var picked: int = _verbs.brick_at(at / per)
+		var under: BrickWorld.Brick = _world.get_brick(picked)
 		# LDraw 4 red, 2 green, 1 blue.
-		var want: int = {4: 0, 2: 1, 1: 2}.get(brick.color_code, -1)
+		var want: int = {4: 0, 2: 1, 1: 2}.get(under.color_code if under != null else -1, -1)
 		if strongest == want:
 			right += 1
-		seen.append("%d@%s %s" % [int(id), str(at.round()), pixel.to_html(false)])
-	_check("[lens %s] the screen shows each part where unproject_position puts it (%d of %d: %s)" % [tag, right,
-		ids.size(), ", ".join(seen)], right == ids.size())
+		seen.append("%d@%s %s picked %d" % [int(id), str(at.round()), pixel.to_html(false), picked])
+	_check("[lens %s] the screen shows, where unproject_position puts each part's top, the part the app picks there (%d of %d: %s)" % [
+		tag, right, ids.size(), ", ".join(seen)], right == ids.size())
 
 
 func _case_lens() -> void:
