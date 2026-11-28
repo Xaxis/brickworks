@@ -5083,7 +5083,140 @@ the root of the beak is yellow, as the model is there; the rest is as
   colours, what it holds up (the milk truck's mirror) needs another hold,
   or the cube keeps turning.
 
+### The nineteenth round: turned sides planned by the model's colours (2026-11-27)
+
+This round plans each turned side by its colours before laying it, so that
+no turned part straddles a change of colour, and keeps what hangs from a
+turned cube. Unit `snot19`, from `pre261` at `b90d0236`, with the bench's
+colour measure (`1fa79ca2`) and the bunny cap (`28860fb6`) brought over.
+Scripts, logs and pictures are in `bench/results/snot19-2026-11-28`.
+
+**In short: NO-GO. Colour and the milk truck's mirror hold; parts, turned
+and the outline do not.** The final (`04288612`) plans the columns where
+the first cut lays a cube in two colours: for each such column, of the
+cubes of all five cuts that are one colour, the most that stack up it
+without meeting. A cube still of two colours stays studs up, unless the
+model past it hangs from it, as the eighteenth round left it. On all
+fourteen at 48 studs, turned parts are off on 0.35% of the show face they
+cover, against 1.82% for upright parts, and the milk truck keeps both
+mirrors. But turned falls from 49.8% to 45.7%, the milk truck lays 1.101
+times `pre261`'s parts (bar 1.06), and seven models leave a piece of their
+outline bare that `pre261` covers. Nearer than studs up falls with turned,
++8.0% to +7.2%. On the figure, 3623 hangs on two studs of a 3023 at 7.1
+times what they hold, as in the eighteenth round. The armadillo, the
+benchy, the bunny, the teapot and the objaverse scene, where no first-cut
+cube is of two colours, lay `pre261`'s parts exactly.
+
+#### What the plan costs
+
+Each arm on the nine models with colour runs, against `pre261` (turned is
+the mean share of the nine, 54.2% on `pre261`):
+
+| Arm | Milk truck parts | Avocado | Spot | Most parts | Turned | Colour | Truck's mirror | Outline bare |
+|---|---:|---:|---:|---:|---:|---|---|---:|
+| Plan on every column (`c1`, `128329bd`) | 1.091 | 1.074 | 1.050 | 1.091 | 48.6% | holds | kept | 9 of 9 |
+| Plan only where colour is mixed: **the final** (`c2`, `04288612`) | 1.101 | 1.049 | 1.055 | 1.101 | 47.8% | holds | kept | 7 of 9 |
+| No plan, refuse and hold only (`t_noplan`) | 1.070 | 1.063 | 1.022 | 1.070 | 46.0% | holds | lost | 6 of 9 |
+| Off cells up to 10% of a cube let go (`t_tol10`) | 1.068 | 1.047 | 1.059 | 1.068 | 51.1% | fails on 5 | lost | 7 of 9 |
+| Off cells up to 25% let go (`t_tol25`) | 1.028 | 1.017 | 1.025 | 1.028 | 53.0% | fails on 8 | kept | 3 of 9 |
+| A cube over open air holds whatever its colours (`t_over`) | 1.098 | 1.057 | 1.048 | 1.098 | 49.6% | fails on 4 | kept | 7 of 9 |
+| Colours counted only where open beside (`t_sides`) | the final's, part for part | | | | | | | |
+
+Planned on every column, the one-colour armadillo laid 1.047 times
+`pre261`'s parts, the benchy 1.039 and the bunny 1.035, for the same turned
+share: the most cubes up a column, of every cut at once, stood each column's
+shells on other plates than its neighbours'. The final plans only the
+columns the first cut lays in two colours, and those models lay `pre261`'s
+build part for part.
+
+Where it plans, the plan turns more and costs more. On the milk truck it
+turns 324 plate-columns that refusing alone leaves studs up, 134 more parts
+on their sides; but each planned cube stands at its own height, out of step
+with the cubes beside it, and is anchored alone: 55 more 11211 and 31 more
+87087 than refusing alone, 52 more 1 x 4 plates, and 4,264 parts against
+4,146. Turned recovers 1.8 points of the 8.2 that refusing two-colour cubes
+costs, and parts rise.
+
+Letting a few off cells go buys turned and parts back exactly as fast as it
+gives colour away. At 10% a cube, the milk truck's turned parts are off on
+2.44% of their face against 0.63% for upright parts; at 25% the parts bar
+holds everywhere and the colour bar fails on eight of nine. The trade the
+eighteenth round measured holds for the plan too.
+
+#### The outline
+
+The bench now lists each cell of the show face no part covers (`bare`, in
+`smooth.json`), and `outline.py` finds the pieces of four cells or more
+bare in an arm that `pre261` covers. The milk truck's right mirror, five
+parts lost in the eighteenth round, is such a piece. Refusing alone
+(`t_noplan`) loses it again, a piece of 52 cells and "5 parts at its top
+right, toward the front (nothing could hold it up)", though a cube that
+holds the model past it keeps turning; why that rule misses the mirror's
+cube was not traced. The plan finds the mirror's column a cut where its
+cube is one colour, and the mirror stays.
+
+The test is strict: any new bare piece of four cells fails. The final fails
+it on seven models. The largest are the avocado's 37 cells up its front
+right, where 21 parts are left out because nothing holds them up, laid
+studs up where `pre261` turned their cube; and the toy car's 20 cells low at
+its back left. The milk truck loses two parts at its bottom, toward the
+front, that ran into the part beside them, and eight short pieces, the
+largest a row of eight cells across its front.
+
+#### As a builder
+
+`views/` holds the final's milk truck, Bob, the avocado and Smithsonian-1,
+front and corner, to set beside `pre261`'s from the seventeenth round
+(`base1-*`, the same builds part for part). **The milk truck keeps both
+mirrors.** Its windscreen is dark green all over, where `pre261` set two
+bright green parts in it and one in the side window. Along the windscreen's
+top left a row of dark grey plates stands studs up where `pre261` has white
+curved parts, and a white part reaches a plate lower into the windscreen's
+top middle; neither was checked against the model's picture. The grille is
+as `pre261`'s, with orange plates over the tan lamps, the model's orange,
+as in the eighteenth round. **Bob's beak is as `pre261`'s**, orange to a
+yellow root; the light blue patches on the front of the ring are laid in
+smaller parts. **The avocado has a dark slot under its top**, across the
+cut face, where `pre261` has pale flesh; more thin dark green lines, the
+skin's colour, show between the flesh's parts. Smithsonian-1 opens two
+see-through gaps `pre261` lacks, at the left of the neck and the right of
+the chest, and closes two of `pre261`'s, at the right eye and the front of
+the plinth.
+
+#### What is left
+
+- **A turned side in step with itself.** A column planned to its own
+  height is anchored alone. A plan over the whole face, a few heights
+  shared by neighbouring columns, would keep shells whole; or each
+  column's cut could be chosen from the cuts its neighbours took.
+- **Colour bought at its price.** The colour bar is against upright parts'
+  own off-colour, which differs by model: 0.38% on the fox, about 3.1% on
+  Smithsonian-1. A budget of mixed cubes, cheapest first, up to each
+  model's own upright rate, might spend what the bar allows. Not tried.
+- **The avocado's 21 parts.** What a refused cube held up in itself,
+  studs up, needs a hold the core gives; `t_over`, keeping every cube over
+  open air turned, keeps them but gives colour away.
+- **The figure's two parts on two studs,** still unmended.
+
 ### Proof
+
+The nineteenth round's runs (`snot19`, 2026-11-27; NO-GO), all in
+`bench/results/snot19-2026-11-28`, from locked snapshots: `snot19c2` (the
+final, `04288612`) and `snot19b` (`pre261` at `b90d0236` with the bench's
+colour measure, the bunny cap and the bench's `bare` list, `6bacd575`):
+
+- **The fourteen at 48 studs,** each its own queued job (`scripts/quick.sh`,
+  `quick/base`, `quick/c2` and `quick/c2o` for the objaverse scene), judged
+  by `scripts/judge.sh` (`snot14`'s bar, hold and means, `snot17`'s colour
+  and table, `snot18`'s `cmp.py`, this round's `outline.py`) into
+  `judge/c2/`. Not laid at the same moment: times are not judged.
+- **The arms,** `quick/c1` (`snot19c1`), and `t_noplan`, `t_sides`,
+  `t_tol10`, `t_tol25`, `t_over`: toggles over the final, in `patches/`.
+  `scripts/lost.py` counts what each arm stops turning, by the reason its
+  cube was refused.
+- **The renders,** `scripts/view.sh`, one GPU call each (`views/`), beside
+  the seventeenth round's `base1-*`, the same builds part for part.
+- No probes or Python suite: a NO-GO round's code is not merged.
 
 The eighteenth round's runs (`snot18`, 2026-11-27; NO-GO), all in
 `bench/results/snot18-2026-11-28`, from locked snapshots: `snot18f` (the
