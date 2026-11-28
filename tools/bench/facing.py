@@ -13,15 +13,17 @@ the designer's: a person turns a model to look at it.
 So before the views are drawn the design is given a quarter turn about the vertical, never
 by hand (tools/bench/realset.py `faced`):
 
-- **By a look**: the set and the design are each drawn from their four sides (SIDES) and the
-  judge's model is asked which picture shows the subject's front (front_prompt). The design
-  is turned so its front faces the camera the set's front faces (quarter_for). The set's
-  answer is asked once and kept in its set.json.
-- **By the outline**, when the look gives no answer for either: both models read as boxes
+- **By a look**: the design is drawn from its four sides (SIDES), and the judge's model is
+  shown them beside the set's own front and corner views and asked which of the four shows
+  the model from the side the set's front view shows the set (match_prompt). The design is
+  turned to bring that side to the front camera (quarter_for).
+- **By the outline**, when the look gives no answer: both models read as boxes
   (tools/style.py, figures and their gear left out), the design's long plan axis laid along
   the set's (`facing`). Which end goes where is a guess from the outline seen along the
   set's length; on design48's subjects it put two wolves' heads at opposite ends, which is
   why the look comes first.
+
+The set's views define the front, so a design is never turned by its own idea of a front.
 
 `turned_text` writes the turn into the model file: the first model's own lines turned
 about the vertical through the origin, sub-models carried with their placing lines, so
@@ -167,43 +169,56 @@ def facing(design: list[Box], the_set: list[Box]) -> Facing:
     return Facing(quarter, scores, (ours, theirs))
 
 
-# -- which side is the front ------------------------------------------------------------
+# -- which side matches the set's front view ---------------------------------------------
 #
 # An outline cannot tell a wolf's head from its tail when the set's outline is a crouching
 # wolf with a rider and a raised sword: on design48's eight A/A subjects it put the two
 # wolves' heads at opposite ends and turned a tractor already nose-first end for end. A
-# look can. Both the set and the design are drawn from the four sides (SIDES, ModelShot's
-# elevations), and the judge's model is asked which picture shows the subject's front; the
-# design is then turned so its front faces the camera the set's front faces. The outline
-# above is what decides when the look gives no answer.
+# look can. The design is drawn from its four sides (SIDES, ModelShot's level elevations),
+# and the judge's model is shown the set's own front and corner views beside them and asked
+# which of the four shows the model from the side the set's front view shows the set. The
+# design is then turned to bring that side to the front camera.
+#
+# Asking for each model's own front instead was tried first and put two telehandlers of the
+# same code at opposite ends (design49): the set's front camera sees its bucket, and one
+# design's headlights were at the end away from its forks, which the look took for its front.
+# The front that matters is the set's views', so the question is a match, not a front.
 
 SIDES = ("front", "right", "back", "left")
 
-FRONT_SCHEMA: dict = {
+MATCH_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "front": {"type": "string", "enum": ["1", "2", "3", "4"],
-                  "description": "the number of the picture that shows the subject's front"},
+        "picture": {"type": "string", "enum": ["1", "2", "3", "4"],
+                    "description": "the model's picture seen from the side the set's front "
+                                   "view shows the set"},
         "reason": {"type": "string"},
     },
-    "required": ["front", "reason"],
+    "required": ["picture", "reason"],
 }
 
 
-def front_prompt(title: str, pictures: list[str]) -> str:
-    """The question: which of four pictures of one model, each from one side, is its front."""
-    lines = [f"These are four pictures of one LEGO® model of {title}, each drawn from a "
-             "different side, the camera level with it and a quarter turn apart.",
-             "Open every picture with the Read tool before you answer.", ""]
+def match_prompt(title: str, set_front: str, set_corner: str, pictures: list[str]) -> str:
+    """The question: which of four pictures of a model, each from one side, shows it from the
+    side the set's front view shows the set."""
+    lines = [f"A is the real LEGO® set {title} seen straight from one side; B is the same set "
+             "seen from a corner, so you can tell which side A shows.",
+             f"  A. {set_front}", f"  B. {set_corner}", "",
+             f"1 to 4 are a different LEGO® model built to look like {title}, each drawn from "
+             "a different side, the camera level with it and a quarter turn apart.", ""]
     lines += [f"  {n}. {path}" for n, path in enumerate(pictures, 1)]
-    lines += ["", f"Which picture shows the front of {title}: the side it faces, the way a "
-              "person or animal faces, a vehicle drives forward, or a building's main facade "
-              "with its entrance? Reply with only the JSON object the schema asks for: the "
-              "picture's number and one sentence saying what you see on that side."]
+    lines += ["", "Open every picture with the Read tool before you answer.",
+              "Which of 1 to 4 shows the model from the same side as A shows the set: the "
+              "same end of a vehicle or an animal, the same face of a building or a figure, "
+              "turned towards you? Judge by which part of the subject faces the camera, not "
+              "by how well the model is built. If two pictures are equally right (a model "
+              "the same front and back), give the lower number. Reply with only the JSON "
+              "object the schema asks for: the picture's number and one sentence saying "
+              "what faces the camera in A and in that picture."]
     return "\n".join(lines)
 
 
-def read_front(reply: dict | str) -> int | None:
+def read_match(reply: dict | str) -> int | None:
     """The side (an index into SIDES, as the pictures were shown) the reply names, or None."""
     found = reply
     if isinstance(reply, dict) and reply.get("type") == "result":
@@ -212,17 +227,18 @@ def read_front(reply: dict | str) -> int | None:
         found = reply.get("structured_output")
     if not isinstance(found, dict):
         return None
-    said = str(found.get("front", "")).strip()
+    said = str(found.get("picture", "")).strip()
     return int(said) - 1 if said in ("1", "2", "3", "4") else None
 
 
-def quarter_for(design_front: int, set_front: int) -> int:
-    """The quarter turn that brings the design's front side to the side the set's faces.
+def quarter_for(design_side: int, to_side: int = 0) -> int:
+    """The quarter turn that brings the design's side `design_side` to `to_side` (the front
+    camera's, by default).
 
     A quarter turn (_QUARTER, +x to +z in LDraw's axes) carries what the right camera saw
     to the back camera, the back to the left, the left to the front and the front to the
     right (the app draws LDraw's +x at the right camera and its -z at the front one)."""
-    return (set_front - design_front) % 4
+    return (to_side - design_side) % 4
 
 
 def _number(value: float) -> str:

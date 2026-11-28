@@ -880,68 +880,52 @@ def set_side(c: Candidate, parts: style.Parts, software: bool, measure: bool = T
 # -- facing: each design drawn turned as its set faces (tools/bench/facing.py) -------------
 
 
-def _front_of(title: str, pictures: list[Path], model: str) -> int | None:
-    """Which of a model's four side pictures (facing.SIDES, in order) shows the subject's
-    front, asked of the judge's model under fresh names; None when it gives no answer."""
-    if len(pictures) < len(facing.SIDES):
+def _side_matching(title: str, set_views: list[Path], pictures: list[Path],
+                   model: str) -> int | None:
+    """Which of a design's four side pictures (facing.SIDES, in order) shows it from the side
+    the set's front view shows the set, asked of the judge's model with the set's front and
+    corner views beside them, all under fresh names; None when it gives no answer."""
+    if len(pictures) < len(facing.SIDES) or not all(p.exists() for p in set_views):
         return None
-    folder, (seen,) = _fresh(tuple(judge.Picture(p, "") for p in pictures))
+    folder, (refs, seen) = _fresh(tuple(judge.Picture(p, "") for p in set_views),
+                                  tuple(judge.Picture(p, "") for p in pictures))
     try:
-        reply, _took = judge.call(facing.front_prompt(title, [str(p.path) for p in seen]),
-                                  folder, [folder], model=model, timeout=600,
-                                  schema=facing.FRONT_SCHEMA)
+        said = facing.match_prompt(title, str(refs[0].path), str(refs[1].path),
+                                   [str(p.path) for p in seen])
+        reply, _took = judge.call(said, folder, [folder], model=model, timeout=600,
+                                  schema=facing.MATCH_SCHEMA)
     except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as failed:
-        bench.say(f"front of {title}: no answer ({str(failed)[:120]})")
+        bench.say(f"side of {title}: no answer ({str(failed)[:120]})")
         return None
     finally:
         shutil.rmtree(folder, ignore_errors=True)
-    return facing.read_front(reply)
-
-
-def set_front(c: Candidate, software: bool, model: str, look: bool = True) -> int | None:
-    """The side the set's front faces (an index into facing.SIDES), looked at once a set
-    and kept in its set.json; None when the look gave no answer."""
-    where = SETS_DIR / c.number
-    done = where / "set.json"
-    record = json.loads(done.read_text()) if done.exists() else {}
-    if "front" in record:
-        return record["front"]
-    if not look:
-        return None
-    sides = bench.render(FILES / c.file, where / "sides", where / "sides_render.log", software,
-                         views=facing.SIDES)
-    front = _front_of(clean_name(c.name), sides, model)
-    if front is not None:   # no answer (no pictures, no reply) is asked again next time
-        record = json.loads(done.read_text()) if done.exists() else {}
-        record["front"] = front
-        bench._write_json(done, record)
-    return front
+    return facing.read_match(reply)
 
 
 def faced(c: Candidate, out: Path, parts: style.Parts, software: bool, model: str,
           look: bool = True) -> dict:
     """design.ldr turned to face as its set does, written beside it as faced.ldr, and why
-    (faced.json): by a look at both from their four sides when it answers for both, else by
-    their outlines (facing.facing). Done once a design; the bench's views are of faced.ldr."""
+    (faced.json): by a look at the design's four sides beside the set's front and corner views
+    when it answers, else by their outlines (facing.facing). Done once a design; the bench's
+    views are of faced.ldr."""
     said_path = out / "faced.json"
     if said_path.exists() and (out / "faced.ldr").exists():
         return json.loads(said_path.read_text())
     text = (out / "design.ldr").read_text(errors="replace")
     outline = facing.facing(facing.boxes(text, parts),
                             facing.boxes((FILES / c.file).read_text(errors="replace"), parts))
-    theirs = set_front(c, software, model, look)
-    ours = None
-    if theirs is not None:
+    side = None
+    if look:
         sides = bench.render(out / "design.ldr", out / "sides", out / "sides_render.log",
                              software, views=facing.SIDES)
-        ours = _front_of(clean_name(c.name), sides, model)
-    if ours is not None and theirs is not None:
-        quarter, by = facing.quarter_for(ours, theirs), "look"
+        set_views = [SETS_DIR / c.number / f"set_{v}.png" for v in ("front", "corner")]
+        side = _side_matching(clean_name(c.name), set_views, sides, model)
+    if side is not None:
+        quarter, by = facing.quarter_for(side), "look"
     else:
         quarter, by = outline.quarter, "outline"
     said = {"quarter": quarter, "degrees": 90 * quarter, "by": by,
-            "set_front": facing.SIDES[theirs] if theirs is not None else None,
-            "design_front": facing.SIDES[ours] if ours is not None else None,
+            "matched": facing.SIDES[side] if side is not None else None,
             "outline": outline.as_dict()}
     (out / "faced.ldr").write_text(facing.turned_text(text, quarter))
     bench._write_json(said_path, said)
@@ -960,8 +944,10 @@ def _any_half(subjects: str) -> list[Candidate]:
 
 def face_arm(args: argparse.Namespace) -> int:
     """An arm drawn before facing, drawn again faced: each design's views as made kept as
-    views_asmade_{view}.png, its faced views drawn as views_{view}.png (a design facing as
-    its set already is copied back). Run under one `heavy`: every drawing takes its slot.
+    views_asmade_{view}.png, its faced views drawn as views_{view}.png, a design facing as
+    its set already drawn again too. Bare, each drawing takes the GPU's lease for itself (in
+    design49 an app started on lavapipe at load 50-120 took 4.5 minutes before its first
+    picture); with --software, run it under one `heavy`: every drawing takes its slot.
 
     Its drawings start the app with a data folder of their own (RENDER_DATA): the shared
     probe data folder holds hundreds of custom parts, and an app started on it under load
@@ -988,14 +974,12 @@ def face_arm(args: argparse.Namespace) -> int:
             elif made.exists():
                 made.unlink()
         said = faced(c, out, parts, args.software, args.judge_model, not args.dry_run)
-        if said["quarter"] == 0 and all((out / f"views_asmade_{v}.png").exists() for v in VIEWS):
-            for v in VIEWS:
-                shutil.copyfile(out / f"views_asmade_{v}.png", out / f"views_{v}.png")
-        else:
-            bench.render(out / "faced.ldr", out / "views", out / "views_render.log", args.software)
+        # Drawn again even when not turned, so every design of a comparison is drawn by the
+        # same renderer: an arm's views as made may be lavapipe's, and `face` on the GPU.
+        bench.render(out / "faced.ldr", out / "views", out / "views_render.log", args.software)
         drawn = all((out / f"views_{v}.png").exists() for v in VIEWS)
-        return (f"{c.number}: turned {said['degrees']} by {said['by']} (set's front "
-                f"{said['set_front']}, the design's {said['design_front']})"
+        return (f"{c.number}: turned {said['degrees']} by {said['by']} (its {said['matched']} "
+                "side is what the set's front view shows)"
                 + ("" if drawn else f"; NOT drawn, see {out / 'views_render.log'}"))
 
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:

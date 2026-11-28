@@ -582,8 +582,8 @@ def test_the_turn_brings_the_designs_front_to_the_side_the_sets_faces():
     # The nose (3005) is at +x: the side the right camera sees (LDraw +x is the app's +x).
     nose = [b for b in facing.boxes(_MODEL, parts) if b[1] == (10.0, 12.0, 10.0)]
     assert nose and nose[0][0][0] > 0
-    # A set whose front faces the front camera: the app's +z, LDraw's -z.
-    quarter = facing.quarter_for(facing.SIDES.index("right"), facing.SIDES.index("front"))
+    # Brought to the front camera: the app's +z, LDraw's -z.
+    quarter = facing.quarter_for(facing.SIDES.index("right"))
     turned = facing.turn_boxes(nose, quarter)
     assert turned[0][0][2] < 0 and abs(turned[0][0][0]) < 1e-9, (quarter, turned)
     # Each side goes to the next one round with each quarter turn.
@@ -610,18 +610,21 @@ def test_the_outline_lays_a_long_design_along_its_sets_length_and_keeps_a_square
     assert tallest[0][2] > 100, turned
 
 
-def test_the_front_is_read_from_the_judges_reply():
+def test_the_matching_side_is_read_from_the_judges_reply():
     from bench import facing
-    assert facing.read_front({"type": "result", "is_error": False,
-                              "structured_output": {"front": "3", "reason": "its face"}}) == 2
-    assert facing.read_front({"front": "1", "reason": "x"}) == 0
-    assert facing.read_front({"type": "result", "is_error": True, "result": "limit"}) is None
-    assert facing.read_front({"front": "5"}) is None and facing.read_front("no") is None
-    said = facing.front_prompt("Wolf Legend Beast", ["/tmp/a.png", "/tmp/b.png", "/tmp/c.png",
-                                                     "/tmp/d.png"])
-    assert "4. /tmp/d.png" in said and "Wolf Legend Beast" in said
-    # The pictures are named only by number: the question says nothing of which side is which.
-    assert all(side not in said.split("Which picture")[0] for side in ("right", "back", "left"))
+    assert facing.read_match({"type": "result", "is_error": False,
+                              "structured_output": {"picture": "3", "reason": "its face"}}) == 2
+    assert facing.read_match({"picture": "1", "reason": "x"}) == 0
+    assert facing.read_match({"type": "result", "is_error": True, "result": "limit"}) is None
+    assert facing.read_match({"picture": "5"}) is None and facing.read_match("no") is None
+    said = facing.match_prompt("Wolf Legend Beast", "/tmp/r.png", "/tmp/s.png",
+                               ["/tmp/a.png", "/tmp/b.png", "/tmp/c.png", "/tmp/d.png"])
+    assert "A. /tmp/r.png" in said and "B. /tmp/s.png" in said and "4. /tmp/d.png" in said
+    assert "Wolf Legend Beast" in said
+    # The model's pictures are named only by number: nothing says which side is which.
+    listed = [line.strip() for line in said.splitlines() if line.strip()[:2] in ("1.", "2.", "3.", "4.")]
+    assert listed == ["1. /tmp/a.png", "2. /tmp/b.png", "3. /tmp/c.png", "4. /tmp/d.png"]
+    assert all(side not in said for side in ("left", "the back", "right side"))
 
 
 # -- pair: k designs a label, head to head, the run spread measured (design49) --------------
@@ -705,28 +708,47 @@ def test_pair_counts_only_designs_drawn_faced(tmp_path, monkeypatch):
     assert got[0][2] == 12
 
 
-def test_a_sets_front_is_kept_only_once_it_is_answered(tmp_path, monkeypatch):
+def test_a_design_is_turned_to_show_what_its_sets_front_view_shows(tmp_path, monkeypatch):
     import json as _json
-    from bench import realset
-    monkeypatch.setattr(realset, "SETS_DIR", tmp_path)
-    (tmp_path / "70127-1").mkdir()
-    (tmp_path / "70127-1" / "set.json").write_text(_json.dumps({"number": "70127-1"}))
+    from bench import facing, realset
+    monkeypatch.setattr(realset, "SETS_DIR", tmp_path / "sets")
+    monkeypatch.setattr(realset, "FILES", tmp_path / "files")
+    (tmp_path / "files").mkdir()
+    (tmp_path / "files" / "70127-1.mpd").write_text(_MODEL)
+    (tmp_path / "sets" / "70127-1").mkdir(parents=True)
+    for v in ("front", "corner"):
+        (tmp_path / "sets" / "70127-1" / f"set_{v}.png").write_bytes(b"png")
     c = realset.Candidate("70127-1", "70127-1.mpd", "Wolf Legend Beast", "Chima", 2013, 115)
-    drawn: list = []
-    monkeypatch.setattr(realset.bench, "render", lambda *a, **k: list(drawn))
+    monkeypatch.setattr(realset.bench, "render", lambda model, prefix, log, software, views=():
+                        [prefix.parent / f"{prefix.name}_{v}.png" for v in views])
     asked: list = []
+    answer = {"side": 1}
 
-    def front_of(title, pictures, model):
-        asked.append(len(pictures))
-        return None if len(pictures) < 4 else 2
+    def matching(title, set_views, pictures, model):
+        asked.append(([p.name for p in set_views], [p.name for p in pictures]))
+        return answer["side"]
 
-    monkeypatch.setattr(realset, "_front_of", front_of)
-    # Nothing drawn (the app never started): no answer, and nothing kept to stop a second look.
-    assert realset.set_front(c, True, "m") is None
-    assert "front" not in _json.loads((tmp_path / "70127-1" / "set.json").read_text())
-    drawn[:] = [tmp_path / f"sides_{s}.png" for s in ("front", "right", "back", "left")]
-    assert realset.set_front(c, True, "m") == 2
-    assert _json.loads((tmp_path / "70127-1" / "set.json").read_text())["front"] == 2
-    # Kept: asked no more.
-    assert realset.set_front(c, True, "m") == 2 and asked == [0, 4]
-    assert realset.set_front(c, True, "m", look=False) == 2
+    monkeypatch.setattr(realset, "_side_matching", matching)
+    out = tmp_path / "d" / "70127-1"
+    out.mkdir(parents=True)
+    (out / "design.ldr").write_text(_MODEL)
+    said = realset.faced(c, out, _hand_parts(), True, "m")
+    # The set's own front and corner views beside the design's four sides, in SIDES' order.
+    assert asked == [(["set_front.png", "set_corner.png"],
+                      [f"sides_{s}.png" for s in facing.SIDES])]
+    # Its right side shows what the set's front view shows: turned 270, the nose to the front.
+    assert said["by"] == "look" and said["matched"] == "right" and said["quarter"] == 3
+    nose = [b for b in facing.boxes((out / "faced.ldr").read_text(), _hand_parts())
+            if b[1] == (10.0, 12.0, 10.0)]
+    assert nose[0][0][2] < 0 and abs(nose[0][0][0]) < 1e-9, nose
+    assert _json.loads((out / "faced.json").read_text()) == said
+    # Done once: asked no more.
+    assert realset.faced(c, out, _hand_parts(), True, "m") == said and len(asked) == 1
+    # No answer: the outline decides, and says so.
+    answer["side"] = None
+    again = tmp_path / "e" / "70127-1"
+    again.mkdir(parents=True)
+    (again / "design.ldr").write_text(_MODEL)
+    said = realset.faced(c, again, _hand_parts(), True, "m")
+    assert said["by"] == "outline" and said["matched"] is None
+    assert said["quarter"] == said["outline"]["quarter"]
