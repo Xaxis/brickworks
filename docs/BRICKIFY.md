@@ -5679,7 +5679,136 @@ roundel upright.
 - **The outline's small holes** (4 to 7 cells on 8 models) are the
   twenty-first round's, as in `a4`.
 
+### The twenty-fourth round: small colour features, and a lay again kept local (2026-11-28)
+
+The twenty-third round's arm `a6` was the judge's best yet but lost
+Smithsonian-2's roundel red and took up to 1.7 times `pre261`'s time. Unit
+`snot24`, from `a6` (`b42ddeb3`) with `pre261` (`6ccdff8c`) merged in.
+Scripts, logs and pictures are in `bench/results/snot24-2026-11-28`.
+
+**In short: NO-GO. The roundel keeps its red, off-colour falls again (0.96%
+of the show face, `a6` 1.13%, `pre261` 2.53%) and the judge prefers the arm
+0.732 (0.571 to 0.875) against an A/A of 0.473; but it prefers `pre261` on
+Smithsonian-2 16 times of 16 for five pillars under its wings, two joints
+there are past load, the fox and the armadillo take 1.3 to 1.9 times
+`pre261`'s time, seven models have a hole `pre261` lacks, and the sphere
+still bridges fewer seams than its bar.**
+
+#### What was found
+
+- **The roundel's red was laid over by a slope.** The fuselage roundel's
+  red is two cells. The surface lays slopes and curves along the model's
+  outline (`_fit_near`), and one in the colour round it took both cells:
+  `pre261` laid one white, `a6` two orange. Now a slope or curve is not
+  laid over a shown cell of another colour whose colour piece is under 64
+  cells (`Plan._hides_feature`, `SMALL_FEATURE`; glass is not counted): a
+  stripe, an eye, a roundel's centre keeps its colour. On Smithsonian-2 no red cell is
+  off (`a6` 2), and its off cells fall from 31 to 10.
+- **A lay again re-lays only what it changed.** Laid again, the core parts
+  far from every changed plate were already kept (`keep_from`); now so is
+  the rest. A cube's trial shell, the same in every way that decides it
+  (its rows, its plates, the side studs holding it, the glass, the plates
+  already laid about it), is taken from the lay before instead of laid
+  anew (`Plan.trials`, in `lay_shell`: the fox's joint lay again took 14
+  of them). Stitch and the joins after the lay work only on pieces with a
+  part in the changed plates or two steps from them (`Plan.focus`,
+  `_in_focus`), or a part laid anew; pieces kept whole are left as they
+  were. The avocado went
+  from 1.60 to 0.97 times `pre261`'s time, Smithsonian-2 from 1.52 to
+  0.94, the bunny from 1.19 to 0.89 (same-moment pairs, `b2`).
+- **A turned side may not leave a hole a builder would see.** `a6`'s shells
+  kept up to seven plates in a row open on the show face (a cube may leave
+  a fifth of its plates). Now a cube is not turned where its shell leaves
+  four or more plates of the model's face together uncovered and not given
+  back to the core (`_holed_cubes`, `HOLE_PIECE`). As the bench sees it:
+  a row of a shell is two and a half plates, so at a side's top or foot it
+  can end half a plate into the model's last plate, which the shell
+  counted covered and the eye does not; a plate counts covered for the
+  hole rule only where a row holds its middle (`seen_at`, `SEEN_EDGE`).
+  The toy car's flank row (six cells along its top) went, and its newly
+  bare pieces of four or more fell from 6 to 3; the truck's bare cells
+  from 103 to 64.
+- **Where a joint lay again spends its time.** `_refused_about` now says
+  it (`spent` in the bench's `refused_about`): the fox's, which takes its
+  two joints past load to none, spends 5.0 s laying (14 shells reused),
+  5.2 s mending and 1.9 s propping, against `pre261`'s 13.7 s for the
+  whole fox. The mend and the props are over the whole model.
+
+Tried and dropped: features judged on cells open sideways only (`side`,
+traced on Smithsonian-2): the same two joints, the same red.
+
+#### The numbers
+
+The arm judged by the picture is `b2` (`e630d08b`: the feature rule, the
+local lay again and the hole rule); `b3` (`25abc82d`) adds the hole rule
+as the eye sees it and is measured on the fourteen.
+
+| Bar | Result |
+| --- | --- |
+| Judge preferred beyond A/A, no model under 6/16 | **FAIL**: `b2` 0.732 (0.571 to 0.875) on 224, clear of the A/A's 0.473; Smithsonian-2 0.000 (every reason names "columns hanging below the wings"); the teapot 0.438, the bunny 0.500, the fox 0.562, the armadillo 0.562; Bob, the figure, the truck, Smithsonian-1, Spot and the toy car 1.000 |
+| No joint past load | **FAIL**: Smithsonian-2's two at its wing roots, a 1 x 6 plate on a 1 x 3 by one stud (2.3 times its load) and a 2 x 3 plate on a 1 x 2 by one stud (1.7 times); none on the other thirteen |
+| 98% or more in a part, one piece | pass: 98.2% or more, one piece each |
+| The truck's both mirrors | pass |
+| No hole `pre261` lacks (`outline.py`) | **FAIL** on 7: the armadillo's foot (7 cells), Bob, the figure's bottom row, the truck (4), Smithsonian-1 (4), Spot's top row, the toy car (6, along its other flank's top) |
+| Time 1.15x or less, same-moment pair | **FAIL**: `b2` the fox 1.51x, the armadillo 1.30x; the truck 1.13x, the toy car 1.01x, the avocado 0.97x, Smithsonian-2 0.94x, the bunny 0.89x. `b3`, at a load of 74 to 107: the fox 1.91x, the armadillo 1.40x, the avocado 1.28x, the others 0.89x to 1.10x |
+| `brickify_probe` | **FAIL** 1: the sphere bridges 51.5% of its seams, the bar 51.9% (`pre261` 52.7%), as in `a6` |
+| Parts | 0.962x to 1.049x `pre261` |
+| Python suite | not run (NO-GO) |
+
+The arm turns 3,384 cubes over the fourteen where `pre261` turns 4,124 and
+`a6` 3,455.
+
+**Smithsonian-2's pillars.** `pre261` and `a6` stand two pillars of 1 x 1
+bricks under its wings to the ground; `b2` and `b3` stand five. They are
+the props for the two wing-root joints (`_propped`), and the joints stay
+past load with them: a pillar that does not bring its joint under load is
+kept all the same, and the judge sees it.
+
+**The sphere's seams.** The build the bar reads is the sphere laid
+upright (1,586 parts, against the turned build's 1,959), so the loss is
+in a rule that changes the upright lay, not in the shells: of `a6`'s, the
+twenty-first round's one-colour slopes, shown-stud colour across or seam
+rule, or the twenty-third's edge parts kept to their colours.
+
+#### What is left
+
+- **Smithsonian-2's wing roots.** Trace the two joints (core plates at
+  plates 8 and 9 held by one stud beside the fuselage's turned side) to the
+  cubes that make them, and take back a pillar that leaves its joint past
+  load.
+- **Time.** The joint lay again mends and props the whole model (the fox's
+  7.0 s of its 12.0); mend and prop only the region laid again. The armadillo's
+  two lays again for pieces apart cost core 13.3 s against 7.6 and shells
+  13.2 s against 8.2.
+- **The outline's holes** on five models (the armadillo's foot, Bob, the
+  figure's bottom row, Smithsonian-1, Spot's top row) are not at a shell's
+  row edge: the hole rule left them as they were.
+- **The sphere's seams**, in the upright lay, above.
+
 ### Proof
+
+The twenty-fourth round's runs (`snot24`, 2026-11-28; NO-GO), all in
+`bench/results/snot24-2026-11-28`, from locked snapshots: `snot24c`
+(`e630d08b`, `b2`, which drew and judged its own pictures), `snot24e`
+(`25abc82d`, `b3`), `snot24a` (`a732b54c`, the feature rule and the local
+lay again alone), `snot24d` (`d9552c7b`, the fox's joint lay again timed),
+`snot24t` (`e630d08b` with the joint trace and the `side` try) and
+`snot24b` (`pre261`, `6ccdff8c`, for the same-moment pairs). `quick/base`
+and `quick/a6` are the twenty-third round's, linked.
+
+- **The fourteen at 48 studs** (`scripts/quick.sh`), measured by
+  `scripts/measure.sh` into `judge/b2/` and `judge/b3/` (`table4.txt`,
+  `outline.txt`, `colour.txt`, `bar.txt`).
+- **The same-moment pairs** (`scripts/pair.sh`, `quick/pa_b2` and
+  `quick/pb_b2`, `quick/pa_b3` and `quick/pb_b3`).
+- **The renders and the judge** (`views/b2`, `views/b3` for the toy car,
+  the truck and Smithsonian-2, `judge/b2_both.txt`, every verdict in
+  `judge/b2/judge_b2.json` and `judge/b22/judge_b22.json`), against the
+  twenty-first round's pictures of `pre261`.
+- **Traces** (`diag/`): Smithsonian-2's joints and colour, the `side` try,
+  the fox's joint lay again.
+- **`brickify_probe`** (`probe1/`). The other probes and the Python suite
+  were not run once the bars had failed.
 
 The twenty-third round's runs (`snot23`, 2026-11-28; NO-GO), all in
 `bench/results/snot23-2026-11-28`, from locked snapshots: `snot23a6`
