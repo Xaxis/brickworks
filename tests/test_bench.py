@@ -703,3 +703,30 @@ def test_pair_counts_only_designs_drawn_faced(tmp_path, monkeypatch):
     got = realset._pair_designs("a1+a2", "2026-11-28", "70127-1")
     assert [k for k, _v, _p in got] == ["a1:2026-11-28:70127-1"], got
     assert got[0][2] == 12
+
+
+def test_a_sets_front_is_kept_only_once_it_is_answered(tmp_path, monkeypatch):
+    import json as _json
+    from bench import realset
+    monkeypatch.setattr(realset, "SETS_DIR", tmp_path)
+    (tmp_path / "70127-1").mkdir()
+    (tmp_path / "70127-1" / "set.json").write_text(_json.dumps({"number": "70127-1"}))
+    c = realset.Candidate("70127-1", "70127-1.mpd", "Wolf Legend Beast", "Chima", 2013, 115)
+    drawn: list = []
+    monkeypatch.setattr(realset.bench, "render", lambda *a, **k: list(drawn))
+    asked: list = []
+
+    def front_of(title, pictures, model):
+        asked.append(len(pictures))
+        return None if len(pictures) < 4 else 2
+
+    monkeypatch.setattr(realset, "_front_of", front_of)
+    # Nothing drawn (the app never started): no answer, and nothing kept to stop a second look.
+    assert realset.set_front(c, True, "m") is None
+    assert "front" not in _json.loads((tmp_path / "70127-1" / "set.json").read_text())
+    drawn[:] = [tmp_path / f"sides_{s}.png" for s in ("front", "right", "back", "left")]
+    assert realset.set_front(c, True, "m") == 2
+    assert _json.loads((tmp_path / "70127-1" / "set.json").read_text())["front"] == 2
+    # Kept: asked no more.
+    assert realset.set_front(c, True, "m") == 2 and asked == [0, 4]
+    assert realset.set_front(c, True, "m", look=False) == 2

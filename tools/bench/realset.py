@@ -156,6 +156,7 @@ FILES = ROOT / "vendor" / "omr" / "files"
 INDEX = ROOT / "vendor" / "omr" / "index.json"
 RESULTS = bench.RESULTS
 SETS_DIR = RESULTS / "realset-sets"
+RENDER_DATA = RESULTS / "realset-render-data"   # the app data folder `face` draws with
 # How every verdict since design34 was asked: its pictures under fresh random names, alone in
 # a fresh folder outside any checkout. A verdict file says so; one that does not was asked under
 # the two models' fixed names (bench/results/blind/) and is never read back as a sample.
@@ -910,9 +911,10 @@ def set_front(c: Candidate, software: bool, model: str, look: bool = True) -> in
     sides = bench.render(FILES / c.file, where / "sides", where / "sides_render.log", software,
                          views=facing.SIDES)
     front = _front_of(clean_name(c.name), sides, model)
-    record = json.loads(done.read_text()) if done.exists() else {}
-    record["front"] = front
-    bench._write_json(done, record)
+    if front is not None:   # no answer (no pictures, no reply) is asked again next time
+        record = json.loads(done.read_text()) if done.exists() else {}
+        record["front"] = front
+        bench._write_json(done, record)
     return front
 
 
@@ -959,7 +961,13 @@ def _any_half(subjects: str) -> list[Candidate]:
 def face_arm(args: argparse.Namespace) -> int:
     """An arm drawn before facing, drawn again faced: each design's views as made kept as
     views_asmade_{view}.png, its faced views drawn as views_{view}.png (a design facing as
-    its set already is copied back). Run under one `heavy`: every drawing takes its slot."""
+    its set already is copied back). Run under one `heavy`: every drawing takes its slot.
+
+    Its drawings start the app with a data folder of their own (RENDER_DATA): the shared
+    probe data folder holds hundreds of custom parts, and an app started on it under load
+    had loaded none of its model after 11 minutes (design49), where a fresh one draws in 4."""
+    os.environ["XDG_DATA_HOME"] = str(RENDER_DATA)
+    RENDER_DATA.mkdir(parents=True, exist_ok=True)
     folder = arm_dir(args.date, args.arm)
     wanted = _any_half(args.subjects) if args.subjects else sample(args.which, args.first)
     parts = style.Parts()
