@@ -455,18 +455,16 @@ func shape_of(mesh: Mesh, sag: float = 0.0) -> Array:
 const ROUND_MOST := 0.77  # cos 39.6 degrees
 ## How many times [method rounded] cuts an edge's halves again, at most.
 const ROUND_LEVELS := 3
-## A corner's normal put right turns at most this far (cos 12 degrees); one
-## that would turn further was set so on purpose, or its triangles disagree.
-const ROUND_TRUE := 0.978
 
 
 ## Round parts drawn round (photoreal36). LDraw draws a part's cylinders,
 ## cones, discs and rings from 16-sided primitives, and Best's close-up of a
 ## 1 x 1 round brick showed every side: the judge named its "faceted,
 ## polygonal cylinder silhouette" in 32 of 36 verdicts, and the clear wall's
-## refraction broke into the flat sides' bands. The normals are put right
-## first ([method true_normals]). They then say where the part is round
-## (smoothed across every edge but a crease), so each edge whose ends'
+## refraction broke into the flat sides' bands. The part's normals say where
+## it is round (smoothed across every edge but a crease; by each face's angle
+## at the corner since meshnormals, so a ring's two ends lean off an edge
+## alike), so each edge whose ends'
 ## normals part as an arc's do (the two ends leaning off the edge alike) and
 ## whose middle lies more than [param sag] off the curve they describe is cut
 ## at the point on the curve (Phong tessellation at a half: on a circle,
@@ -479,7 +477,6 @@ const ROUND_TRUE := 0.978
 ## normals, indices], the arrays given when nothing is cut.
 static func rounded(points: PackedVector3Array, normals: PackedVector3Array,
 		indices: PackedInt32Array, sag: float) -> Array:
-	normals = true_normals(points, normals, indices)
 	for level: int in ROUND_LEVELS:
 		# The corners at one place are one point, whatever their normals.
 		var welded: Dictionary = {}
@@ -598,49 +595,6 @@ static func rounded(points: PackedVector3Array, normals: PackedVector3Array,
 		made.resize(filled)
 		indices = made
 	return [points, normals, indices]
-
-
-## Each corner's normal again, from its triangles weighted by their angle at
-## it. The parts' normals were averaged by triangle area, and a cylinder's
-## wall is quads each split corner to corner the same way, so a corner owns a
-## whole quad on one side and half of one on the other: every normal round a
-## 16-sided circle leaned 3.75 degrees along it (the 1 x 1 round brick's,
-## measured), the two ends of each arc leaned unequally, and rounded() saw no
-## arc. By angle, the quad on each side counts 90 degrees and the normal
-## points straight out of the circle. A corner keeps its own normal when the
-## new one would turn past ROUND_TRUE.
-static func true_normals(points: PackedVector3Array, normals: PackedVector3Array,
-		indices: PackedInt32Array) -> PackedVector3Array:
-	var sums := PackedVector3Array()
-	sums.resize(points.size())
-	for t: int in indices.size() / 3:
-		var a: int = indices[t * 3]
-		var b: int = indices[t * 3 + 1]
-		var c: int = indices[t * 3 + 2]
-		var pa: Vector3 = points[a]
-		var pb: Vector3 = points[b]
-		var pc: Vector3 = points[c]
-		var face: Vector3 = (pb - pa).cross(pc - pa)
-		if face.length_squared() < 1e-12:
-			continue
-		face = face.normalized()
-		var at_a: float = (pb - pa).angle_to(pc - pa)
-		var at_b: float = (pc - pb).angle_to(pa - pb)
-		var at_c: float = PI - at_a - at_b
-		# A triangle counts on the side its corner's normal faces, whichever
-		# way round its corners were written.
-		sums[a] += (face if face.dot(normals[a]) >= 0.0 else -face) * at_a
-		sums[b] += (face if face.dot(normals[b]) >= 0.0 else -face) * at_b
-		sums[c] += (face if face.dot(normals[c]) >= 0.0 else -face) * at_c
-	var put_right := PackedVector3Array(normals)
-	for v: int in points.size():
-		var sum: Vector3 = sums[v]
-		if sum.length_squared() < 1e-12:
-			continue
-		var normal: Vector3 = sum.normalized()
-		if normal.dot(normals[v]) >= ROUND_TRUE:
-			put_right[v] = normal
-	return put_right
 
 
 ## Put the set on the card: every brick of [param batches] (the copy of the

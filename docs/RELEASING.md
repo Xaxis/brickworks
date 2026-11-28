@@ -51,6 +51,22 @@ Everything below is `tools/release.py`; `--help` lists its commands.
   the new meshes and LDraw files in the bucket, the next web deploy and
   release carry the catalogue, and the "N new parts" line it prints goes
   in `CHANGELOG.md`. By hand, not a cron job: uploads cost money.
+- **A change to how parts are drawn** (normals, shading; not their joints),
+  in a private copy first, never the shared catalogue while anything runs:
+  `heavy tools/build_meshes.py --out DIR --joints-from assets/generated`
+  (15 minutes on 8 workers, where the full build is ninety) redraws every
+  part, keeps each part's joints byte for byte and carries its exact shape
+  to the new hash, then `tools/refresh_catalogue.py` on DIR. Meshes are named
+  by their bytes, so nearly every part gets a new name: meshnormals' rebuild
+  (2026-11-28) was 25,534 new meshes (1.04 GB) and 15,021 exact shapes under
+  new names (0.98 GB, the same bytes). Swap DIR in, then
+  `tools/storage_parts.py --check` and `tools/storage_parts.py`, which only
+  adds: the old names stay in the bucket, so a tab still running the last
+  build keeps loading its parts, and nobody loses one. The deploy uploads
+  what is missing before the build that names it goes out (`tools/deploy.sh`).
+  Every browser then fetches the parts it draws once more (an old name's
+  cached copy is never asked for again), which is egress on the storage plan;
+  the desktop download carries the new meshes in its next release.
 
 Versions are [Semantic Versioning](https://semver.org/) on `0.y.z` until the
 owner calls it 1.0: the minor number for a release with new features, the

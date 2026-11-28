@@ -401,6 +401,32 @@ def write(part: PartMesh, *, scale: float | None = None) -> bytes:
     return bytes(out)
 
 
+def _joints_at(data: bytes) -> int:
+    """Where a file's connectors begin: after the header and every surface."""
+    surface_count = struct.unpack_from("<H", data, 6)[0]
+    offset = 44
+    for _ in range(surface_count):
+        vertices, indices = struct.unpack_from("<II", data, offset + 4)
+        offset += 12 + vertices * 10 + indices * (2 if vertices <= 0xFFFF else 4)
+    return offset
+
+
+def with_joints(geometry: bytes, joints: bytes) -> bytes:
+    """[param geometry]'s surfaces with [param joints]'s connectors, boxes,
+    sockets and cell, byte for byte.
+
+    For a rebuild that changes only how a part is drawn (its normals): its
+    joints come from the voxels and the library, not the drawing, and are
+    an hour of a full build's ninety minutes. Copied as bytes, not read and
+    written again, because a round joint's axis does not come back from a
+    read to the same last bit.
+    """
+    out = bytearray(geometry[:_joints_at(geometry)])
+    out[36:44] = joints[36:44]
+    out += joints[_joints_at(joints):]
+    return bytes(out)
+
+
 def _quantise(value: float, scale: float) -> int:
     return max(-_I16_MAX, min(_I16_MAX, int(round(value * scale))))
 

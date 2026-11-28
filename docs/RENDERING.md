@@ -151,7 +151,9 @@ What we found while building it:
 
 **Our meshes** (`tools/build_meshes.py`, `tools/ldraw/meshfile.py`):
 - **Smooth normals except across LDraw type-2 edge lines**, so creases are
-  hard.
+  hard. Within a smooth group each face counts by its angle at the corner,
+  so a round wall's normals point straight out however LDraw cut its quads
+  (section 5al).
 - **No bevel, no logo studs, no gap.** The seam is drawn in the shader from
   the part's box.
 - **Size:** 46,476 distinct shapes, 2.1 GB, quantised to 10 bytes a vertex.
@@ -3570,7 +3572,7 @@ broke into diagonal bands. This is in every look and every round part, not only 
 
 **The lever** (`PathTracer.rounded`, `true_normals`; `RenderSettings.rounding`, PRODUCT_ROUNDING 0.5):
 each corner's normal again by its triangles' angles (the quad on each side counts 90 degrees, so it
-points straight out), then each edge whose ends' normals part as an arc's do is cut at the point on
+points straight out; `true_normals` is gone since 5al, where the meshes are made so), then each edge whose ends' normals part as an arc's do is cut at the point on
 the curve they describe (Phong tessellation at a half, within 0.06% of a circle's radius), for every
 triangle on it so no crack opens, up to three times, wherever its middle lies more than half a pixel
 of the picture off the curve at the nearest of that part's bricks. A close-up's round brick goes
@@ -3599,8 +3601,8 @@ interleaved, the box loaded), and again on the kept code 5.82 s against 6.36.
 
 For a later round: the normals' lean is a fault of the part meshes themselves
 (`tools/ldraw/geometry.py compute_normals`, by area), seen in every look; weighting by angle there
-fixes it for the raster too, and needs the meshes built again. The clear brick's remaining tells
-are its plastic, not its shape.
+fixes it for the raster too, and needs the meshes built again (done in 5al). The clear brick's
+remaining tells are its plastic, not its shape.
 
 **The top cluster's lever: a backdrop lit by the key (not kept).** The lead asked for a lever aimed
 at "background" before judging again. Where the judge can see it is the coloured paper: a white
@@ -3637,6 +3639,61 @@ partly past white (0.03 to 0.04 stops at any distance). Not kept.
 For a later round: what reads as a photograph's backdrop is uneven, not graded: light that falls
 away behind the model, irregular (paper that is not flat, a room's light on it), warm to cool, with
 the camera's noise on it. A smooth gradient alone is a render's tell.
+
+## 5al. Normals by angle in the part meshes, every look (meshnormals)
+
+**The fault.** `tools/ldraw/geometry.py compute_normals` averaged a corner's faces by area. LDraw
+cuts every cylinder's quads corner to corner the same way, so a ring's corner has a whole quad on
+one side and half of one on the other, and its normal leaned 3.75 degrees towards the side cut
+through it: the top ring one way, the bottom the other, a twist down every wall. Raster Fast and
+Good, the site's viewer and the part pictures drew it; only Best put it right, at run time
+(`PathTracer.true_normals`, 5ak).
+
+**The change.** Each face counts by its angle at the corner (`_corner_weights`), the standard
+angle-weighted normal, which is the same however a surface is cut. A triangle narrower than the
+mesh file's 1/64 LDU step counts with the square of its width: by angle alone a near-straight
+sliver, whose direction is the rounding of LDraw's four decimals, turned a corner of 46 parts in
+3,036 by over a degree (3626bpb3's by 11). The smoothing groups, and so every crease, are decided
+by the same code as before. The app's own builder of made parts (`PartForge._normals`) does the
+same arithmetic, so a made part is still the pipeline's part byte for byte.
+
+**Measured on the meshes the app loads** (`src/dev/normals_probe.gd`: the round brick, the 2 x 4,
+the car's wheel and every car part, 6,612 round corners): the mean lean +3.79 degrees before, every
+round part leaning; +0.000 after, the worst part 4624 at +0.007, a single corner at most 0.13 (the
+1/64 LDU steps). LDraw's 4-4cyli alone: 3.80 to 0.0005.
+
+**true_normals dropped.** On photoreal36's test set and the car, with the new meshes, it still
+turned 23% of corners by over 0.1 degree: of 17,569 such corners, 17,231 by no more than the tilt
+the 1/64 LDU steps give their faces, 336 where two colours meet (it sees one surface, so it averaged
+half a corner), 2 else. What it changed was its own noise, so it is gone. `PathTracer.rounded`
+stays: it finds the arcs from the parts' own normals (the close-up's round brick 384 triangles to
+1,952), and Best's time on the car is 5.26 s against pre261's 5.64 (medians of three interleaved
+runs, the box loaded: 0.93x).
+
+**The rebuild.** `tools/build_meshes.py --joints-from assets/generated` redraws every part and
+keeps its joints byte for byte (15 minutes on 8 workers, not 90). 25,534 of 27,554 meshes changed;
+every catalogue field but the mesh name is the same, joints identical, exact shapes carried.
+13 parts have 3 to 6 corners one 1/64 LDU step from where they were: two points less than a
+thousandth apart, welded into one in one build and kept apart in the other. Counted from the
+meshes as edges whose two faces store different normals, hard edges went from 16,691,167 to
+16,691,024; per part (`bench/results/meshnormals-2026-11-28/hardflip.json`): 9,604 edges hard only
+before, apart 0.5 to 12.5 degrees, are where two smoothing groups meet on a curve: by area they
+leaned differently, by angle both point straight out and store the same numbers (4318's ring at
+146 LDU, 12.5 degrees apart before); 872 hard only before and 10,256 hard only after are apart
+under 0.5 and 0.1 degree (two groups' normals on two sides of the weld's 1/4096 step, no shading
+between them); and 77 edges on 31 parts are new and real, 0.3 to
+11 degrees: a point LDraw wrote twice a thousandth apart, two welded points to the normals, which
+by area happened to get one normal and by angle get two (30361dpsk's printed side: 3.8 and 8
+degrees). The weld, not the weighting, is at fault there; welding across the 1/1000 grid's
+boundary is the fix, for a later round.
+
+**What it looks like** (`bench/results/meshnormals-2026-11-28/sheets/`, before, after and the
+difference x8, Good and Best): on Good the round brick's and the studs' walls lose the twist (up
+to 16 of 255 on the wall, the bands following each quad's diagonal); Best is the picture it was,
+as true_normals made it so at run time. The car's Best differs most on a highlight on the seat's
+edge (38 of 255); its windscreen (3823) is the same within 0.15 degree everywhere but one point of
+its frame, whose six corners turn 12.2 degrees (its faces there weigh differently by area and by
+angle; true_normals had left it as it was, past its 12 degree bound).
 
 ## 6. Web and desktop
 

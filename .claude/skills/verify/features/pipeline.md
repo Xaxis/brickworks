@@ -9,6 +9,16 @@ The Python side: LDraw in, mesh cache and catalogue out.
 - `build the meshes`: every LDraw part flattened, wound consistently, split into one
   surface per colour role, voxelised onto the 2 LDU lattice, and written as `.lbm`
   with its connectors, boxes and sockets. ~27,000 files, ~45 minutes, 1.1 GB.
+  A corner's normal is its smoothing group's faces weighted by their angle there
+  (`geometry._corner_weights`; slivers under 1/64 LDU across count with the square
+  of their width), so a 16-sided ring's normals point straight out whichever way
+  LDraw cut its quads (by area they leaned 3.75 degrees, meshnormals 2026-11-28).
+  The app's builder of made parts (`PartForge._normals`) does the same arithmetic;
+  a change to either is a change to both, then `tools/element_pipeline.sh` (numpy)
+  and `element_files_probe`, which holds the two byte for byte.
+  `--joints-from DIR` redraws every part and keeps DIR's joints byte for byte
+  (`meshfile.with_joints`) and its exact shapes under the new hashes: 15 minutes on
+  8 workers, for a change to how parts are drawn and nothing else.
 - `refresh the catalogue`: `assets/generated/catalogue.json` (14 MB) — the index the
   app searches, with each part's title, category and size — and `colors.json`
   (86 KB), through `write_colors`, the one writer of it: `build_meshes.py` calls
@@ -313,6 +323,17 @@ catalogue's `moved_by` for 68 stubs: 3139 a quarter turn, 2714 82 LDU), and a ri
 (41769a, 41769b, 43722a, 3935) coming out of `meshfile` as that twin's exact
 reflection: the same signed volume, its x moment negated, every normal on the
 side its triangle faces.
+
+`tests/test_normals.py` holds the normals by angle without the library: a 16-sided
+ring cut either way leans under 0.1 degree, a quad's cut changes no normal, a
+30-degree sliver 0.0003 LDU wide leaves a flat face's normal, and a brick's corner
+and a drawn crease stay sharp. `test_a_redraw_keeping_joints_writes_the_full_build_s_bytes`
+(numpy) holds `--joints-from`: 3001, 4073 and 32523 redrawn byte for byte as a
+full build writes them, with the connectivity made to fail on the way. On the
+meshes the app loads: `tools/probe.sh normals_probe` (headless) prints each round
+corner's lean on the round brick, the 2 x 4, the car's wheel and every car part;
+proves it when every part's mean lean is under 0.1 degree (by area +3.79) and Best
+still rounds the round brick from its own normals (384 triangles to 1952).
 
 Runtime, without spending 45 minutes:
 

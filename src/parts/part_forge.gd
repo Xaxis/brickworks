@@ -54,6 +54,9 @@ const STUD_RADIUS := 6.5           ## occupancy._STUD_RADIUS
 const STUD_HEIGHT := 4.0
 const MOST_BOXES := 64             ## occupancy.to_boxes(limit)
 const CREASE_DEGREES := 45.0
+## geometry._SLIVER_LDU: a triangle narrower than this counts in a corner's
+## normal by the square of its width.
+const SLIVER_LDU := 1.0 / 64.0
 
 
 ## What came out: the .lbm bytes and what the catalogue says about them.
@@ -597,8 +600,10 @@ func _normals() -> PackedFloat64Array:
 	var cos_crease: float = cos(deg_to_rad(CREASE_DEGREES))
 	var face := PackedFloat64Array()
 	face.resize(count * 3)
-	var areas := PackedFloat64Array()
-	areas.resize(count)
+	# How much each triangle counts in the normal at each of its corners
+	# (geometry._corner_weights): its angle there, a sliver's faded.
+	var weights := PackedFloat64Array()
+	weights.resize(count * 3)
 	var keys: Array[Vector3i] = []
 	keys.resize(count * 3)
 	for t: int in count:
@@ -618,7 +623,18 @@ func _normals() -> PackedFloat64Array:
 			face[t * 3] = nx * inv
 			face[t * 3 + 1] = ny * inv
 			face[t * 3 + 2] = nz * inv
-		areas[t] = length * 0.5
+			var wx: float = _tri[o + 6] - _tri[o + 3]
+			var wy: float = _tri[o + 7] - _tri[o + 4]
+			var wz: float = _tri[o + 8] - _tri[o + 5]
+			var at_a: float = atan2(length, ux * vx + uy * vy + uz * vz)
+			var at_b: float = atan2(length, -(ux * wx + uy * wy + uz * wz))
+			var at_c: float = maxf(0.0, PI - at_a - at_b)
+			var longest: float = maxf(maxf(pow(ux * ux + uy * uy + uz * uz, 0.5),
+				pow(vx * vx + vy * vy + vz * vz, 0.5)), pow(wx * wx + wy * wy + wz * wz, 0.5))
+			var trust: float = pow(minf(1.0, length / longest / SLIVER_LDU), 2.0)
+			weights[t * 3] = at_a * trust
+			weights[t * 3 + 1] = at_b * trust
+			weights[t * 3 + 2] = at_c * trust
 		for c: int in 3:
 			keys[t * 3 + c] = _key(_tri[o + c * 3], _tri[o + c * 3 + 1], _tri[o + c * 3 + 2])
 
@@ -692,10 +708,10 @@ func _normals() -> PackedFloat64Array:
 		for n: int in size:
 			var root: int = _find(parent, n)
 			var t: int = members[n]
-			var area: float = areas[t]
-			sums[root * 3] = sums[root * 3] + face[t * 3] * area
-			sums[root * 3 + 1] = sums[root * 3 + 1] + face[t * 3 + 1] * area
-			sums[root * 3 + 2] = sums[root * 3 + 2] + face[t * 3 + 2] * area
+			var weight: float = weights[int(corners[n])]
+			sums[root * 3] = sums[root * 3] + face[t * 3] * weight
+			sums[root * 3 + 1] = sums[root * 3 + 1] + face[t * 3 + 1] * weight
+			sums[root * 3 + 2] = sums[root * 3 + 2] + face[t * 3 + 2] * weight
 		for n: int in size:
 			var corner: int = corners[n]
 			var root: int = _find(parent, n)
