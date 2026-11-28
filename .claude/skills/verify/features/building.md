@@ -4328,7 +4328,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   dimmed while only the plate is there; two bricks put down light them; Save
   asks the name (ModelBar.ask_name), answered it saves under it, still in
   Simple; Share opens the share panel in front of Simple's layer; to Full and
-  back the saved house and its name stay. On pre261 it finds no Start in
+  back the saved house and its name stay; a model opened over the untouched
+  car through `Main._open` (as File, Open and a docs picture open one) clears
+  the car's flag, and Simple keeps it (g). On pre261 it finds no Start in
   Simple, the car still under Simple, and no Save in Simple. In a browser:
   `simple_save`, `simple_share` and `start_simple` are in
   window.brickworksControls.

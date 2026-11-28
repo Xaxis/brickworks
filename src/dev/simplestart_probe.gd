@@ -26,6 +26,10 @@
 ## (e) Share pressed: the share panel opens over Simple's controls.
 ## (f) To Full and back into Simple: the saved house and its name stay (a
 ##     model of the person's is never put away going into Simple).
+## (g) A model opened over the untouched example car through Main._open,
+##     then Simple: the model stays. Before, the car's flag outlived the
+##     open and Simple put the opened model away for an empty plate (the
+##     docs picture simple-selected found nothing to select).
 ##
 ## No network: studio_start_probe's FakeShared answers. Its data folder must
 ## hold no saved model (tools/probe.sh gives each run its own).
@@ -33,6 +37,7 @@
 extends "res://src/dev/firststart_probe.gd"
 
 const CALLED := "Little house"
+const HOUSE := "res://tests/fixtures/docs/simple_house.ldr"
 
 
 func _run() -> void:
@@ -249,6 +254,27 @@ func _run() -> void:
 	_check(world.brick_count() == kept and bar.model_name() == CALLED,
 		"(f) to Full and back into Simple: the house kept (%d parts, was %d), \"%s\""
 		% [world.brick_count(), kept, bar.model_name()])
+	# (g) A model opened over the untouched car through Main._open (as File,
+	# Open and a docs picture open one) is not the car: Simple keeps it. The
+	# car opened as _maybe_start opens it, flag and all.
+	_main.call("use_controls", &"full")
+	await _a_while(10)
+	_main.set("_sample_untouched", int(_main.call("_open", "res://models/car.ldr")) > 0)
+	var car_again: bool = bool(_main.get("_sample_untouched"))
+	await _a_while(10)
+	var opened: int = int(_main.call("_open", HOUSE))
+	await _a_while(10)
+	var flag: bool = bool(_main.get("_sample_untouched"))
+	var depth: int = (_main.get("_builder") as Builder).history_depth()
+	var had: int = world.brick_count()
+	var title: String = store.title
+	_main.call("use_controls", &"simple")
+	await _a_while(20)
+	await _picture("simplestart_%s_opened_kept.png" % size)
+	_check(car_again and opened > 0 and not flag and world.brick_count() == had and had > store.scenery.size()
+		and store.title == title and title != ModelStore.UNTITLED,
+		"(g) %s opened over the untouched car (car flagged %s, flag after %s, undo depth %d), then Simple: kept (%d parts, was %d, \"%s\")"
+		% [HOUSE.get_file(), car_again, flag, depth, world.brick_count(), had, store.title])
 	_finish()
 
 

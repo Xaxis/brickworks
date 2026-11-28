@@ -10965,6 +10965,10 @@ func _tell_bin_selection() -> void:
 ## Open a model through the store, the one way models open: stood on the
 ## ground, and parts not yet fetched put down as they arrive (_on_part_fetched).
 func _open(path: String) -> int:
+	# Whatever this opens is no longer the example car untouched; the car's
+	# own opens say so again after (_ready, _maybe_start). Simple over the
+	# car puts it away (_simple_over_example): a model opened here must stay.
+	_sample_untouched = false
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
 		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
