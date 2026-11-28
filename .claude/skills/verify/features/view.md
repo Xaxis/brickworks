@@ -2723,7 +2723,7 @@ picture the assistant is shown.
   over MCP, the assistant's change to a selection) drops that step's look
   in the same undo (`ModelStore.looks_follow_edit`, `BookletLooks.emptied`;
   its turn and chapter go on to the next step); undo brings both back, the
-  part in its step (`SelectionScope.snapshot` keeps the step). Lines with
+  part in its step (`BrickWorld.Ledger` keeps the step). Lines with
   tabs between their fields read and write as
   with spaces (`_of_type`), and a model of one step marked
   AUTHORED_STEPS keeps its steps and looks (`LdrModel.steps_are_authored`).

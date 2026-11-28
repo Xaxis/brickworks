@@ -706,6 +706,39 @@ plan with Claude as the client.
   C1: "is the person's own, made in the tab, so it was left"; `savereview3_attack_probe`,
   `savereview3b_attack_probe`, `savereview2_attack_probe`). A call's own steps fold into
   one, and a person's step kept between stays where it was (`Builder.fold_since`).
+  A call's or a run's step holds only what its own code changed, never the model's
+  difference over the time it worked: the world notes each part a maker's code puts
+  down, takes off, moves or paints inside `Builder.by` in that maker's ledger
+  (`BrickWorld.Ledger`, `BrickWorld._ledger_note`, opened by `ClaudeStep.mark`), and
+  the step is made from it part by part (`ClaudeStep.steps_of`). Code that names no
+  maker (the person by hand, an Open, Together) is noted in none. So a chat's
+  review_model, save_model or clear_model while the person's panel design lays its
+  576 parts keeps none of them, and another chat's design beside a review stays its
+  own (savereview5 F1: a review took 916). A clear during a design starts the design's
+  ledger again, so what it lays after the clear is in its step, never in none
+  (`BrickWorld.clear`; F2). A feature or surface piece's parts are the ones its own
+  edit laid (`Ledger.laid`, `FeaturePass.lay`, `SurfacePass._edit`). A tool that puts
+  parts down after a wait names its caller as it does (`FigureTool.add`'s figure:
+  unnamed, add_minifig's parts were in no step, `claude_undo_probe`).
+  `savereview5_attack_probe` (headless, API stand-in on 13080-13089;
+  `--sr5=pr,ps,pc,cr,cc`): pr/ps/pc the person's panel design beside their chat's
+  review, save and clear; cr/cc a chat's design beside another chat's review and
+  clear. Each says every designed part standing is in a step and the other's undo
+  takes none of them.
+  A run's maker has one source, the ledger its mark opened: `Assistant._run_by` reads
+  `_run_ledger.by` and nothing sets it; `choose_sketch` hands its mark to `_start`, and
+  every caller of `_start` names its maker at its own entry. Read from `Builder.acting`
+  after a wait it was "", and a design from a sketch the chat chose, once putting the
+  sketch down waited for a part (the web), was in no step (savereview6 F1). A run or a
+  call that keeps a step is at work as its maker while it runs (`BrickWorld.at_work`,
+  from `Assistant._busy` and `CommandSocket._working`); a change named as a maker at
+  work with no ledger of theirs open is counted (`BrickWorld.in_no_step`) and said as
+  `IN NO STEP:` (push_error), which `tools/probe.sh` fails any probe on.
+  `savereview6_attack_probe` (headless, API stand-in on 13160-13164;
+  `--sr6=skc,skp,skw,skf,stop,nos`, also skb, skbp, ord): a sketch chosen by the chat
+  (skc), the person (skp), after a frame (skw), with a part fetched first (skf); the
+  person's Ctrl+Z takes every part; `nos` makes the tripwire go off on purpose and
+  sees it counted.
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
   Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):

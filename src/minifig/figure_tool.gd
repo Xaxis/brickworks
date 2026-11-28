@@ -294,9 +294,13 @@ static func _under_foot(builder: Builder, library: PartLibrary, foot: Vector3) -
 
 
 ## Stand the figure the arguments describe in the world. A coroutine: a
-## part not yet to hand is fetched first. Returns {ok, text, ids, box}.
+## part not yet to hand is fetched first. Returns {ok, text, ids, box}. Its
+## parts are put down as [param maker]'s (Builder.BY), else whoever is
+## [member Builder.acting] as it is asked, after its waits too: so the step
+## of the call or run that asked holds them (ClaudeStep), and nobody else's.
 static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
-		builder: Builder) -> Dictionary:
+		builder: Builder, maker: Variant = null) -> Dictionary:
+	var by: String = Builder.acting if maker == null else str(maker)
 	# Whose parts are whose, and the arms each torso is worn with: fetched on
 	# the web the first time a figure is asked for.
 	await SetKnowledge.ensure(builder)
@@ -382,7 +386,7 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 				+ "and five plates and a head tall; it needs that clear "
 				+ "above its feet, and its arms and what it holds a stud "
 				+ "either side.") + why}
-	var ids: PackedInt64Array = builder.put_figure(parts, figure.name, at)
+	var ids: PackedInt64Array = Builder.by(by, builder.put_figure.bind(parts, figure.name, at))
 	var group: String = world.get_brick(ids[0]).group if not ids.is_empty() else figure.name
 	figure.name = group
 	Minifig.keep(figure)

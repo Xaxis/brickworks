@@ -3834,9 +3834,6 @@ func _take_off(one: Finding, by: String) -> bool:
 ## One edit through edit_model: what it added, by id; none when refused (why,
 ## in _why_not). [param removing_only] takes an edit that adds nothing.
 func _edit(add: Array, remove: Array[int], removing_only: bool, by: String) -> Array[int]:
-	var before: Dictionary = {}
-	for brick: BrickWorld.Brick in assistant.world.bricks():
-		before[brick.id] = true
 	var input: Dictionary = {}
 	if not add.is_empty():
 		input["add"] = add
@@ -3845,11 +3842,15 @@ func _edit(add: Array, remove: Array[int], removing_only: bool, by: String) -> A
 	var out: Array[int] = []
 	if input.is_empty():
 		return out
+	# The parts this edit itself lays, never one laid by someone else while
+	# it went down (FeaturePass.lay).
+	var own: BrickWorld.Ledger = assistant.world.open_ledger(by, assistant.scenery)
 	assistant._laying_whole = true
 	assistant._quiet_edit = true
 	var answer: Variant = await assistant._run_tool({"name": "edit_model", "input": input}, by)
 	assistant._quiet_edit = false
 	assistant._laying_whole = false
+	assistant.world.close_ledger(own)
 	var head: String = str(answer if answer is String else (
 		((answer as Array)[0] as Dictionary).get("text", "") if answer is Array
 			and not (answer as Array).is_empty() and (answer as Array)[0] is Dictionary else ""))
@@ -3857,9 +3858,7 @@ func _edit(add: Array, remove: Array[int], removing_only: bool, by: String) -> A
 			or head.begins_with("Nothing in that") or head.begins_with("That would"):
 		_why_not = head.substr(0, 200).replace("\n", " ")
 		return out
-	for brick: BrickWorld.Brick in assistant.world.bricks():
-		if not before.has(brick.id):
-			out.append(brick.id)
+	out = own.laid(assistant.world)
 	if out.is_empty() and removing_only:
 		out.append(0)
 	return out
