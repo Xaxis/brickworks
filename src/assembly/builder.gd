@@ -5562,13 +5562,20 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	if sink <= 0:
 		return 0.0
 	# Lower only where it is held by its sockets there: the boxes that take
-	# studs rest on what is under them. 5762-1's 4488 stands on a wedge
-	# plate by the block under half of it, where its sockets are, the other
-	# half a plate over the wing; the wedge's cover is short of its slanted
-	# edge under that block, and lowered by its cover the 4488 sank a plate
-	# into the wing (2026-10-17).
+	# studs rest on what is under them. Its box's rest is kept only where a
+	# socket is seated at it and none is at its cover's: where none is at
+	# either, the box stood on what is under the room the part has not, and
+	# stood the part in the air. An inverted slope (3665a) whose box reached
+	# a minifig's arm, or a double slope's ridge, under its sloped underside
+	# stood 14 to 18 LDU over them, its foot over the tile it was aimed at,
+	# and Simple offered it (simplereview5's corner_shop, bigghost
+	# 2026-11-28). 5762-1's 4488 on its wing stood so too, its pin block past
+	# the wing's edge with nothing under it and its plate a plate over the
+	# wing (2026-10-17 kept that as the file has it). Each rests by its
+	# cover, as the same part carried does (Carry.aim).
 	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
-			and not _seated_by_sockets(part, basis, snapped, cover, rise):
+			and not _seated_by_sockets(part, basis, snapped, cover, rise) \
+			and _seated_by_sockets(part, basis, snapped, cover, rest_cell - low):
 		return 0.0
 	return maxf(0.0, (rest_cell - rise) * BrickLattice.CELL - _rotated_bounds(part, basis).position.y)
 

@@ -1098,7 +1098,7 @@ func _offered() -> bool:
 		# builder stands it so in Simple (Builder.stands_only), and this
 		# refuses any way it might not (a floating brick is never offered).
 		if box.position.y > float(Builder.GROUND_CELL * BrickLattice.CELL) + ON_GROUND:
-			return builder.is_on_joint() or _stands(box)
+			return builder.is_on_joint() or _stands(builder)
 		middle = Vector2(box.get_center().x, box.get_center().z)
 	var ground: Rect2 = _ground_rect()
 	return ground.size != Vector2.ZERO and ground.grow(0.5).has_point(middle)
@@ -1109,22 +1109,26 @@ func _offered() -> bool:
 const ON_GROUND := 4.0
 
 
-## Whether a part whose box (LDU, as drawn) is [param box] stands on what
-## is under it: its foot no higher than the highest surface under its
-## footprint (BrickLattice.surface_under, as the builder rests a part) and a
-## stud's stop. A part put beside a side face at its height, hung under an
-## overhang or on side studs stands over nothing.
-func _stands(box: AABB) -> bool:
-	var builder: Builder = app.get("_builder")
-	var from: Vector3i = BrickLattice.to_cell(Vector3(box.position.x + 0.01, 0.0, box.position.z + 0.01))
-	var to: Vector3i = BrickLattice.to_cell(Vector3(box.end.x - 0.01, 0.0, box.end.z - 0.01))
-	var top: int = builder.lattice.surface_under(from.x, from.z, to.x + 1, to.z + 1, Builder.GROUND_CELL)
-	return box.position.y <= top * BrickLattice.CELL + STUD_STOP
+## Whether the part in [param builder]'s hand, where its ghost is, stands on
+## what is under it: its cover (the part's own shape, Builder.boxes_for) no
+## higher over the highest surface under each of its columns than a stud's
+## stop (BrickLattice.rise_onto, as Carry.rests asks of a group). A part put
+## beside a side face at its height, hung under an overhang or on side studs
+## stands over nothing. By its box, a part that is not one stood on what was
+## under the room it has not: an inverted slope's box on a minifig's arm or a
+## double slope's ridge under its sloped underside, the part 14 to 18 LDU over
+## them (bigghost, 2026-11-28).
+func _stands(builder: Builder) -> bool:
+	var cover: PackedInt32Array = builder.boxes_for(builder.library.mesh_for(builder.held_part),
+		builder.ghost_transform())
+	if cover.is_empty():
+		return false
+	return builder.lattice.rise_onto(cover, Builder.GROUND_CELL) >= -STUD_STOP_CELLS
 
 
-## LDU a part may stand over the surface under it: a cone's or a dome's stud
-## stop lifts what goes on it 4 or 6 LDU (Builder.stud_feet_lift).
-const STUD_STOP := 6.01
+## Cells a part may stand over the surface under it: a cone's or a dome's
+## stud stop lifts what goes on it 4 or 6 LDU (Builder.stud_feet_lift).
+const STUD_STOP_CELLS := 3
 
 
 ## How far back the view may go: where a stud is LEAST_STUD points, or the

@@ -11,7 +11,7 @@
 ##   PROBE_SIZE=1280x800 tools/probe.sh simplereview5_probe -- --desktop
 ##   tools/probe.sh simplereview5_probe -- --headless-ok [--desktop] [--case=faces,pick]
 ##
-## --case= faces, big, pick, save, dirty, middrag, modes, full (all when not said):
+## --case= faces, big, ghosts, pick, save, dirty, middrag, modes, full (all when not said):
 ##   faces    a scene on Simple's plate (a stack, an overhang, a turned brick,
 ##            a slope, a plate, an inverted slope, an arch) seen from five
 ##            sides: eight tray parts, upright and turned, aimed over every
@@ -20,7 +20,11 @@
 ##            one; every third point a drop lands exactly where its ghost was,
 ##            stands, and Undo gives the text back; every sixth a stack and the
 ##            turned brick dragged there by a finger, the same.
-##   big      the same aims and drops over corner_shop (797 parts), three views.
+##   big      the same aims and drops over corner_shop (797 parts), three views;
+##            a ghost in the air is told whole and aimed again alone by its ray.
+##   ghosts   the two rays big aimed an inverted slope in the air along (after
+##            faces), alone over corner_shop, in Simple and in Full: no ghost
+##            4 LDU or more over what is under it, let go it stands.
 ##   pick     Full's exploded view, then Simple: a tap on each part where Simple
 ##            draws it chooses that part (EditVerbs.brick_at still asks the
 ##            sections apart).
@@ -68,9 +72,9 @@ var _scene: Dictionary = {}
 
 
 func _run() -> void:
-	if not await _start("faces,big,pick,save,dirty,middrag,modes,full"):
+	if not await _start("faces,big,ghosts,pick,save,dirty,middrag,modes,full"):
 		return
-	for one: String in ["faces", "big", "pick", "save", "dirty", "middrag", "modes", "full", "diag"]:
+	for one: String in ["faces", "big", "ghosts", "pick", "save", "dirty", "middrag", "modes", "full"]:
 		if not _cases.has(one):
 			continue
 		print("\n== %s" % one)
@@ -79,6 +83,8 @@ func _run() -> void:
 				await _case_faces()
 			"big":
 				await _case_big()
+			"ghosts":
+				await _case_ghosts()
 			"pick":
 				await _case_pick()
 			"save":
@@ -91,8 +97,6 @@ func _run() -> void:
 				await _case_modes()
 			"full":
 				await _case_full()
-			"diag":
-				await _case_diag()
 	print("\n%s: %s" % [_probe_name(), "all passed" if _failures == 0 else "%d failed" % _failures])
 	quit(1 if _failures else 0)
 
@@ -212,8 +216,11 @@ func _name_of(id: int) -> String:
 	return brick.part_id if brick != null else "?"
 
 
-## The ghost now offered: whether it stands, and whether it is inside a part.
-func _judge_ghost(tag: String, part: String) -> void:
+## The ghost now offered, aimed at [param at]: whether it stands, and whether
+## it is inside a part. One in the air is told whole (what it was aimed at,
+## its box, the surface under the box, what its cover meets going down) and
+## its ray kept, to be aimed again alone ([method _air_again]).
+func _judge_ghost(tag: String, part: String, at: Vector2 = Vector2.INF) -> void:
 	_offered_n += 1
 	var t: Transform3D = _builder.ghost_transform()
 	var cover: PackedInt32Array = _builder.boxes_for(_library.mesh_for(part), t)
@@ -223,12 +230,81 @@ func _judge_ghost(tag: String, part: String) -> void:
 		Vector3.ONE * 0.01)), gap, " (on a joint)" if joint else "", str(_builder.can_place())]
 	if gap >= 2 and not joint:
 		_air.append(line)
+		if at.x < INF:
+			var ray: Array = [part, _builder.held_rotation, _camera.ray_origin(at), _camera.ray_normal(at)]
+			_air_rays.append(ray)
+			_note2("  in the air, told whole: %s" % line)
+			_note2("    ray %s" % var_to_str(ray))
+			for told: String in _under_ghost(part, ray[2], ray[3]):
+				_note2("    %s" % told)
 	elif gap == 1 and not joint:
 		_near.append(line)
 	if _builder.can_place():
 		var met: PackedInt64Array = _builder.lattice.blockers_boxes(cover, 0)
 		if not met.is_empty():
 			_inside.append("%s, its cover meets %s" % [line, str(met)])
+
+
+## Rays of the ghosts offered in the air: [part, quarter turns, origin, direction] each.
+var _air_rays: Array = []
+
+
+## What the ghost of [param part] now shown, aimed along the ray [param origin]
+## [param direction], stands over, in lines: the part struck and its face,
+## the ghost's box, the highest surface under the box's footprint and the
+## parts whose tops make it, the cover's lowest cell, and each part the cover
+## meets going down.
+func _under_ghost(part: String, origin: Vector3, direction: Vector3) -> Array:
+	var out: Array = []
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(origin, direction)
+	var struck: BrickWorld.Brick = _world.get_brick(hit.brick_id) if hit.is_valid() else null
+	out.append("aimed at %d (%s), normal %s, cell %s" % [hit.brick_id, struck.part_id if struck != null else "-",
+		str(hit.normal), str(hit.cell)])
+	var t: Transform3D = _builder.ghost_transform()
+	var mesh: Lbm.PartMesh = _library.mesh_for(part)
+	var box: AABB = t * mesh.bounds
+	var from: Vector3i = BrickLattice.to_cell(Vector3(box.position.x + 0.01, 0.0, box.position.z + 0.01))
+	var to: Vector3i = BrickLattice.to_cell(Vector3(box.end.x - 0.01, 0.0, box.end.z - 0.01))
+	var top: int = _builder.lattice.surface_under(from.x, from.z, to.x + 1, to.z + 1, Builder.GROUND_CELL)
+	var holding: Array = []
+	for id: int in _builder.lattice.blockers_boxes(PackedInt32Array([from.x, top - 1, from.z, to.x + 1, top,
+			to.z + 1]), 0):
+		holding.append("%d %s box %s" % [id, _name_of(id), str(_box_of(id))])
+	out.append("ghost %s, box %s; under the box's footprint the surface is cell %d (%.1f LDU), the tops of %s" % [
+		str(t.origin), str(box), top, top * BrickLattice.CELL, str(holding)])
+	var cover: PackedInt32Array = _builder.boxes_for(mesh, t)
+	out.append("its cover's lowest cell %d (%.1f LDU), rise onto what is under it %d cells" % [_lowest5(cover),
+		_lowest5(cover) * BrickLattice.CELL, _builder.lattice.rise_onto(cover, Builder.GROUND_CELL)])
+	var under: Dictionary = {}
+	for k: int in range(1, 60):
+		for id: int in _builder.lattice.blockers_boxes(BrickLattice.moved_by(cover, Vector3i(0, -k, 0)), 0):
+			if not under.has(id):
+				under[id] = k
+	var lines: Array = []
+	for id: Variant in under:
+		lines.append("%d %s %d cells down, box %s" % [int(id), _name_of(int(id)), int(under[id]), str(_box_of(int(id)))])
+	out.append("its cover going down meets %s" % str(lines.slice(0, 6)))
+	return out
+
+
+## Each ghost the sweep offered in the air aimed again alone, along its own
+## ray, the part freshly taken: whether it is offered again, and as high.
+func _air_again(tag: String) -> void:
+	for ray: Array in _air_rays:
+		_simple.call("_put_hand_away")
+		await _frames(1)
+		_simple.call("_take", str(ray[0]))
+		_builder.held_rotation = int(ray[1])
+		_builder.update_preview(ray[2] as Vector3, ray[3] as Vector3)
+		var offered: bool = _builder.has_preview() and bool(_simple.call("_offered"))
+		var t: Transform3D = _builder.ghost_transform()
+		var gap: int = _gap5(_builder.boxes_for(_library.mesh_for(str(ray[0])), t), {})
+		_note2("[%s] again alone: %s turned %d, ghost %s, offered %s, gap %d cells" % [tag, str(ray[0]), int(ray[1]),
+			str(t.origin), str(offered), gap])
+		for told: String in _under_ghost(str(ray[0]), ray[2] as Vector3, ray[3] as Vector3):
+			_note2("    %s" % told)
+		_builder.hide_preview()
+	_simple.call("_put_hand_away")
 
 
 # -- faces -----------------------------------------------------------------------------
@@ -260,6 +336,7 @@ func _reset_counts() -> void:
 	_inside = []
 	_off_ghost = []
 	_undo_wrong = []
+	_air_rays = []
 
 
 func _report_counts(tag: String, aims: int, offered: int, drops: int, drags: int) -> void:
@@ -306,7 +383,7 @@ func _sweep5(view: String, ids: Array, text: String) -> void:
 						_simple.call("_aim", at)
 						_aimed5 += 1
 						if _builder.has_preview():
-							_judge_ghost("%s, %s turned %d at %s" % [view, part, turn, str(at.round())], part)
+							_judge_ghost("%s, %s turned %d at %s" % [view, part, turn, str(at.round())], part, at)
 						_builder.hide_preview()
 				if n % 3 == 0:
 					await _drop5(view, TRY_PARTS[n % TRY_PARTS.size()], (n / 3) % 2, at, text)
@@ -438,13 +515,14 @@ func _case_big() -> void:
 						_simple.call("_aim", at)
 						_aimed5 += 1
 						if _builder.has_preview():
-							_judge_ghost("%s, %s turned %d at %s" % [view[0], part, turn, str(at.round())], part)
+							_judge_ghost("%s, %s turned %d at %s" % [view[0], part, turn, str(at.round())], part, at)
 						_builder.hide_preview()
 				if n % 5 == 0:
 					await _drop5(str(view[0]), ["3005", "3001", "3023b", "3039"][(n / 5) % 4], (n / 5) % 2, at, text)
 			await process_frame
 	_simple.call("_put_hand_away")
 	await _frames(2)
+	await _air_again("big")
 	_report_counts("big", 600, 150, 30, 0)
 	_check("[big] every drop undone: the model as it was, byte for byte", _text() == text)
 
@@ -977,10 +1055,28 @@ func _case_full() -> void:
 	_verbs.set_mode("select")
 
 
-# -- diag: big's two inverted slopes offered in the air ----------------------------------
+# -- ghosts: big's two inverted slopes once offered in the air, alone ---------------------
 
 
-func _case_diag() -> void:
+## The rays [big] aimed the two inverted slopes along when the sweep came
+## after [faces] (the camera there is not the one big alone has): [part,
+## quarter turns, origin, direction, what it was aimed at, what its box stood
+## on]. The first at a 2 x 4 tile on the ground, its box's far edge over a
+## minifig's arm 52 LDU up; the second at a 1 x 2 tile, its box's far half
+## over a 2 x 2 double slope's ridge (bigghost, 2026-11-28).
+const AIR_RAYS: Array = [
+	["3665a", 1, Vector3(1781.5161, 424.53134, 678.1275), Vector3(-0.9628271, -0.25840482, -0.07868184),
+		"a 2 x 4 tile, the box on a minifig's arm"],
+	["3665a", 0, Vector3(-448.39258, 1137.5686, -1203.7672), Vector3(0.2330554, -0.52178884, 0.8206227),
+		"a 1 x 2 tile, the box on a double slope's ridge"],
+]
+
+
+## Each of [constant AIR_RAYS] aimed alone over corner_shop, in Simple and
+## in Full: Simple offers no ghost 4 LDU or more over what is under it, and
+## let go the part stands on what is under it; Full's ghost is not in the
+## air either (the builder rests a part that is not a box by its cover).
+func _case_ghosts() -> void:
 	await _to_full()
 	if not _check("corner_shop opened", await _open("res://models/corner_shop.ldr")):
 		return
@@ -988,56 +1084,42 @@ func _case_diag() -> void:
 	await _to_simple()
 	await _settle()
 	var text: String = _text()
-	for one: Array in [[Vector3(1.0, 0.15, 0.3), Vector2(400, 978), 1], [Vector3(-0.4, 0.7, -1.0), Vector2(971, 688), 0]]:
-		_camera.look_from(one[0] as Vector3)
-		await _settle()
-		var at: Vector2 = one[1]
-		var hit: BrickLattice.Hit = _builder.lattice.raycast(_camera.ray_origin(at), _camera.ray_normal(at))
-		var struck: BrickWorld.Brick = _world.get_brick(hit.brick_id) if hit.is_valid() else null
-		_note2("aim %s: hit %d (%s) normal %s cell %s; its transform %s" % [str(at), hit.brick_id,
-			struck.part_id if struck != null else "-", str(hit.normal), str(hit.cell),
-			str(struck.transform) if struck != null else "-"])
-		for stands: bool in [true, false]:
-			_builder.stands_only = stands
-			_simple.call("_take", "3665a")
-			_builder.held_rotation = int(one[2])
-			_main.call("_refresh_preview", at)
+	for ray: Array in AIR_RAYS:
+		var tag: String = "%s turned %d at %s" % [str(ray[0]), int(ray[1]), str(ray[4])]
+		for simple: bool in [true, false]:
+			if not simple:
+				await _to_full()
+				_verbs.set_mode("place")
+			if simple:
+				_simple.call("_put_hand_away")
+				_simple.call("_take", str(ray[0]))
+			else:
+				_main.call("_on_part_chosen", str(ray[0]))
+			_builder.held_rotation = int(ray[1])
+			_builder.update_preview(ray[2] as Vector3, ray[3] as Vector3)
 			var shown: bool = _builder.has_preview()
-			var offered: bool = shown and bool(_simple.call("_offered"))
+			var offered: bool = shown and (bool(_simple.call("_offered")) if simple else _builder.can_place())
 			var t: Transform3D = _builder.ghost_transform()
-			var cover: PackedInt32Array = _builder.boxes_for(_library.mesh_for("3665a"), t)
-			var box: AABB = _simple.call("_ghost_box")
-			_note2("  stands_only %s: ghost %s, shown %s offered %s valid %s joint %s seated_on %d, box %s, gap %d, cover %s" % [
-				str(stands), str(t.origin), str(shown), str(offered), str(_builder.can_place()),
-				str(_builder.is_on_joint()), int(_builder.get("_seated_on")), str(box), _gap5(cover, {}), str(cover)])
-			# What stands under the ghost's footprint, each part met going down.
-			var under: Dictionary = {}
-			for k: int in range(1, 60):
-				var moved: PackedInt32Array = BrickLattice.moved_by(cover, Vector3i(0, -k, 0))
-				for id: int in _builder.lattice.blockers_boxes(moved, 0):
-					if not under.has(id):
-						under[id] = k
-			var lines: Array = []
-			for id: Variant in under:
-				var b: BrickWorld.Brick = _world.get_brick(int(id))
-				lines.append("%d %s %d cells down, box %s" % [int(id), b.part_id if b != null else "?", int(under[id]),
-					str(_box_of(int(id)))])
-			_note2("    under it: %s" % str(lines.slice(0, 6)))
+			var gap: int = _gap5(_builder.boxes_for(_library.mesh_for(str(ray[0])), t), {})
+			_note2("[ghosts] %s, %s: ghost %s, offered %s, gap %d cells" % [tag, "Simple" if simple else "Full",
+				str(t.origin), str(offered), gap])
+			for told: String in _under_ghost(str(ray[0]), ray[2] as Vector3, ray[3] as Vector3):
+				_note2("    %s" % told)
+			_check("[ghosts] %s, %s: not offered 4 LDU or more over what is under it (gap %d cells)" % [tag,
+				"Simple" if simple else "Full", gap], not offered or gap < 2 or _builder.is_on_joint())
+			if simple and offered:
+				# Let go there, as a drop does: it stands, and Undo takes it back.
+				var put: int = _builder.place()
+				await _frames(3)
+				var down: int = _gap5(_builder.lattice.boxes_of(put), {put: true}) if put != 0 else -1
+				_check("[ghosts] %s: let go, it stands on what is under it (gap %d cells)" % [tag, down],
+					put != 0 and down >= 0 and down < 2)
+				if put != 0:
+					await _press_button("undo")
+					await _frames(2)
 			_builder.hide_preview()
-		_builder.stands_only = true
-		# Let go there, as a drop does.
-		_simple.call("_take", "3665a")
-		_builder.held_rotation = int(one[2])
-		_simple.call("_aim", at)
-		if _builder.has_preview():
-			_simple.call("_drop_from_tray", at, at)
-			await _frames(3)
-			var put: Array = (_simple.get("last_drop") as Dictionary).get("put", [])
-			if not put.is_empty():
-				var id: int = int(put[0])
-				_note2("  let go: %d at %s, gap %d cells" % [id, str(_world.get_brick(id).transform.origin),
-					_gap5(_builder.lattice.boxes_of(id), {id: true})])
-				await _press_button("undo")
-				await _frames(2)
-		_simple.call("_put_hand_away")
-	_check("diag: the model as it was", _text() == text)
+			if not simple:
+				_verbs.set_mode("select")
+				await _to_simple()
+	_simple.call("_put_hand_away")
+	_check("[ghosts] the model as it was, byte for byte", _text() == text)
