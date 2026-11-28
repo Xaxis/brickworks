@@ -256,7 +256,7 @@ func _the_button() -> void:
 				and (main.get("_world") as BrickWorld).brick_count() > 1:
 			break
 	# The CAD toolbar's (Shell), the one the browser flows press as
-	# "instructions"; Build > Instructions runs the same command.
+	# "instructions"; File > Export > Instructions runs the same command.
 	var tools: Dictionary = shell.toolbar.controls_by_name() if shell != null else {}
 	var button: Button = tools.get("instructions")
 	_assert("the toolbar has it", is_instance_valid(button) and button.is_visible_in_tree())

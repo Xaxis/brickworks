@@ -11,7 +11,8 @@
 //      handle drawn as they type (left out when they have one already).
 //   2. What do you build?: the gallery's kinds as pills, chosen or not.
 //   3. Designers and models to start with: up to three designers to follow,
-//      by Top builds and the kinds chosen first, and six models to open.
+//      by Top builds and the kinds chosen first, and six models to open:
+//      the kinds chosen first, each as Top builds ranks it among its kind.
 //
 // The kinds chosen only order what step 3 suggests: nothing of them is
 // kept, here or on the server (D13). Following a designer here is the
@@ -60,24 +61,59 @@ export function handleFrom(name) {
   return HANDLE.test(made) ? made : "";
 }
 
-/// What step 3 suggests, from the feed's designers (by Top builds) and Top
-/// builds' cards: the designers with most models of [kinds] first, then as
-/// they came; the models of [kinds] first, then the rest, each list as
-/// Top builds ranked it. Pure.
-export function suggestionsFor({ designers = [], cards = [] }, kinds = []) {
+/// What step 3 suggests, from the feed's designers (by Top builds), Top
+/// builds' cards, and each kind chosen's own Top builds ([ofKinds], kind ->
+/// its cards, as /api/share?op=list&sort=top&kind= ranks them): the
+/// designers with most models of [kinds] first, then as they came; the
+/// models of [kinds] first, then the rest, each as Top builds ranked it.
+/// Top's first page alone held 3 of live's 7 castles, and a newcomer who
+/// chose castles was shown a robot and a space ship after them (greenreds2,
+/// 2026-11-28). Two kinds' lists are taken together by Top's own order
+/// ([score], api/_directory.js SCORE: its score, then builds, then the
+/// newest listed), each list's order kept. A kind whose list did not come
+/// is Top's first page's of it. Pure.
+export function suggestionsFor({ designers = [], cards = [], ofKinds = {}, score = null }, kinds = []) {
   const wanted = new Set(kinds);
   const ofKind = (card) => wanted.has(String(card.kind || ""));
+  const lists = [...wanted].map((kind) => (Array.isArray(ofKinds[kind]) ? ofKinds[kind]
+    : cards.filter((card) => String(card.kind || "") === kind)).filter((card) => card && card.id && ofKind(card)));
+  const seen = new Set();
+  const once = (card) => card && card.id && !seen.has(card.id) && seen.add(card.id);
+  const chosen = inTopOrder(lists, score).filter(once);
   const matches = new Map();
-  for (const card of cards) {
+  for (const card of chosen) {
     const handle = card?.by?.handle;
-    if (handle && ofKind(card)) matches.set(handle, (matches.get(handle) || 0) + 1);
+    if (handle) matches.set(handle, (matches.get(handle) || 0) + 1);
   }
   const people = designers.filter((one) => one && HANDLE.test(String(one.handle || "")))
     .map((one, at) => ({ one, at, n: matches.get(one.handle) || 0 }))
     .sort((a, b) => b.n - a.n || a.at - b.at).slice(0, DESIGNERS).map(({ one }) => one);
-  const models = [...cards.filter(ofKind), ...cards.filter((card) => !ofKind(card))]
-    .filter((card) => card && card.id).slice(0, MODELS);
+  const models = [...chosen, ...cards.filter((card) => !ofKind(card)).filter(once)].slice(0, MODELS);
   return { designers: people, models };
+}
+
+/// [lists] of cards, each in Top builds' order, as one list in that order:
+/// at each turn the head that Top puts first ([score], api/_directory.js
+/// SCORE), the earlier list's on a tie, so each list keeps its own order.
+function inTopOrder(lists, score) {
+  const key = (card) => [score ? (Number(score.builds) || 0) * (Number(card.builds) || 0)
+    + (Number(score.remixes) || 0) * (Number(card.remixes) || 0) + (card.tested === true ? Number(score.tested) || 0 : 0) : 0,
+  Number(card.builds) || 0, Date.parse(card.listed_at || "") || 0];
+  const before = (a, b) => {
+    const [x, y] = [key(a), key(b)];
+    for (let at = 0; at < x.length; at += 1) if (x[at] !== y[at]) return x[at] > y[at];
+    return false;
+  };
+  const heads = lists.map((list) => [...list]);
+  const out = [];
+  for (;;) {
+    let best = -1;
+    heads.forEach((list, at) => {
+      if (list.length && (best < 0 || before(list[0], heads[best][0]))) best = at;
+    });
+    if (best < 0) return out;
+    out.push(heads[best].shift());
+  }
 }
 
 /// Opens First steps over the page. [pending]: the person signed in to do
@@ -122,15 +158,30 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
     const latest = profileOnly ? null : call(`/api/people?op=latest${as}${tests ? `&${tests}` : ""}`).catch(() => null);
     let chosen = [];
     let steps = [];
+    // Each kind chosen's own Top builds, asked as its pill is pressed so
+    // step 3 has them by the time Next is: kind -> its answer.
+    const ofKinds = new Map();
+    const askKind = (kind) => {
+      if (!ofKinds.has(kind)) {
+        ofKinds.set(kind, call(`/api/share?op=list&sort=top&kind=${encodeURIComponent(kind)}${tests ? `&${tests}` : ""}`)
+          .catch(() => null));
+      }
+      return ofKinds.get(kind);
+    };
 
-    const show = (at) => {
+    // The step's id is put on the dialog once it is drawn: step 3 waits
+    // for the kinds chosen.
+    let showing = 0;
+    const show = async (at) => {
       const step = steps[at];
+      const now = ++showing;
       count.textContent = steps.length > 1 ? say("First steps · {at} of {all}", { at: at + 1, all: steps.length })
         : say("First steps");
       title.textContent = step.title;
-      dialog.dataset.step = step.id;
+      delete dialog.dataset.step;
       body.replaceChildren();
-      step.draw(body, () => (at + 1 < steps.length ? show(at + 1) : end()));
+      await step.draw(body, () => (at + 1 < steps.length ? show(at + 1) : end()));
+      if (!finished && now === showing) dialog.dataset.step = step.id;
     };
 
     // 1. A name and a handle.
@@ -215,6 +266,7 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
           const on = pill.getAttribute("aria-pressed") !== "true";
           pill.setAttribute("aria-pressed", on ? "true" : "false");
           chosen = on ? [...chosen, kind.id] : chosen.filter((one) => one !== kind.id);
+          if (on) askKind(String(kind.id));
         });
         pills.append(pill);
       }
@@ -232,8 +284,18 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
     } });
 
     // 3. Designers to follow and models to open.
-    const startStep = (found) => ({ id: "start", title: say("Designers and models to start with"), draw(into) {
-      const { designers, models } = suggestionsFor(found, chosen);
+    const startStep = (found) => ({ id: "start", title: say("Designers and models to start with"), async draw(into) {
+      const kinds = [...chosen];
+      if (kinds.length) {
+        const wait = make("p", "", say("One moment…"));
+        into.append(wait);
+        const answers = await Promise.all(kinds.map(askKind));
+        wait.remove();
+        if (finished) return;
+        found = { ...found, ofKinds: Object.fromEntries(kinds.map((kind, at) => [kind,
+          answers[at] && answers[at].status === 200 && Array.isArray(answers[at].body?.models) ? answers[at].body.models : null])) };
+      }
+      const { designers, models } = suggestionsFor(found, kinds);
       into.append(make("p", "", designers.length ? say("Follow a designer and what they make comes into your feed.")
         : say("Open a model to look at it, build it step by step or remix it.")));
       if (designers.length) {
@@ -291,7 +353,8 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
       const ok = (answer) => answer && answer.status === 200 && answer.body;
       const kinds = ok(listed) && Array.isArray(listed.body.kinds) ? listed.body.kinds.filter((kind) => kind && kind.id) : [];
       const found = { cards: ok(listed) && Array.isArray(listed.body.models) ? listed.body.models : [],
-        designers: ok(suggested) && Array.isArray(suggested.body.designers) ? suggested.body.designers : [] };
+        designers: ok(suggested) && Array.isArray(suggested.body.designers) ? suggested.body.designers : [],
+        score: ok(listed) && listed.body.score && typeof listed.body.score === "object" ? listed.body.score : null };
       steps = profileOnly ? [profileStep]
         : [...(hasProfile ? [] : [profileStep]), ...(kinds.length ? [kindsStep(kinds)] : []), startStep(found)];
       if (!steps.length) end();

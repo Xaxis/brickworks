@@ -2613,7 +2613,12 @@ plan with Claude as the client.
   `aria-pressed`; `#first-next`), `start` (`ul.people-list` of up to three
   `li.person-row[data-handle]` from `?op=latest`'s designers, those with
   most models of the kinds chosen first, each Follow `followButton`; six
-  cards, the kinds chosen first); `#first-skip` on the first two;
+  cards, the kinds chosen first, each kind from its own
+  `?op=list&sort=top&kind=K` asked as its pill is pressed (`suggestionsFor`,
+  two kinds merged in Top's order; greenreds2: Top's first page alone held
+  3 of live's 7 castles, then a robot; `tests/web/first_steps.test.mjs`);
+  `[data-step]` is set once the step is drawn, so `start` waits for those
+  lists); `#first-skip` on the first two;
   `#first-feed` See your feed (`/feed`, `?tests=1` kept) unless the sign-in
   was asked for something on the page (`askToSignIn(why)`: then only
   `#first-done`, and the like or follow goes on after). Escape closes it.
@@ -7935,8 +7940,11 @@ Follow on `/u/brickworks`: the follow goes first with no dialog over it,
 then First steps from the snackbar end with Done only
 (`4_start_pending-*.png`). It ends "first steps: a first
 visit meets a designer to follow, a first sign-in makes a profile and
-fills the feed: ok". With `--url`, throwaway Ada (a listed castle, one
-build) is suggested at 390 and 1280; Bob signs in through the dialog,
+fills the feed: ok". With `--url`, throwaway Ada (a listed castle, built
+enough times that Top ranks it over a tested model: SCORE's tested / builds
++ 1, two today) is suggested at 390 and 1280; step 3's first cards are
+Top's first castles as `?op=list&sort=top&kind=castle` ranks them, hers
+among them (greenreds2); Bob signs in through the dialog,
 makes `bob-<rand>` on the live project, follows Ada from step 3 and his
 feed is her castle; Cy, signed in elsewhere, meets the age question and
 First steps on `/profile` and reaches the filled feed in 4 taps, with

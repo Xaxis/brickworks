@@ -63,7 +63,7 @@ can be set there to another. None is fired while a field is typed in.
 | Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's |
 |---|---|---|---|---|---|---|---|---|---|
 | `pose` | Build › Motions | — | — | A, animation mode | a few times a model, many on a model that moves | alt-O | alt-O | alt-O | alt-O |
-| `instructions` | Build › Instructions | — (Instruction Maker is a tab) | — | — | a few times a model, each time the booklet is made again | alt-B | alt-B | alt-B | alt-B |
+| `instructions` | File › Export › Instructions | — (Instruction Maker is a tab) | — | — | a few times a model, each time the booklet is made again | alt-B | alt-B | alt-B | alt-B |
 | `select_none` | Edit › Select nothing | — | — (Select None has none) | Ctrl-Shift-A, Select none | every few minutes | Ctrl-shift-A | Ctrl-shift-A | Ctrl-shift-A | Ctrl-shift-A |
 | `select_alike` | Edit › Select by › Same part and colour | Shift-V cycles to it | — | — | every few minutes | alt-A | alt-A | alt-A | alt-A |
 | `select_find` | Edit › Select by › Part number or name | — (its Ctrl-F searches the palette) | Ctrl-F, Find | — (F3 filters the part bin) | a few times a session | Ctrl-F | Ctrl-shift-F | Ctrl-F | Ctrl-F |

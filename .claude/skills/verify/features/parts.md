@@ -671,7 +671,9 @@ geometry in front of them.
   1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env; at
   the walk's two sizes binstay too: Stress opened beside the open bin and a
   2 x 4 clicked, the bin where it was),
-  `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768).
+  `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768, and
+  `PROBE_SIZE=768x1024` upright: the parts panel down the left within 56% of
+  the window, as `tablet_flow` asks).
 - `rare colours in the bin` (`PartsBin._swatch_tip`, `PartLibrary.sets_in_colour`;
   APP_UX7 rarity): with a part in hand, a colour's swatch tooltip says in how
   many sets the part comes in it, "3001 comes in it, in 1,011 sets", and in

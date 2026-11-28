@@ -428,8 +428,8 @@ picture the assistant is shown.
   134; it passes the second). Results in
   `bench/results/renderquit-2026-10-17/`.
   And with work of the app's own still going as it quits (2026-11-06,
-  `bench/results/quitabort-2026-11-06/`): `booklet-asking` (Build,
-  Instructions…, its Save dialog up 2 s, File, Quit), `save-asking` (Save as…,
+  `bench/results/quitabort-2026-11-06/`): `booklet-asking` (File,
+  Export, Instructions…, its Save dialog up 2 s, File, Quit), `save-asking` (Save as…,
   the same), `booklet-drawing` (the window closed while the booklet is drawn),
   `booklet` (windowed only: the booklet written whole, its job over, then the
   window closed), `reading` (a 40,000-part model read on a worker) and

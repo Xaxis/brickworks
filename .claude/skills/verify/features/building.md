@@ -384,7 +384,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Edit and View from the pointer's rest (150 ms bar, no frame over 50 ms),
   drives a straight and a slanted way into it to its third row, a rest on
   Open recent then down to Import, and Import crossed, left by the side and
-  come back to; `submenus in a browser` (preview_checks
+  come back to; its `--paths` headless are the train's (headless.txt). A
+  probe that emits a bar menu's `about_to_popup` to read its rows emits its
+  `popup_hide` after (greenreds2): a MenuButton told only the first stays
+  pressed and, every frame, opens the title under the pointer, so File,
+  Edit and View opened and shut once a frame under this probe;
+  `submenus in a browser` (preview_checks
   `submenu`) does the same by pictures and a screencast, 50 models saved.
 - `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
   drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`
@@ -475,8 +480,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every command in `Shell._commands`: typed by its words, reached by Down,
   Return hands exactly it to the run (a stand-in, so no file dialog,
   browser or network) or, greyed, nothing; Render opens for real in five
-  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
-  Edit at most 25 rows and 63% of the window, and the menu on a part's
+  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus
+  (none excepted: Instructions… is in File › Export alone since greenreds2,
+  and Find a command names that row), Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
   Swing on its hinge (`swing`, J), each run from the menu; and the box's
   place on its first open and as rows change, rows of one height, its height
@@ -854,7 +860,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   desktop's toolbar alone (21 buttons) is wider than any tablet at 44 points a
   button, so the phone layout is laid out wide instead, with all its gestures
   and touch words: the sheets are panels between the bars, 400 points wide, the
-  parts down the left (kept open while building: a pick does not close it) and
+  parts down the left (kept open while building: a pick does not close it;
+  its bin counts tiles and chips across the panel's 400, `LaidOut.ACROSS` and
+  `LaidOut.frame`, not the window's 768, which held it 452 wide: greenreds2,
+  `binrow_tablet_probe` checks it under 56% of the window) and
   Colour, More and a held part's actions down the right; where both would leave
   the model under 300 points one puts the other away until it goes
   (`PhoneShell._make_room`, `Sheet.set_aside`). The model is framed in the room
