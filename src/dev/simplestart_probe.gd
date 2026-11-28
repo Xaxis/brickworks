@@ -275,6 +275,27 @@ func _run() -> void:
 		and store.title == title and title != ModelStore.UNTITLED,
 		"(g) %s opened over the untouched car (car flagged %s, flag after %s, undo depth %d), then Simple: kept (%d parts, was %d, \"%s\")"
 		% [HOUSE.get_file(), car_again, flag, depth, world.brick_count(), had, store.title])
+	# (h) A Build together session begun over the untouched car makes it the
+	# session's: Together forgets the history as it starts and ends, and a
+	# guest's parts land past it, so depth 0 no longer says nothing was done.
+	# Simple after it keeps the car (carreview, 2026-11-28).
+	_main.call("use_controls", &"full")
+	await _a_while(10)
+	_main.set("_sample_untouched", int(_main.call("_open", "res://models/car.ldr")) > 0)
+	var car_flag: bool = bool(_main.get("_sample_untouched"))
+	var together: Node = _main.get("_together")
+	together.set("live", true)
+	together.emit_signal("changed")
+	together.set("live", false)
+	together.emit_signal("changed")
+	(_main.get("_builder") as Builder).forget_history()
+	var after_session: bool = bool(_main.get("_sample_untouched"))
+	var car_parts: int = world.brick_count()
+	_main.call("use_controls", &"simple")
+	await _a_while(20)
+	_check(car_flag and not after_session and world.brick_count() == car_parts and car_parts > store.scenery.size(),
+		"(h) the car, then a Build together session begun and ended, then Simple: kept (car flagged %s, flag after %s, %d parts, was %d)"
+		% [car_flag, after_session, world.brick_count(), car_parts])
 	_finish()
 
 

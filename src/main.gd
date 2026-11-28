@@ -10712,6 +10712,14 @@ func _make_together() -> void:
 	made.base_url = Deployment.api_base()
 	made.said.connect(func(words: String) -> void: _bar.say(words))
 	made.watched_ended.connect(_keep_watched)
+	# A session begun or joined over the example car makes it the session's:
+	# a guest's parts land past the history and the session forgets the
+	# history as it starts and ends, so history_depth() == 0 no longer means
+	# nothing was done. Simple over the car (_simple_over_example) cleared it
+	# without asking (carreview, 2026-11-28).
+	made.changed.connect(func() -> void:
+		if made.live:
+			_sample_untouched = false)
 	# An edit the copies of its sub-model have not yet followed, or refused
 	# (_edited_soon, at the frame's end), done before the session reads the
 	# model: one taken back is never sent at all.
