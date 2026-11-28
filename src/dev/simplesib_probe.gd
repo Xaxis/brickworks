@@ -22,7 +22,8 @@
 ##           ray_origin/ray_normal), and what Simple aims by (_ghost_foot).
 ##
 ##   godot --path . --resolution 390x844 --script src/dev/simplesib_probe.gd
-##   godot --headless --path . --script src/dev/simplesib_probe.gd -- --headless-ok [--desktop]
+##   godot --headless --path . --script src/dev/simplesib_probe.gd -- --headless-ok --desktop
+##   godot --headless --path . --script src/dev/simplesib_probe.gd -- --headless-ok
 ##   PROBE_SIZE=1280x800 tools/probe.sh simplesib_probe -- --desktop
 ##   tools/probe.sh simplesib_probe -- --headless-ok [--desktop] [--case=moving,open,lens]
 ## Exits non-zero when a check fails.
@@ -209,6 +210,7 @@ func _wait_laid() -> void:
 
 
 func _case_open() -> void:
+	await _to_full()
 	var other: String = _write(STEPS_MODEL, "ssib_other.ldr")
 	var main: Variant = _main
 	for way: String in ["Main._open", "Main._open_given", "Main.clear_model", "a session's clear_model"]:
@@ -321,11 +323,45 @@ func _lens_line(tag: String) -> String:
 		_camera.keep_aspect, str(DisplayServer.window_get_size()), str(root.get_visible_rect().size)]
 
 
+## In a window: the colour drawn at unproject_position of the middle of each
+## part's top, as the screen shows it after the frame is drawn. The loose
+## model's stacks are red, green and blue, one colour a stack, so the
+## strongest channel there says whose pixel it is.
+func _pixels_agree(tag: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	for _n: int in 3:
+		await RenderingServer.frame_post_draw
+	var image: Image = root.get_texture().get_image()
+	var room: Vector2 = root.get_visible_rect().size
+	var per := Vector2(float(image.get_width()) / room.x, float(image.get_height()) / room.y)
+	var right: int = 0
+	var seen: Array = []
+	var ids: Array = _plain_ids()
+	for id: Variant in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(int(id))
+		var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+		var box: AABB = _world.drawn_at(brick) * part.bounds
+		var at: Vector2 = _camera.unproject_position(Vector3(box.get_center().x, box.end.y - 2.0, box.get_center().z)) * per
+		var pixel: Color = image.get_pixelv(Vector2i(clampi(roundi(at.x), 0, image.get_width() - 1),
+			clampi(roundi(at.y), 0, image.get_height() - 1)))
+		var strongest: int = 0 if pixel.r >= maxf(pixel.g, pixel.b) else (1 if pixel.g >= pixel.b else 2)
+		# LDraw 4 red, 2 green, 1 blue.
+		var want: int = {4: 0, 2: 1, 1: 2}.get(brick.color_code, -1)
+		if strongest == want:
+			right += 1
+		seen.append("%d@%s %s" % [int(id), str(at.round()), pixel.to_html(false)])
+	_check("[lens %s] the screen shows each part where unproject_position puts it (%d of %d: %s)" % [tag, right,
+		ids.size(), ", ".join(seen)], right == ids.size())
+
+
 func _case_lens() -> void:
+	await _to_full()
 	await _open_saved(LOOSE_MODEL, "ssib_lens.ldr")
 	await _frames(30)
 	var full: Array = _lens_gap()
 	_note2(_lens_line("Full at rest"))
+	await _pixels_agree("Full")
 	_main.call("use_controls", &"simple")
 	await _frames(2)
 	var easing: Array = _lens_gap()
@@ -334,6 +370,7 @@ func _case_lens() -> void:
 	await _frames(30)
 	var rest: Array = _lens_gap()
 	_note2(_lens_line("Simple at rest"))
+	await _pixels_agree("Simple")
 	_check("[lens] what Simple marks over a part by screen_of is where the app's ray meets it: within 0.05 LDU (Full %.3f, easing %.3f, Simple %.3f)" % [
 		full[2], easing[2], rest[2]], maxf(full[2], maxf(easing[2], rest[2])) < 0.05)
 	_check("[lens] ...and unproject_position too, within half a pixel (Full %.2f px, easing %.2f, Simple %.2f; %.2f LDU at most)" % [
