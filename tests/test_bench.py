@@ -517,3 +517,170 @@ def test_a_checkout_with_every_class_listed_runs():
         said = _classes_said(_tree(Path(where), [("Alpha", "res://src/alpha.gd"),
                                                  ("Beta", "res://src/b/beta.gd")]))
     assert said == ""
+
+
+# -- facing: a design turned as its set faces before its views are drawn (design49) --------
+
+_PARTS_BY_HAND = None
+
+
+def _hand_parts():
+    import style
+    global _PARTS_BY_HAND
+    if _PARTS_BY_HAND is None:
+        # A 2x2 brick and a 1x1 "nose", their boxes in LDraw's axes (y down), as the catalogue
+        # gives them; Parts.of keeps them off the catalogue and the library.
+        _PARTS_BY_HAND = style.Parts.of({
+            "3003": style.PartInfo("Brick  2 x  2", "Brick", ((-20.0, 0.0, -20.0), (20.0, 24.0, 20.0))),
+            "3005": style.PartInfo("Brick  1 x  1", "Brick", ((-10.0, 0.0, -10.0), (10.0, 24.0, 10.0))),
+        })
+    return _PARTS_BY_HAND
+
+
+_MODEL = """0 FILE beast.ldr
+0 beast
+0 !BRICKWORKS FLOOR NONE
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 body.ldr
+1 4 60 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE
+0 FILE body.ldr
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 15 40 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 15 -40 0 0 0 0 1 0 1 0 -1 0 0 3003.dat
+0 NOFILE
+"""
+
+
+def test_a_turned_model_file_is_the_model_turned():
+    from bench import facing
+    parts = _hand_parts()
+    before = facing.boxes(_MODEL, parts)
+    assert len(before) == 4
+    for quarter in range(4):
+        text = facing.turned_text(_MODEL, quarter)
+        got = sorted(facing.boxes(text, parts))
+        want = sorted(facing.turn_boxes(before, quarter))
+        assert [tuple(round(v, 6) for v in c) for c, _h in got] == \
+            [tuple(round(v, 6) for v in c) for c, _h in want], quarter
+        assert [h for _c, h in got] == [h for _c, h in want], quarter
+    once = facing.turned_text(_MODEL, 1)
+    # Only the first model's placing lines turn: a sub-model is carried by its line.
+    assert once.split("0 FILE body.ldr")[1] == _MODEL.split("0 FILE body.ldr")[1]
+    assert "1 4 0 -24 60 0 0 -1 0 1 0 1 0 0 3005.dat" in once, once
+    assert "0 !BRICKWORKS FLOOR NONE" in once
+    # Four quarter turns are none, written in the same numbers.
+    four = once
+    for _ in range(3):
+        four = facing.turned_text(four, 1)
+    assert four == _MODEL
+    assert facing.turned_text(_MODEL, 0) == _MODEL
+
+
+def test_the_turn_brings_the_designs_front_to_the_side_the_sets_faces():
+    from bench import facing
+    parts = _hand_parts()
+    # The nose (3005) is at +x: the side the right camera sees (LDraw +x is the app's +x).
+    nose = [b for b in facing.boxes(_MODEL, parts) if b[1] == (10.0, 12.0, 10.0)]
+    assert nose and nose[0][0][0] > 0
+    # A set whose front faces the front camera: the app's +z, LDraw's -z.
+    quarter = facing.quarter_for(facing.SIDES.index("right"), facing.SIDES.index("front"))
+    turned = facing.turn_boxes(nose, quarter)
+    assert turned[0][0][2] < 0 and abs(turned[0][0][0]) < 1e-9, (quarter, turned)
+    # Each side goes to the next one round with each quarter turn.
+    for design in range(4):
+        for the_set in range(4):
+            assert (design + facing.quarter_for(design, the_set)) % 4 == the_set
+
+
+def test_the_outline_lays_a_long_design_along_its_sets_length_and_keeps_a_square_ones_front():
+    from bench import facing
+    long_x = [((40.0 * i, -12.0, 0.0), (20.0, 12.0, 20.0)) for i in range(5)]
+    long_z = [((0.0, -12.0, 40.0 * i), (20.0, 12.0, 20.0)) for i in range(5)]
+    tall_end = long_z + [((0.0, -36.0, 160.0), (20.0, 12.0, 20.0))]
+    square = [((40.0 * i, -12.0, 40.0 * j), (20.0, 12.0, 20.0)) for i in range(3) for j in range(3)]
+    across = facing.facing(long_x, tall_end)
+    assert across.quarter in (1, 3) and across.aspect[0] > 0 > across.aspect[1], across
+    assert facing.facing(long_x, long_x).quarter == 0
+    assert facing.facing(square, tall_end).quarter == 0
+    assert facing.facing(long_x, square).quarter == 0
+    # Its tall end where the set's is: the design's tall end at +x, the set's at +z.
+    design = long_x + [((160.0, -36.0, 0.0), (20.0, 12.0, 20.0))]
+    turned = facing.turn_boxes(design, facing.facing(design, tall_end).quarter)
+    tallest = min(turned, key=lambda b: b[0][1])
+    assert tallest[0][2] > 100, turned
+
+
+def test_the_front_is_read_from_the_judges_reply():
+    from bench import facing
+    assert facing.read_front({"type": "result", "is_error": False,
+                              "structured_output": {"front": "3", "reason": "its face"}}) == 2
+    assert facing.read_front({"front": "1", "reason": "x"}) == 0
+    assert facing.read_front({"type": "result", "is_error": True, "result": "limit"}) is None
+    assert facing.read_front({"front": "5"}) is None and facing.read_front("no") is None
+    said = facing.front_prompt("Wolf Legend Beast", ["/tmp/a.png", "/tmp/b.png", "/tmp/c.png",
+                                                     "/tmp/d.png"])
+    assert "4. /tmp/d.png" in said and "Wolf Legend Beast" in said
+    # The pictures are named only by number: the question says nothing of which side is which.
+    assert all(side not in said.split("Which picture")[0] for side in ("right", "back", "left"))
+
+
+# -- pair: k designs a label, head to head, the run spread measured (design49) --------------
+
+
+def _verdict(a: str, b: str, winner: str):
+    from bench import pairwise
+    return pairwise.Verdict(a, b, {d: winner for d in pairwise.DIMENSIONS}, {})
+
+
+def _row(lev: list[str], base: list[str], better: dict[str, int], per_order: int = 2) -> dict:
+    """Every pair of the subject's designs judged both ways round, the one with the higher
+    `better` winning each verdict."""
+    keys = lev + base
+    verdicts = []
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            winner = a if better[a] >= better[b] else b
+            for _ in range(per_order):
+                verdicts += [_verdict(a, b, winner), _verdict(b, a, winner)]
+    return {"lev": lev, "base": base, "verdicts": verdicts}
+
+
+def test_pair_judges_each_lever_design_against_each_base_design_and_within_on_asking():
+    from bench import realset
+    lev, base = ["l1", "l2"], ["b1", "b2"]
+    assert len(realset.pair_pairs(lev, base, False)) == 4
+    pairs = realset.pair_pairs(lev, base, True)
+    assert len(pairs) == 6 and ("l1", "l2") in pairs and ("b1", "b2") in pairs
+
+
+def test_pair_scores_an_aa_round_as_nothing_and_measures_the_run_spread():
+    from bench import realset
+    rows = {}
+    for n in range(8):
+        # Same code both sides: which design is best is luck, split evenly between labels.
+        order = [0, 3, 1, 2] if n % 2 else [3, 0, 2, 1]
+        rows[f"s{n}"] = _row([f"l1{n}", f"l2{n}"], [f"b1{n}", f"b2{n}"],
+                             dict(zip([f"l1{n}", f"l2{n}", f"b1{n}", f"b2{n}"], order)))
+    found = realset.pair_score(rows, None, {"all": list(rows)}, dims=("overall",))
+    got = found["overall"]
+    row = got["groups"]["all"]
+    assert abs(row["mean"]) < 1e-6 and row["runs"][0] < 0 < row["runs"][1], row
+    assert row["beyond"] == "-"
+    assert got["run_sd_measured"] is not None and got["run_sd_measured"] > 100, got
+    assert row["floor"] > 0 and row["subjects"] == 8
+    # The floor is the with-runs half-width those subjects would have on 24.
+    half = (row["runs"][1] - row["runs"][0]) / 2
+    assert abs(row["floor"] - half * (8 / 24) ** 0.5) < 1e-6
+
+
+def test_pair_sees_a_lever_that_wins_every_pair():
+    from bench import realset
+    rows = {f"s{n}": _row([f"l1{n}", f"l2{n}"], [f"b1{n}", f"b2{n}"],
+                          {f"l1{n}": 3, f"l2{n}": 2, f"b1{n}": 1, f"b2{n}": 0})
+            for n in range(12)}
+    found = realset.pair_score(rows, None, {"all": list(rows)}, dims=("overall",))
+    row = found["overall"]["groups"]["all"]
+    assert row["mean"] > 300 and row["beyond"] == "better", row
+    # Given a spread, it is the one used.
+    given = realset.pair_score(rows, 50.0, {"all": list(rows)}, dims=("overall",))
+    assert given["overall"]["run_sd"] == 50.0
