@@ -809,6 +809,38 @@ def _built_cover(part: str) -> tuple[set, list]:
     return cells, built.connectors
 
 
+@needs_numpy
+@pytest.mark.parametrize("part", ["3001.dat", "4073.dat", "32523.dat"])
+def test_a_redraw_keeping_joints_writes_the_full_build_s_bytes(
+        part: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """build_meshes --joints-from: a part redrawn with its joints taken from
+    its last build's mesh comes out byte for byte as a full build writes it,
+    round joints (32523's bores) and all, so a rebuild of how parts are drawn
+    changes nothing else. The connectivity is made to fail on the way, so the
+    joints can only have come from the mesh."""
+    import json
+
+    import build_meshes
+
+    if build_meshes._LIBRARY is None:
+        build_meshes._init(str(LDRAW_ROOT))
+    _id, full, record = build_meshes._convert(part)
+    assert full is not None, record
+    (tmp_path / "parts").mkdir()
+    (tmp_path / "parts" / f"{record['mesh']}.lbm").write_bytes(full)
+    (tmp_path / "catalogue.json").write_text(json.dumps({"parts": [record]}))
+
+    def no_connectivity(*_args: object) -> None:
+        raise AssertionError("the joints were made again")
+
+    monkeypatch.setattr(build_meshes, "extract_connections", no_connectivity)
+    monkeypatch.setattr(build_meshes, "_JOINTS_DIR", tmp_path)
+    monkeypatch.setattr(build_meshes, "_JOINTS", {record["id"]: record})
+    _id, kept, kept_record = build_meshes._convert(part)
+    assert kept == full, kept_record
+    assert kept_record == record
+
+
 def _in_shaft(cells: set, at: tuple, way: tuple, depth: float,
               radius: float) -> list:
     """The cover cells whose middles lie inside a shaft of ``radius``

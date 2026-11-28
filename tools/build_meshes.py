@@ -5,6 +5,8 @@
     tools/build_meshes.py --limit 200         a sample, for iterating
     tools/build_meshes.py --only 3001 3024    named parts
     tools/build_meshes.py --out DIR           somewhere other than the default
+    tools/build_meshes.py --out DIR --joints-from assets/generated
+                                              redraw every part, joints kept
 
 Output, under ``assets/generated/``:
 
@@ -28,6 +30,15 @@ catalogue intact and some orphan meshes.  If a full run is impractical,
 tools/merge_subbuild.py takes a --only build of the parts that changed
 and merges it, refusing unless unchanged control parts come out
 identical.
+
+--joints-from DIR is for a change to how parts are drawn and nothing
+else (their normals, 2026-11-28): each part DIR's catalogue has, with its
+mesh there, keeps that mesh's connectors, collision boxes and sockets
+byte for byte (meshfile.with_joints) and its counts, and only its
+surfaces are made again. The joints come from the library and the voxels,
+not the drawing, and are most of the ninety minutes: this takes minutes.
+A part DIR lacks is built whole. Wrong for a change to the library, the
+connectivity or the occupancy code, which is what the joints are made of.
 """
 
 from __future__ import annotations
@@ -36,6 +47,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -101,12 +113,29 @@ class PartRecord:
 
 _LIBRARY: Library | None = None
 _LDRAW_ROOT: Path = DEFAULT_LDRAW
+# --joints-from: the folder, and its catalogue's entries by id.
+_JOINTS_DIR: Path | None = None
+_JOINTS: dict[str, dict] = {}
+_JOINT_COUNTS = ("stud_count", "socket_count", "connector_counts", "box_count")
 
 
-def _init(ldraw_root: str) -> None:
-    global _LIBRARY, _LDRAW_ROOT
+def _init(ldraw_root: str, joints_from: str = "") -> None:
+    global _LIBRARY, _LDRAW_ROOT, _JOINTS_DIR, _JOINTS
     _LDRAW_ROOT = Path(ldraw_root)
     _LIBRARY = Library(_LDRAW_ROOT)
+    if joints_from:
+        _JOINTS_DIR = Path(joints_from)
+        catalogue = json.loads((_JOINTS_DIR / "catalogue.json").read_text())
+        _JOINTS = {entry["id"]: entry for entry in catalogue["parts"]}
+
+
+def _kept_joints(part_id: str) -> tuple[bytes, dict] | None:
+    """The part's mesh in --joints-from's folder, and its catalogue entry."""
+    entry = _JOINTS.get(part_id)
+    if _JOINTS_DIR is None or entry is None:
+        return None
+    path = _JOINTS_DIR / "parts" / f"{entry['mesh']}.lbm"
+    return (path.read_bytes(), entry) if path.is_file() else None
 
 
 def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
@@ -129,6 +158,12 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             return (part_id, None, {"error": "no geometry"})
 
         part = meshfile.build(mesh)
+
+        kept = _kept_joints(part_id)
+        if kept is not None:
+            blob = meshfile.with_joints(meshfile.write(part), kept[0])
+            return (part_id, blob, _record(part_id, ldfile, part, blob,
+                                           {k: kept[1][k] for k in _JOINT_COUNTS}))
 
         # Occupancy: solid volume for collision, and the underside sockets
         # the primitives cannot tell us about, on the open tubes it draws
@@ -168,42 +203,75 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         part.cell_ldu = occ.CELL
 
         blob = meshfile.write(part)
-        digest = hashlib.blake2b(blob, digest_size=10).hexdigest()
-
-        fixed = sorted({s.color for s in part.surfaces if s.color != 16})
-        record = PartRecord(
-            id=part_id,
-            name=ldfile.description,
-            category=ldfile.category,
-            kind=ldfile.part_type or "Part",
-            mesh=digest,
-            triangles=part.triangle_count,
-            size_ldu=tuple(round(v, 3) for v in part.size_ldu()),  # type: ignore[arg-type]
-            bounds_min=tuple(round(v, 3) for v in part.bounds_min),  # type: ignore[arg-type]
-            bounds_max=tuple(round(v, 3) for v in part.bounds_max),  # type: ignore[arg-type]
-            stud_count=counts.get("stud", 0),
-            socket_count=len(part.sockets),
-            connector_counts=counts,
-            box_count=len(part.boxes),
-            keywords=ldfile.keywords[:12],
-            fixed_colors=fixed,
-            recolourable=any(s.color == 16 for s in part.surfaces),
-            unofficial="unofficial" in str(ldfile.path),
-            moved_to=ldfile.moved_to,
-            moved_by=ldfile.moved_by,
-            moved_colour=ldfile.moved_colour,
-        )
-        entry = asdict(record)
-        # Only the 68 stubs that move what they forward to carry it, and
-        # the 5 that colour it theirs.
-        if not entry["moved_by"]:
-            del entry["moved_by"]
-        if entry["moved_colour"] is None:
-            del entry["moved_colour"]
-        return (part_id, blob, entry)
+        return (part_id, blob, _record(part_id, ldfile, part, blob, {
+            "stud_count": counts.get("stud", 0),
+            "socket_count": len(part.sockets),
+            "connector_counts": counts,
+            "box_count": len(part.boxes),
+        }))
 
     except Exception as exc:  # noqa: BLE001 — a worker must not take the build down
         return (part_id, None, {"error": f"{type(exc).__name__}: {exc}"})
+
+
+def _record(part_id: str, ldfile, part: meshfile.PartMesh, blob: bytes,
+            joint_counts: dict) -> dict:
+    """The part's catalogue entry, its mesh named by the blob's hash."""
+    record = PartRecord(
+        id=part_id,
+        name=ldfile.description,
+        category=ldfile.category,
+        kind=ldfile.part_type or "Part",
+        mesh=hashlib.blake2b(blob, digest_size=10).hexdigest(),
+        triangles=part.triangle_count,
+        size_ldu=tuple(round(v, 3) for v in part.size_ldu()),  # type: ignore[arg-type]
+        bounds_min=tuple(round(v, 3) for v in part.bounds_min),  # type: ignore[arg-type]
+        bounds_max=tuple(round(v, 3) for v in part.bounds_max),  # type: ignore[arg-type]
+        keywords=ldfile.keywords[:12],
+        fixed_colors=sorted({s.color for s in part.surfaces if s.color != 16}),
+        recolourable=any(s.color == 16 for s in part.surfaces),
+        unofficial="unofficial" in str(ldfile.path),
+        moved_to=ldfile.moved_to,
+        moved_by=ldfile.moved_by,
+        moved_colour=ldfile.moved_colour,
+        **joint_counts,
+    )
+    entry = asdict(record)
+    # Only the 68 stubs that move what they forward to carry it, and
+    # the 5 that colour it theirs.
+    if not entry["moved_by"]:
+        del entry["moved_by"]
+    if entry["moved_colour"] is None:
+        del entry["moved_colour"]
+    return entry
+
+
+def _carry_exact(source: Path, out: Path, catalogue: list[dict]) -> str:
+    """Each part's exact shape from --joints-from's folder, under its new mesh.
+
+    An exact shape (tools/build_exact.py) is BrickNet's, not our mesh's; the
+    mesh hash only names its file, so a redrawn part keeps its shape under
+    its new name (merge_subbuild.carry_exact, between two folders). Without
+    it the web build marks the part as having none (web_pack.mark_exact)
+    and the build check falls back to the lattice, which reads as a pass.
+    """
+    before = {e["id"]: e["mesh"] for e in json.loads(
+        (source / "catalogue.json").read_text())["parts"]}
+    (out / "exact").mkdir(exist_ok=True)
+    carried = lacking = 0
+    for entry in catalogue:
+        old = before.get(entry["id"])
+        shape = source / "exact" / f"{old}.bwx"
+        if old is None or not shape.is_file():
+            continue
+        target = out / "exact" / f"{entry['mesh']}.bwx"
+        if not target.exists():
+            shutil.copy2(shape, target)
+        carried += 1
+        if not target.is_file():
+            lacking += 1
+    return f"exact shapes carried: {carried:,} parts" + (
+        f", {lacking:,} lacking" if lacking else "")
 
 
 def main() -> int:
@@ -213,6 +281,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--only", nargs="*", default=None)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
+    parser.add_argument("--joints-from", default="", metavar="DIR",
+                        help="keep each part's joints from DIR's mesh of it")
     args = parser.parse_args()
 
     ldraw_root = Path(args.ldraw)
@@ -236,7 +306,8 @@ def main() -> int:
     bytes_written = 0
     deduped = 0
 
-    with Pool(args.jobs, initializer=_init, initargs=(str(ldraw_root),)) as pool:
+    with Pool(args.jobs, initializer=_init,
+              initargs=(str(ldraw_root), args.joints_from)) as pool:
         for n, (part_id, blob, record) in enumerate(
             pool.imap_unordered(_convert, names, chunksize=32), start=1
         ):
@@ -294,6 +365,8 @@ def main() -> int:
     }
     (out / "catalogue.json").write_text(json.dumps(index, separators=(",", ":")))
     print(write_colors(out, palette)[1])
+    if args.joints_from:
+        print(_carry_exact(Path(args.joints_from), out, catalogue))
 
     elapsed = time.time() - started
     print(f"\ndone in {elapsed:.0f}s")

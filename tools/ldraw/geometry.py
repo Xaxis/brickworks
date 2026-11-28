@@ -288,6 +288,46 @@ def _walk(
 
 # -- shading -------------------------------------------------------------
 
+# A triangle narrower than this across (its height over its longest side)
+# has a direction set by the rounding of its points, not by the surface it
+# lies in: LDraw's primitives are written to four places, so three points
+# meant to be in a line come out a few ten-thousandths of an LDU apart. It
+# is the step the mesh file stores positions in (meshfile.DEFAULT_SCALE),
+# so the file could not draw the triangle's shape anyway.
+_SLIVER_LDU = 1.0 / 64.0
+
+
+def _corner_weights(t: Triangle) -> tuple[float, float, float]:
+    """How much the triangle counts in the normal at each of its corners.
+
+    Its angle there: the standard angle-weighted vertex normal, which is the
+    same however a surface is cut into triangles. By area it was not.
+    LDraw draws a cylinder's wall as quads all cut corner to corner the same
+    way, so a corner of a 16-sided ring owns a whole quad on one side and
+    half of one on the other, and every normal round the ring leaned 3.75
+    degrees along it: a stud's and a round brick's shading banded in every
+    look, and Best put the normals right itself (photoreal36). By angle each
+    quad counts its corner's 90 degrees whichever way it was cut.
+
+    A sliver narrower than _SLIVER_LDU counts less, with the square of its
+    width, so a near-straight triangle's guessed direction cannot turn the
+    normal of the corner it spans: by angle alone it counts nearly 180
+    degrees there, and turned a corner of 46 parts in 3,036 by over a
+    degree, 3626bpb3's by 11 (meshnormals, 2026-11-28).
+    """
+    ab = t.b - t.a
+    ac = t.c - t.a
+    bc = t.c - t.b
+    twice_area = ab.cross(ac).length()
+    if twice_area < 1e-12:
+        return 0.0, 0.0, 0.0
+    at_a = math.atan2(twice_area, ab.dot(ac))
+    at_b = math.atan2(twice_area, -ab.dot(bc))
+    at_c = max(0.0, math.pi - at_a - at_b)
+    longest = max(ab.length(), ac.length(), bc.length())
+    trust = min(1.0, twice_area / longest / _SLIVER_LDU) ** 2
+    return at_a * trust, at_b * trust, at_c * trust
+
 
 def compute_normals(mesh: Mesh, *, crease_degrees: float = 45.0) -> list[Vec3]:
     """Per-corner normals: smoothed across shared vertices, hard at creases.
@@ -306,12 +346,15 @@ def compute_normals(mesh: Mesh, *, crease_degrees: float = 45.0) -> list[Vec3]:
     along it, or when the two faces meet at more than ``crease_degrees``.
     The angle test is a backstop for the handful of parts that omit an
     edge line where one belongs.
+
+    Within a group each face counts by its angle at the corner
+    (``_corner_weights``), so the normal is the same however the surface
+    was cut into triangles.
     """
     cos_crease = math.cos(math.radians(crease_degrees))
 
     face_normals = [t.normal() for t in mesh.triangles]
-    # Weight by area so a sliver triangle cannot drag a normal around.
-    face_areas = [t.area() for t in mesh.triangles]
+    corner_weights = [_corner_weights(t) for t in mesh.triangles]
 
     # Corner keys once, not per comparison.
     corner_keys: list[tuple[tuple[int, int, int], ...]] = [
@@ -372,10 +415,10 @@ def compute_normals(mesh: Mesh, *, crease_degrees: float = 45.0) -> list[Vec3]:
 
         # One averaged normal per connected group.
         group_sum: dict[int, Vec3] = {}
-        for n, ti in enumerate(members):
+        for n, (ti, ci) in enumerate(corners):
             root = find(n)
             group_sum[root] = group_sum.get(root, Vec3(0.0, 0.0, 0.0)) + (
-                face_normals[ti] * face_areas[ti]
+                face_normals[ti] * corner_weights[ti][ci]
             )
 
         for (ti, ci), n in zip(corners, range(len(members))):
