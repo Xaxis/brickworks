@@ -15,13 +15,17 @@
 ##     window there is no first screen (Simple is in the header there).
 ## (b) One press of Start in Simple: the screen gone, Simple's controls up
 ##     and kept for next time, an empty baseplate, nothing asked. On a
-##     desktop the header's switch and New stand for it.
+##     desktop the header's Simple over the untouched example car: the car
+##     put away for Simple's own empty plate, nothing asked, and Build your
+##     first model not offered over it (its steps name Full's controls).
 ## (c) In Simple, Save and Share are on the screen, each a fingertip tall,
 ##     inside the window and over none of Simple's other controls, the
 ##     header or the tray; and they wait, dimmed, while nothing is built.
 ## (d) Two bricks put down, Save pressed: the model's name is asked, and
 ##     answered it is saved under it, still in Simple.
 ## (e) Share pressed: the share panel opens over Simple's controls.
+## (f) To Full and back into Simple: the saved house and its name stay (a
+##     model of the person's is never put away going into Simple).
 ##
 ## No network: studio_start_probe's FakeShared answers. Its data folder must
 ## hold no saved model (tools/probe.sh gives each run its own).
