@@ -702,18 +702,25 @@ bool worn(vec3 q, float own, float age) {
 // photoreal4's soft film of dust (wear.y's motes, never a point) and the
 // scratches read to the judge as spotless plastic in 0.99 of its verdicts. A
 // speck is a cell's chance: one in a cube MOTE_CELL LDU across, kept whole
-// inside it, so a point reads one cell and no neighbour. [param amount] 0 is
-// none and draws nothing; [param sides] the share a side keeps of a top's.
+// inside it, so a point reads one cell and no neighbour. It lies on the face:
+// measured across the face ([param ng]) from where the point is ([param q],
+// the world's LDU), never through it. A sphere in its cube never met a face
+// on the cube's side, and a part's faces lie on whole LDU, so the grid is
+// offset by MOTE_OFFSET, off every whole LDU, and a face never flickers
+// between two cells. [param amount] 0 is none and draws nothing; [param
+// sides] the share a side keeps of a top's.
 const float MOTE_CELL = 2.0;
 const float MOTE_SHARE = 0.3;
 const float MOTE_SMALL = 0.15;
 const float MOTE_LARGE = 0.7;
+const vec3 MOTE_OFFSET = vec3(0.71, 0.37, 0.53);
 
 vec4 mote_at(vec3 q, vec3 ng, uint which, float amount, float sides) {
 	if (amount <= 0.0) {
 		return vec4(0.0);
 	}
 	float settles = mix(sides, 1.0, smoothstep(0.2, 0.85, ng.y)) * (1.0 - smoothstep(0.2, 0.5, -ng.y));
+	q += MOTE_OFFSET;
 	vec3 cell = floor(q / MOTE_CELL);
 	ivec3 c = ivec3(cell) + ivec3(4096);
 	uint h = pcg(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ (which * 2654435761u + 40503u));
@@ -726,7 +733,9 @@ vec4 mote_at(vec3 q, vec3 ng, uint which, float amount, float sides) {
 	float radius = MOTE_SMALL + (MOTE_LARGE - MOTE_SMALL) * size * size * size;
 	vec3 jitter = vec3(float(h2 >> 16u), float(h3 & 0xffffu), float(h3 >> 16u)) / 65535.0;
 	vec3 centre = cell * MOTE_CELL + vec3(radius) + jitter * (MOTE_CELL - 2.0 * radius);
-	float cover = 1.0 - smoothstep(0.55 * radius, radius, length(q - centre));
+	vec3 off = q - centre;
+	off -= ng * dot(off, ng);
+	float cover = 1.0 - smoothstep(0.55 * radius, radius, length(off));
 	if (cover <= 0.0) {
 		return vec4(0.0);
 	}
@@ -1188,7 +1197,7 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.roughness = mix(s.roughness, 0.9, cover);
 		}
 		// Specks of a shelf's dust (photoreal33), sharp where the film is soft.
-		vec4 mote = mote_at(local, ng, which, mote_amount(), 0.12);
+		vec4 mote = mote_at(at, ng, which, mote_amount(), 0.12);
 		if (mote.a > 0.0) {
 			body = mix(body, mote.rgb, mote.a);
 			s.coat *= 1.0 - mote.a;
@@ -2263,7 +2272,7 @@ void main() {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
 					}
 				}
-				vec4 mote = inside ? vec4(0.0) : mote_at(glass_local, ng, thing.info.z, mote_amount(), 0.6);
+				vec4 mote = inside ? vec4(0.0) : mote_at(at, ng, thing.info.z, mote_amount(), 0.6);
 				if (mote.a > 0.0) {
 					// A speck of dust on a clear part's skin (photoreal33): matte, lit
 					// where it sits, and hiding what is behind it.
