@@ -360,7 +360,7 @@
 					"name": "duplicate",
 					"words": "Duplicate",
 					"key": "Ctrl+D",
-					"tip": "Hold a copy of the selection, to put down beside it"
+					"tip": "Put a copy of the selection down beside it, selected to move on"
 				},
 				{
 					"name": "pattern",
@@ -1697,7 +1697,7 @@
 			"name": "duplicate",
 			"words": "Duplicate",
 			"key": "Ctrl+D",
-			"tip": "Hold a copy of the selection, to put down beside it"
+			"tip": "Put a copy of the selection down beside it, selected to move on"
 		},
 		{
 			"name": "delete",
@@ -2002,6 +2002,7 @@
 		"show_properties": "",
 		"panel_keys": "",
 		"split_view": "F8",
+		"simple_mode": "",
 		"full_screen": "F11",
 		"timeline": "B",
 		"parts_list": "P",
