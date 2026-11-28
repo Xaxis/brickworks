@@ -54,6 +54,17 @@ const $ = (id) => document.getElementById(id);
 // The orders this page offers; Most viewed is not one (D6: views never
 // rank), though the list still answers it for the app.
 const ORDERS = ["top", "newest", "likes", "builds", "remixes", "owned"];
+// A week, as the pick's week is counted: the past seven days.
+const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+/// "24 Oct", or "24 Oct 2025" in another year: the day a model was shared,
+/// as the page's language writes it.
+function sharedOn(at) {
+  const lang = document.documentElement.lang;
+  const year = new Date(at).getUTCFullYear() === new Date().getUTCFullYear() ? {} : { year: "numeric" };
+  return new Intl.DateTimeFormat(lang && lang !== "en" ? lang : "en-GB", { day: "numeric", month: "short", timeZone: "UTC", ...year })
+    .format(at);
+}
 
 /// The models' list, as gallery.js [page] switches to it: {q, grid, tests,
 /// ask(), state(), eager()}.
@@ -107,14 +118,23 @@ export function modelsList(page) {
   /// "once", "twice", "5 times".
   const times = (n) => (n === 1 ? say("once") : n === 2 ? say("twice") : say("{n} times", { n: number(n) }));
 
-  /// Why the pick is the pick, in a line: what its week was, or that the
-  /// site's owner chose it.
+  /// Why the pick is the pick, in a line of only what is true of it: what
+  /// its week was; with nothing done with it this week, that it is new this
+  /// week (listed in the past seven days, as gallery_week counts a week),
+  /// else the day it was shared; and that the site's owner chose it. A
+  /// quiet week's pick is often older: the cron kept a cactus of 24 Oct
+  /// for the week of 23 Nov, and this said "New this week, and Tested"
+  /// (weekpick, 2026-11-28).
   function whyPicked(pick) {
     const week = pick.week || {};
     const said = [];
     if (week.builds) said.push(say("built {times} this week", { times: times(week.builds) }));
     if (week.remixes) said.push(say("remixed {times} this week", { times: times(week.remixes) }));
-    if (!said.length && week.tested) said.push(say("new this week, and Tested"));
+    const listed = Date.parse(String(pick.model?.listed_at || ""));
+    if (!said.length && Number.isFinite(listed)) {
+      if (Date.now() - listed <= WEEK_MS) said.push(week.tested ? say("new this week, and Tested") : say("new this week"));
+      else said.push(week.tested ? say("shared {day}, and Tested", { day: sharedOn(listed) }) : say("shared {day}", { day: sharedOn(listed) }));
+    }
     const line = said.join(", ");
     if (pick.chosen) return line ? `${say("Chosen by Brickworks")} · ${line}` : say("Chosen by Brickworks");
     return line ? line[0].toUpperCase() + line.slice(1) : "";
@@ -350,7 +370,13 @@ export function modelsList(page) {
     // the pick is, and why: the featured model's in the API's words
     // (featuredSaid: only what is true of it), the set's its theme and
     // decade. A set is nobody's to like: its card has no like.
-    const spot = shown && front ? [["featured", front.featured, ID, say("Featured today")],
+    // Today's only when the cron kept it today (UTC, as it keeps a day): a
+    // day it missed leaves yesterday's shown (gallery_features_now keeps
+    // two days), which says the day it was featured.
+    const featuredDay = Date.parse(`${String(front?.featured?.day || "")}T00:00:00Z`);
+    const featuredLabel = !Number.isFinite(featuredDay) || front.featured.day === new Date().toISOString().slice(0, 10)
+      ? say("Featured today") : say("Featured {day}", { day: sharedOn(featuredDay) });
+    const spot = shown && front ? [["featured", front.featured, ID, featuredLabel],
       ["library", front.library, SET_ID, sayIn("mark", "LDraw library")]]
       .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
     $("spotlight").hidden = spot.length === 0;

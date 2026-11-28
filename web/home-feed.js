@@ -167,7 +167,10 @@ export function buildPostHtml(model, { eager = false, said = null, line = "", pi
   const marks = [];
   if (pick) marks.push(`<span class="pill new">${escapeHtml(say("Week’s pick"))}</span>`);
   if (model.tested === true) marks.push(`<span class="pill good tested">✓ ${escapeHtml(say("Tested"))}</span>`);
-  const what = pick ? say("this week’s pick") : line === "version" ? say("shared a new version")
+  // The pick says so on its picture; its head says what its builder did
+  // and when, as every post's does. "this week’s pick · 24 Oct" read as
+  // picked on 24 Oct, a month before its week (weekpick, 2026-11-28).
+  const what = line === "version" ? say("shared a new version")
     : line === "entry" ? say("entered the challenge") : say("shared a build");
   const when = timeHtml(model.listed_at);
   const image = picture

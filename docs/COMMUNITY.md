@@ -299,9 +299,14 @@ or filtered), worked out from the past seven days: the best score of the
 week, counting the builds finished and the remixes listed in those seven
 days, and the Tested mark (`gallery_week`). A model is a candidate only
 when something in the week says it builds: a build finished, a remix
-listed, or it was listed that week and is Tested, so a quiet week has no
-pick rather than last month's. Its card says why ("Built twice this
-week", "New this week, and Tested"). It is a row of its own across the
+listed, or it was listed that week and is Tested. Since the daily cron
+(gallery362) a quiet week still has a pick, often an older model, so its
+card says only what is true of it: "Built twice this week", "New this
+week, and Tested" only for a model listed in the past seven days, else the
+day it was shared ("Shared 24 Oct, and Tested"; weekpick, 2026-11-28: a
+cactus of 24 Oct was called new in the week of 23 Nov). The home's first
+post, the pick, says what its builder did and when ("shared a build ·
+24 Oct"), the Week's pick mark on its picture. It is a row of its own across the
 grid: from 900 px its picture large on the left, turning in 3D while a
 mouse rests on it (`web/turn3d.js`, the site's own viewer), and beside it
 its name, who made it, why, its likes, comments and remixes, and Build it

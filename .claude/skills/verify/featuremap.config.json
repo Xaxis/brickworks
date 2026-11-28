@@ -6298,6 +6298,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "week's pick check",
+      "entry": "tools/web/weekpick_check.mjs",
+      "reach": "node tools/web/weekpick_check.mjs --out=DIR [--web=DIR]   (this checkout's pages, the stand-in's API with each case's pick: the gallery's pick line and the home's first post say only what is true, shared 24 Oct never 'new this week', Featured today only for today's); BW_BYPASS=$VERCEL_BYPASS node tools/web/weekpick_check.mjs --url=<preview> --out=DIR   (read only, the bypass as a cookie alone: the deployment's own pick said truly, and View in 3D draws on /library/set/6208-1 and the pick's page, at 1280 and 390)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "the model turning in its link's preview",
       "entry": "web/turntable-clip.js",
