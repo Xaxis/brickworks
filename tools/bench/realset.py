@@ -1103,10 +1103,13 @@ def no_tool_reached(stream: Path) -> bool:
 
 
 def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
-                     instructions: str = "all", claude_code: bool = True) -> dict:
+                     instructions: str = "all", claude_code: bool = True,
+                     software: bool = False) -> dict:
     """One brief designed as the owner designs: Claude through the connector relay, the
     app a signed-in tab of a throwaway account. Recorded in design.json as bench.design
-    records one, with the session's own stream beside it (session.jsonl)."""
+    records one, with the session's own stream beside it (session.jsonl). `software`:
+    the tab's pictures drawn on lavapipe in this run's heavy slot, not on the GPU's
+    queue (bench.drawer), so the session waits for a picture no longer than a window."""
     done = run_dir / "design.json"
     if done.exists():
         return json.loads(done.read_text())
@@ -1142,7 +1145,7 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
                 ["godot", "--headless", "--path", str(app), "--log-file",
                  str(run_dir / "godot_design.log"), "--", f"--mcp={app_port}", "--assistant=on",
                  "--signed-in", f"--held-out={subject.id}", f"--held-out-name={subject.title}",
-                 "--draw-by=" + json.dumps(bench.DRAWER)],
+                 "--draw-by=" + json.dumps(bench.drawer(software))],
                 cwd=app, stdout=out, stderr=subprocess.STDOUT, start_new_session=True,
                 env=_tab_env(bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
                                                      BRICKWORKS_API=origin,
@@ -1221,6 +1224,8 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
         bench._port_back(relay_port)
         bench._port_back(app_port)
     result["pictures_given_up"] = bench.pictures_given_up(run_dir / "godot_design.log")
+    result["pictures_waited"] = bench.pictures_waited(run_dir / "godot_design.log")
+    result["drawn_in"] = "software" if software else "gpu"
     bench._write_json(done, result)
     shutil.rmtree(tab_home, ignore_errors=True)
     bench.say(f"design {subject.id} via the relay: status {result['status']} in "
@@ -1276,11 +1281,13 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
         if args.via == "relay" and canned is None:
             try:
                 made = design_via_relay(subject, out, args.timeout, args.checkout,
-                                        args.instructions, not args.no_claude_code)
+                                        args.instructions, not args.no_claude_code,
+                                        args.software)
             except NoToolReached as failed:  # once more now, as design9 redid 21023-1 by hand
                 bench.say(f"{c.number}: {failed}; designing again")
                 made = design_via_relay(subject, out, args.timeout, args.checkout,
-                                        args.instructions, not args.no_claude_code)
+                                        args.instructions, not args.no_claude_code,
+                                        args.software)
         else:
             made = bench.design(subject, out, args.timeout, canned, app=args.checkout,
                                 extra=(f"--held-out-name={subject.title}",))
@@ -2176,7 +2183,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--first", type=int, default=0,
                        help=f"only the half's first N ({FIRST}: the half before 2026-10-19)")
         p.add_argument("--software", action="store_true",
-                       help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
+                       help="draw on lavapipe under heavy, not on the GPU (both sides alike), "
+                            "the sessions' own pictures too")
         p.add_argument("--dry-run", action="store_true",
                        help="a canned design and canned replies: nothing designed or asked")
         if name in ("run", "one", "report", "audit", "reach", "judge"):

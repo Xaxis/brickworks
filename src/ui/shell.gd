@@ -387,10 +387,13 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 			bar.say(words))
 	# A model put into this one comes in hand as a paste does (intomodel).
 	bar.hold_parts = verbs.hold
-	# Whatever replaces the model leaves no assembly being edited.
-	bar.started_new.connect(func() -> void: assemblies.enter(""))
-	bar.cleared.connect(func() -> void: assemblies.enter(""))
-	bar.opened.connect(func(_n: int) -> void: assemblies.enter(""))
+	# Whatever replaces the model leaves no assembly being edited: a path is
+	# a place in the model it was entered in. Heard from the world, which
+	# every replacement clears first, not from the bar, which some never tell:
+	# Main._open, _open_given, clear_model (a session's clear_model too), a
+	# mosaic or a Brick Art picture laid. After those the app still edited
+	# inside the last model's sub-assembly, and a part put down went into it.
+	world.cleared.connect(func() -> void: assemblies.enter(""))
 	see_inside = SeeInside.new()
 	see_inside.world = world
 	see_inside.builder = builder

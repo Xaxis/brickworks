@@ -8702,6 +8702,100 @@ designer's pictures (one slot is not enough for 5 sessions). Results:
 `bench/results/design47-2026-11-27/` (FINDINGS.txt, pictures/,
 pair47_score.txt).
 
+### A form offered as its call, with pictures for every session (2026-11-28, design48, `cdf599b57`, NO-GO)
+
+**Why.** design47's sessions mostly designed blind, and 22 of 24 never called
+`lay_form`. Reading those 22: every one heard of the tool in the method, and
+none mentioned it. Buildings laid their form in the first submit with
+`submit_design`'s own patterns, and 6 of 10 never called `review_model`.
+Technic forms were built when a feature's turn was handed over, and those
+answers named a real set's piece or a technique 36 times and `lay_form` 0
+times. The tool was never in front of a session when it built a form.
+
+**The change** (on pre261 with design47 merged, branch design48, not merged).
+Nothing in it names a subject or a set.
+- **Pictures for every session** (`4c48639c1`). A bench session's drawer is a
+  window's own renderer on lavapipe, in the run's own heavy slot, and stays
+  for the whole session. No GPU lease and no queue.
+- **The lever** (`cdf599b57`). A feature whose name is a form (a colonnade,
+  railings, an arcade, a dome) is offered as the filled-in `lay_form` call, read
+  off where the feature goes and the model as it stands. The offer comes in
+  `submit_design`'s answer and again at the feature's turn, with no real piece
+  laid for it. A form laid before its turn counts for that feature. The
+  method's step 2 says such a form is a feature, left out of the masses.
+- `lay_form_probe`: 70 checks, 0 FAIL. A temple's colonnade is laid from the
+  submit's answer and its dome from its turn. The probe's first run found the
+  dome offered on top of the columns, three plates over the hall: a drum now
+  stands on the mass under its own middle.
+
+**Pictures.** All 56 sessions had pictures: 1,564 drawn, 0 given up. Each
+session's median wait was 0.4 to 2.4 s, and the longest wait was 71 s (the
+drawer starting). 56 of 56 designs end with a model, and none was run again.
+
+**The A/A floor.** Before the lever, the base was run twice on 8 subjects
+(d48b against d48a, the same snapshot) and judged as any arm. Same code, and
+the score called it worse:
+
+| d48b minus d48a, 8 subjects | share (95%) | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall | 17% (2-36) | -390 | (-606, -39) | worse |
+
+5 of the 8 pairs went 0 of 8, each one a different design rather than a
+judging accident. For example, one wolf was built facing away from the fixed
+views and boxier. One design per subject per arm carries about 480 ELO a
+subject (the RMS of the 8), where the score assumes 194. So the with-runs
+interval is about half the round's own noise, and a result under about 225
+ELO on 24 subjects says nothing.
+
+**The bench.** design47's 24 subjects, one design per subject per arm, via the
+relay, `--instructions none`, held out, 45 minutes. pair48.py (pair47.py)
+judged both orders, 4 verdicts each way, with the set's views as references:
+192 verdicts.
+
+| d48lev minus d48a | share (95%) | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall, all 24 | 38% (23-54) | -131 | (-336, +85) | no |
+| likeness, all 24 | 33% (19-49) | -181 | (-378, +58) | no |
+| overall, Technic 12 | 47% (24-70) | -23 | (-271, +198) | no |
+| overall, System 12 | 28% (9-49) | -239 | (-471, +17) | no |
+
+- **Reach.** 6 of 24 sessions named a form among their features, and all 6
+  were offered the call. 2 called it:
+  - The Arc de Triomphe (21036-1) laid 2 arches, 43 parts. Its pair went 0 of 8.
+  - The excavator (42006-1) laid its handrails, 5 parts. Its pair went 8 of 8,
+    though not for the handrails.
+- **Why the other 4 did not.**
+  - The Lincoln Memorial (21022-1) and Venice (21026-1) built their colonnade,
+    arch and arcade in the first submit with `submit_design`'s repeat patterns,
+    before any offer. The method's "left out of the masses" did not hold.
+  - The Guggenheim's shallow skylight dome (21004-1) was better as a 4x4 dish,
+    which the session laid instead.
+  - "Traffic cones" (42060-1) were read as a drum, a wrong match.
+- **Pictures looked at.**
+  - Best, 42006-1 (8 of 8): the lever's excavator has a slim boom and a
+    cleaner body.
+  - Worst, 40148-1 (0 of 8): the lever's sheep is a cluster of white domes with
+    a small face; the base's has a clear head and legs.
+  - Neither turns on `lay_form`.
+- **Leaks and limits.** Leaks 0 of 56, limits 0 of 56.
+
+**Verdict.** NO-GO. Overall -131 over 24 subjects, inside its interval and
+inside the A/A floor. 2 of 6 sessions that named a form called the tool, and
+the bar is half. The offer works when it lands, but a session builds its
+subject's defining form in the first submit, before any answer can offer a
+tool.
+
+**Next.**
+- Keep the software drawer: every design bench needs pictures for all.
+- Widen the run-to-run interval to the A/A's, or run two designs per subject
+  per arm.
+- For forms, the moment is the first submit: either `submit_design` takes row,
+  arch and ring as patterns beside repeat and fill, or leave forms alone, since
+  repeat already spaces a colonnade.
+
+Results: `bench/results/design48-2026-11-28/` (FINDINGS.txt, pictures/,
+pair48_score.txt, pair48aa_score.txt).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

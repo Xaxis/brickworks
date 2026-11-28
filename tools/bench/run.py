@@ -129,6 +129,21 @@ ON_GPU = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 # first. Behind them, 114 of 942 drawers on 2026-10-31 waited past the 120 s
 # the app waits, and the judge saw letters where pictures should be.
 DRAWER = [GPU, "--brief", "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
+# The same drawer in software, for a bench run with --software: the GPU's renderer on
+# lavapipe under `heavy`, which inside the run's own heavy slot starts at once. With the
+# GPU's one slot shared by five sessions, 41 of 48 designs of design47 gave up waiting for
+# a picture at least once and designed from text; a person's own app draws at once.
+# Off the lease the drawer stays for the whole session (src/dev/draw_shots.gd), so only
+# the first picture waits for its start.
+LAVAPIPE = "/usr/share/vulkan/icd.d/lvp_icd.json"
+DRAWER_SOFTWARE = [HEAVY, "env", "GODOT_GPU=1", f"VK_ICD_FILENAMES={LAVAPIPE}",
+                   f"VK_DRIVER_FILES={LAVAPIPE}", "MESA_VK_WSI_DEBUG=sw",
+                   "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
+
+
+def drawer(software: bool = False) -> list[str]:
+    """How a headless design's app starts its drawer: on the GPU's lease, or in software."""
+    return DRAWER_SOFTWARE if software else DRAWER
 
 
 def say(text: str) -> None:
@@ -311,6 +326,23 @@ def pictures_given_up(log: Path) -> int:
                if any(said in line for said in GAVE_UP))
 
 
+WAITED = re.compile(r"leased shots: \d+ in (\d+) ms")
+
+
+def pictures_waited(log: Path) -> dict:
+    """How long a headless design's pictures took to come, the drawer's start and any
+    queue included (src/ai/leased_shots.gd says each): how many, the median and the most,
+    in seconds. Empty for a log with none (an app from before the line)."""
+    if not log.exists():
+        return {}
+    waits = sorted(int(m.group(1)) / 1000.0 for m in WAITED.finditer(
+        log.read_text(errors="replace")))
+    if not waits:
+        return {}
+    return {"pictures": len(waits), "median_s": round(waits[len(waits) // 2], 1),
+            "most_s": round(waits[-1], 1)}
+
+
 def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | None,
            extra: tuple[str, ...] = (), app: Path = ROOT) -> dict:
     """The real loop on one brief; `extra` goes to the app after the bench's own
@@ -404,10 +436,10 @@ def design(subject: suite.Subject, run_dir: Path, timeout: int, canned: Path | N
 # -- pictures, the check and the measures --------------------------------
 
 
-# Vulkan on the CPU: the GPU's own renderer, Forward+, with no lease to wait for.
-# The godot wrapper's plain software path is the compatibility renderer, which
-# shades differently; GODOT_GPU=1 pinned to this one ICD is software on purpose.
-LAVAPIPE = "/usr/share/vulkan/icd.d/lvp_icd.json"
+# LAVAPIPE (above, with the drawers) is Vulkan on the CPU: the GPU's own renderer,
+# Forward+, with no lease to wait for. The godot wrapper's plain software path is the
+# compatibility renderer, which shades differently; GODOT_GPU=1 pinned to this one ICD
+# is software on purpose.
 
 
 def render(model: Path, prefix: Path, log: Path, software: bool = False,
