@@ -153,6 +153,7 @@ func _pose_of(ids: Array, up: float) -> Dictionary:
 ## comes before. Simple's lens at 390 put brick 1's middle behind the stud
 ## layer of the green stack in front, where a box (the probe's) and the mesh
 ## (the app's pick) part ways by a stud's gap, on pre261 as on this branch.
+## Each stack's lower brick is under its upper one, so two or three are seen.
 func _simple_picks_seen(tag: String) -> void:
 	var left: Array = _view_left()
 	_check("[%s] in Simple nothing of Full's view left (%s)" % [tag, ", ".join(left)], left.is_empty())
@@ -170,7 +171,7 @@ func _simple_picks_seen(tag: String) -> void:
 		else:
 			wrong.append("at %s: drawn %d, picked %d" % [str(at.round()), int(one[0]), found])
 	_check("[%s] ...a tap where each part is seen picks the part drawn there (%d of %d seen: %s)" % [tag, right,
-		seen, ", ".join(wrong)], right == seen and seen >= 3)
+		seen, ", ".join(wrong)], right == seen and seen >= 2)
 
 
 func _drawn_now() -> String:
