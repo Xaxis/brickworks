@@ -22,6 +22,15 @@ var _share: float = 0.0
 var _goal: float = 0.0
 var _revision: int = -1
 var _apart_count: int = 0
+## What the view last drew apart: the world's own set of parts drawn moved
+## (BrickWorld.drawn_ids) as it was left, and how far apart (eased). A pick
+## is moved by the shifts only while the world still draws exactly that
+## (pick_drawn). Simple draws every part where it stands (set_aside) and a
+## drag draws its own; with the shifts still set, a tap after Full's exploded
+## view picked the part drawn where its section would have been, or none:
+## 0 of 5 right (simplereview5 F1).
+var _drawn: Dictionary = {}
+var _drawn_eased: float = 0.0
 
 ## The last section evaluated, for the page and a session.
 var last_evaluation: Dictionary = {}
@@ -249,14 +258,17 @@ func _frame_back() -> void:
 	_view_was = []
 
 
-## The part drawn under a ray while the sections are apart, or -1 when they
-## are not: what a click picks (EditVerbs.brick_at), so a section is chosen
-## where it is seen. The lattice asked once for each way the sections were
-## moved, the ray moved back by it; the nearest part moved that way wins.
+## The part drawn under a ray while the sections are drawn apart, or -1 when
+## they are not: what a click picks (EditVerbs.brick_at), so a section is
+## chosen where it is seen. The lattice asked once for each way the sections
+## were moved, the ray moved back by it; the nearest part moved that way
+## wins. Drawn apart is what the world draws, not what the view would draw:
+## set aside for Simple, or drawn over by a drag, nothing is moved.
 func pick_drawn(origin: Vector3, normal: Vector3) -> int:
-	if not is_exploded() or _shifts.is_empty():
+	var drawn: Dictionary = shell.world.drawn_ids()
+	if _shifts.is_empty() or drawn.is_empty() or not is_same(drawn, _drawn):
 		return -1
-	var eased: float = 1.0 - pow(1.0 - _share, 3.0)
+	var eased: float = _drawn_eased
 	var by_shift: Dictionary = {Vector3.ZERO: true}
 	for brick_id: int in _shifts:
 		by_shift[_shifts[brick_id]] = true
@@ -320,12 +332,15 @@ func _draw_apart() -> void:
 		if brick != null:
 			placed[brick_id] = brick.transform.translated((_shifts[brick_id] as Vector3) * eased)
 	shell.world.set_drawn(placed)
+	_drawn = shell.world.drawn_ids()
+	_drawn_eased = eased
 
 
 ## Simple's controls are up (SimpleLayer): every section drawn where it
 ## stands, as Simple shows the whole model as it is (a brick put on a part
-## drawn apart went down where the part is, not where it was seen); back in
-## Full, drawn apart as it was, or, the model changed meanwhile, together,
+## drawn apart went down where the part is, not where it was seen), and a
+## tap picks the part where it stands (pick_drawn reads what is drawn); back
+## in Full, drawn apart as it was, or, the model changed meanwhile, together,
 ## as any change brings it together.
 func set_aside(on: bool) -> void:
 	if not is_exploded():
@@ -354,12 +369,7 @@ func explode_now(apart: bool) -> void:
 		toggle_explode()
 	_share = _goal
 	if is_exploded():
-		var placed: Dictionary = {}
-		for brick_id: int in _shifts:
-			var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
-			if brick != null:
-				placed[brick_id] = brick.transform.translated(_shifts[brick_id] as Vector3)
-		shell.world.set_drawn(placed)
+		_draw_apart()
 		set_process(false)
 
 
