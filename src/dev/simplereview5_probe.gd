@@ -482,6 +482,17 @@ func _picks(points: Array) -> Array:
 	return [right, wrong]
 
 
+## Whether a finger's tap just made acted on [param seen], the part under it:
+## chose it, or, a part Simple leaves alone (a sub-assembly's, locked,
+## bendy, tilted), chose nothing and named that part (SimpleLayer._left_one,
+## what it says it leaves alone).
+func _tap_acted(seen: int) -> bool:
+	var chosen: Array = _builder.selection.keys()
+	if not str(_simple.call("left_alone", seen)).is_empty():
+		return chosen.is_empty() and int(_simple.get("_left_one")) == seen
+	return chosen.has(seen)
+
+
 func _case_pick() -> void:
 	await _open_saved(EXPLODE_MODEL, "sr5_explode.ldr")
 	await _to_simple()
@@ -504,7 +515,10 @@ func _case_pick() -> void:
 		_note2("  %s" % line)
 	_check("in Simple after Full's exploded view: a tap where a part is drawn picks it (%d of %d)" % [got[0],
 		points.size()], int(got[0]) == points.size() and points.size() >= 4)
-	# A finger's tap chooses what it picks.
+	# A finger's tap acts on what it picks: chooses it, or, a sub-assembly's
+	# part, which Simple leaves alone, chooses nothing and names it
+	# (simplefix5: the wing's and tail's parts here are all left alone, and
+	# a tap on one choosing nothing is right; choosing part 1 was the fault).
 	var chose_right: int = 0
 	var tried: int = 0
 	for one: Array in points:
@@ -514,15 +528,14 @@ func _case_pick() -> void:
 			continue
 		tried += 1
 		await _layer_tap(one[1] as Vector2)
-		var chosen: Array = _builder.selection.keys()
-		if chosen.has(plain.brick_id):
+		if _tap_acted(plain.brick_id):
 			chose_right += 1
 		else:
-			_note2("  a tap on %d chose %s" % [plain.brick_id, str(chosen)])
+			_note2("  a tap on %d chose %s" % [plain.brick_id, str(_builder.selection.keys())])
 		_simple.call("_pick", [])
 		await _frames(2)
-	_check("...and a finger's tap there chooses that part (%d of %d)" % [chose_right, tried],
-		chose_right == tried and tried >= 4)
+	_check("...and a finger's tap there acts on that part: chooses it, or one Simple leaves alone nothing (%d of %d)"
+		% [chose_right, tried], chose_right == tried and tried >= 4)
 	await _to_full()
 	sections.call("explode_now", false)
 	await _frames(2)

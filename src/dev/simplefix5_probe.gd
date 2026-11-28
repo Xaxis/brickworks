@@ -12,13 +12,16 @@
 ##
 ## --case= apart, views, pick (all when not said):
 ##   apart   Full's exploded view, its picks taken at each part where it is
-##           drawn apart. In Simple: nothing drawn moved, SectionsUi.pick_drawn
-##           moves no ray, a tap where each part is drawn picks it and a
-##           finger's tap chooses it. Back in Full: every part drawn exactly
-##           where it was, the camera as it was, each of Full's picks the same
-##           part as before. Then in Simple a finger's drag carries the part it
-##           is on (Undo exact), and Full, its model changed, comes back
-##           together, a click picking the part drawn there.
+##           drawn apart; of sub-assemblies (EXPLODE_MODEL, parts Simple
+##           leaves alone) and of plain parts in sections suggested and not
+##           made. In Simple: nothing drawn moved, SectionsUi.pick_drawn moves
+##           no ray, a tap where each part is drawn picks it and a finger's
+##           tap acts on it (chooses it, or names one Simple leaves alone).
+##           Back in Full: every part drawn exactly where it was, the view as
+##           it was, each of Full's picks the same part. Then in Simple a
+##           finger's drag carries the part it is on (Undo exact), and Full,
+##           its model changed, comes back together, a click picking the part
+##           drawn there.
 ##   views   every other piece of Full's view a pick, a ghost or a drop reads,
 ##           one at a time and all at once: the timeline on step 2, Show only
 ##           the selection, a plane cut, a box cut, x-ray, inside a
@@ -40,7 +43,8 @@ func _run() -> void:
 		print("\n== %s" % one)
 		match one:
 			"apart":
-				await _case_apart()
+				await _case_apart("sub")
+				await _case_apart("loose")
 			"views":
 				await _case_views()
 			"pick":
@@ -191,28 +195,75 @@ func _simple_picks_right(tag: String) -> void:
 # -- apart -----------------------------------------------------------------------------
 
 
-func _case_apart() -> void:
-	await _open_saved(EXPLODE_MODEL, "sf5_apart.ldr")
+## Five plain bricks where EXPLODE_MODEL has two sub-assemblies and a brick:
+## the same places, each a part Simple chooses and moves.
+const LOOSE_MODEL := """0 FILE sf5_loose.ldr
+0 Name: sf5_loose.ldr
+1 4 -40 -8 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 -60 -8 -60 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 -60 -32 -60 1 0 0 0 1 0 0 0 1 3003.dat
+1 1 60 -8 40 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 60 -32 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+"""
+
+
+## Three sections suggested and not made, as Build, Suggest sections leaves
+## them: each stack, and the brick alone. The exploded view draws them apart
+## (Sections.explode_groups).
+func _suggest_by_stack() -> void:
+	var by_spot: Dictionary = {}
+	for id: Variant in _plain_ids():
+		var at: Vector3 = _world.get_brick(int(id)).transform.origin
+		var key: String = "%d,%d" % [roundi(at.x), roundi(at.z)]
+		if not by_spot.has(key):
+			by_spot[key] = []
+		(by_spot[key] as Array).append(int(id))
+	var made: Array[Sections.Suggestion] = []
+	for key: String in by_spot:
+		var one := Sections.Suggestion.new()
+		one.number = made.size() + 1
+		one.name = "section %d" % one.number
+		one.ids = PackedInt64Array(by_spot[key])
+		made.append(one)
+	(_shell().sections.get("sections") as Sections).suggested = made
+
+
+## Where the view is going, which Simple keeps and puts back
+## (SimpleLayer._pose): the camera itself may still be easing there.
+func _camera_pose() -> String:
+	return str([_camera.get("_target_yaw"), _camera.get("_target_pitch"), _camera.get("_target_distance"),
+		_camera.get("_target_focus"), _camera.get("_target_frame")])
+
+
+## [param tag] "sub": EXPLODE_MODEL, its sections two sub-assemblies, whose
+## parts Simple leaves alone (a tap names the part, a drag moves nothing);
+## "loose": LOOSE_MODEL with its stacks suggested as sections and not made,
+## so Full's exploded view draws apart plain parts Simple chooses and drags.
+func _case_apart(tag: String) -> void:
+	await _open_saved(EXPLODE_MODEL if tag == "sub" else LOOSE_MODEL, "sf5_apart_%s.ldr" % tag)
 	var sections: Node = _shell().sections
+	if tag == "loose":
+		_suggest_by_stack()
 	sections.call("explode_now", true)
-	await _frames(3)
+	await _frames(30)
 	var full_view: Dictionary = _full_view_now()
-	var full_camera: Transform3D = _camera.global_transform
+	var full_camera: String = _camera_pose()
 	var full_points: Array = _points_as_drawn()
 	var full_picks: Array = _picked_at(full_points)
 	var full_got: Array = _picks_as_drawn(full_points)
-	_note2("Full apart: %d parts drawn moved, picks %s at %s %s" % [_drawn_apart(), str(full_picks),
+	_note2("[%s] Full apart: %d parts drawn moved, picks %s at %s %s" % [tag, _drawn_apart(), str(full_picks),
 		str(full_points.map(func(one: Array) -> Vector2: return (one[1] as Vector2).round())), str(full_got[1])])
-	if not _check("Full drawn apart, and a click where a part is drawn apart picks the part drawn there (%d of %d)"
-			% [full_got[0], full_points.size()], _drawn_apart() > 0 and int(full_got[0]) == full_points.size()
+	if not _check("[%s] Full drawn apart, and a click where a part is drawn apart picks the part drawn there (%d of %d)"
+			% [tag, full_got[0], full_points.size()], _drawn_apart() > 0 and int(full_got[0]) == full_points.size()
 			and full_points.size() >= 4):
 		sections.call("explode_now", false)
 		return
 	# A finger's taps change nothing: Full comes back exactly as it was.
 	await _to_simple()
 	await _settle()
-	_simple_picks_right("apart")
-	var chose: int = 0
+	_simple_picks_right(tag)
+	var acted: int = 0
 	var tried: int = 0
 	for one: Array in _points_as_drawn():
 		var at: Vector2 = one[1]
@@ -221,29 +272,33 @@ func _case_apart() -> void:
 			continue
 		tried += 1
 		await _layer_tap(at)
-		if _builder.selection.has(seen):
-			chose += 1
+		if _tap_acted(seen):
+			acted += 1
 		else:
-			_note2("  a tap on %d at %s chose %s" % [seen, str(at.round()), str(_builder.selection.keys())])
+			_note2("  a tap on %d at %s chose %s (left alone: %s)" % [seen, str(at.round()),
+				str(_builder.selection.keys()), str(_simple.get("_left_one"))])
 		_simple.call("_pick", [])
 		await _frames(2)
-	_check("[apart] a finger's tap chooses the part it is on (%d of %d)" % [chose, tried],
-		chose == tried and tried >= 4)
+	_check("[%s] a finger's tap acts on the part drawn there: chooses it, or one Simple leaves alone nothing (%d of %d)"
+		% [tag, acted, tried], acted == tried and tried >= 4)
 	await _to_full()
-	await _frames(4)
+	await _frames(10)
 	var differ: Array = _differ(full_view, _full_view_now())
-	_check("[apart] back in Full every part drawn where it was, apart (%s)" % str(differ),
+	_check("[%s] back in Full every part drawn where it was, apart (%s)" % [tag, str(differ)],
 		differ.is_empty() and _drawn_apart() > 0)
-	_check("[apart] ...the camera as it was", _camera.global_transform.is_equal_approx(full_camera))
+	_check("[%s] ...the view as it was (%s, was %s)" % [tag, _camera_pose(), full_camera],
+		_camera_pose() == full_camera)
 	var back_picks: Array = _picked_at(full_points)
-	_check("[apart] ...and a click at each part drawn apart picks the same part (%s, was %s)" % [
+	_check("[%s] ...and a click at each part drawn apart picks the same part (%s, was %s)" % [tag,
 		str(back_picks), str(full_picks)], str(back_picks) == str(full_picks))
-	# A finger's drag carries the part it is on, and Undo takes it back. The
-	# model changed meanwhile, so Full comes back together, as any change
-	# brings the exploded view together (SectionsUi.set_aside).
+	# A finger's drag carries the part it is on (one Simple leaves alone
+	# stays), and Undo takes it back. A model changed meanwhile comes back
+	# together, as any change brings the exploded view together
+	# (SectionsUi.set_aside); one not changed, apart as it was.
 	await _to_simple()
 	await _settle()
 	var text: String = _text()
+	var revision: int = _world.revision
 	var carried: int = 0
 	var dragged: int = 0
 	for one: Array in _points_as_drawn():
@@ -252,6 +307,7 @@ func _case_apart() -> void:
 		if seen == 0:
 			continue
 		dragged += 1
+		var alone: bool = not str(_simple.call("left_alone", seen)).is_empty()
 		var to: Vector2 = _base_point(0.55, 0.55)
 		_simple.call("_press", at, 0)
 		for k: int in range(1, 9):
@@ -262,25 +318,33 @@ func _case_apart() -> void:
 		await _seat_done()
 		var drop: Dictionary = _simple.get("last_drop")
 		var moved: Array = drop.get("put", [])
-		if str(drop.get("from", "")) == "model" and moved.has(seen):
+		if (alone and moved.is_empty() and _text() == text) or (not alone
+				and str(drop.get("from", "")) == "model" and moved.has(seen)):
 			carried += 1
 		else:
-			_note2("  a drag from %d at %s carried %s" % [seen, str(at.round()), str(moved)])
+			_note2("  a drag from %d at %s carried %s (left alone %s)" % [seen, str(at.round()), str(moved),
+				str(alone)])
 		if _text() != text:
 			await _press_button("undo")
 			await _frames(2)
 		if _text() != text:
-			_restore(text)
+			await _restore(text)
 		_simple.set("last_drop", {})
 		_builder.clear_selection()
-	_check("[apart] a finger's drag carries the part it is on (%d of %d), Undo exact" % [carried, dragged],
-		carried == dragged and dragged >= 4 and _text() == text)
+	_check("[%s] a finger's drag carries the part drawn there, or one Simple leaves alone nothing (%d of %d), Undo exact"
+		% [tag, carried, dragged], carried == dragged and dragged >= 4 and _text() == text)
+	var changed: bool = _world.revision != revision
 	await _to_full()
-	await _frames(4)
-	var together: Array = _picks_as_drawn(_points_as_drawn())
-	_check("[apart] back in Full after drags in Simple: together (%s, %d drawn moved), a click picks the part drawn there (%d)"
-		% [str(sections.call("is_exploded")), _drawn_apart(), together[0]], not bool(sections.call("is_exploded"))
-		and _drawn_apart() == 0 and (together[1] as Array).is_empty())
+	await _frames(10)
+	var after: Array = _picks_as_drawn(_points_as_drawn())
+	if changed:
+		_check("[%s] back in Full after drags in Simple: together (%s, %d drawn moved), a click picks the part drawn there (%s)"
+			% [tag, str(sections.call("is_exploded")), _drawn_apart(), str(after[1])],
+			not bool(sections.call("is_exploded")) and _drawn_apart() == 0 and (after[1] as Array).is_empty())
+	else:
+		_check("[%s] back in Full with nothing changed: apart as it was (%s), a click picks the part drawn there (%s)"
+			% [tag, str(_differ(full_view, _full_view_now())), str(after[1])],
+			_differ(full_view, _full_view_now()).is_empty() and (after[1] as Array).is_empty())
 	sections.call("explode_now", false)
 	await _frames(2)
 
