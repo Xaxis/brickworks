@@ -16,7 +16,7 @@ description: Build with big bricks and your fingers: a tray of 30 parts and 12 c
 
 Simple is Brickworks with fewer, bigger controls: a tray of common parts along the foot, one finger to build and two to look round. It is the same studio and the same model, so you can start in Simple and finish in Full, or the other way round.
 
-![Brickworks on a phone in Simple: the header with Simple pressed beside Full, Save and Share dimmed at the top left over an empty 16 by 16 green plate filling the view, and the tray along the foot: twelve colours in two rows, the tabs Bricks, Plates, Slopes, Tiles and Specials, and six bricks with their pictures, Undo and Redo in the corner.](/docs/img/simple-phone.webp "Simple on a phone: a new model starts on a plate that fills the view.")
+![Brickworks on a phone in Simple: Simple pressed beside Full in the header, Save and Share dimmed at the top left over an empty 16 by 16 green plate, and the tray along the foot: twelve colours in two rows, the tabs Bricks, Plates, Slopes, Tiles and Specials, six bricks, and Undo and Redo above it.](/docs/img/simple-phone.webp "Simple on a phone: a new model starts on a plate that fills the view.")
 
 ## Switch between Simple and Full {#switch}
 
