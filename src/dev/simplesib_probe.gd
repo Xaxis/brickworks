@@ -79,8 +79,12 @@ func _case_simulate() -> void:
 	if not _check("[simulate] Simulate read the orrery", _sim_ready(panel)):
 		return
 	panel.call("play")
+	var played_at: int = Time.get_ticks_usec()
 	await _frames(20)
 	var turns_full: float = float(panel.get("turns"))
+	# Turns a second in Full, so "from where it was" is judged by the time
+	# a loaded box's frames take, not by a count of frames.
+	var rate: float = turns_full / maxf((Time.get_ticks_usec() - played_at) / 1e6, 1e-3)
 	var drawn_full: int = _world.drawn_ids().size()
 	var tinted_full: int = _world.tinted_ids().size()
 	_check("[simulate] Full: Simulate plays (%.3f turns), turned parts drawn (%d) and tinted (%d)" % [turns_full,
@@ -88,6 +92,7 @@ func _case_simulate() -> void:
 	await _to_simple()
 	await _frames(4)
 	var turns_in: float = float(panel.get("turns"))
+	var in_simple_at: int = Time.get_ticks_usec()
 	await _frames(30)
 	var left: Array = _view_left()
 	_check("[simulate] in Simple nothing drawn moved (%s) and nothing tinted (%d)" % [", ".join(left),
@@ -111,15 +116,23 @@ func _case_simulate() -> void:
 			sim.driver if sim != null else -1, driver, _world.drawn_ids().size()],
 			sim != null and sim.driver == driver and _world.drawn_ids().is_empty())
 		_builder.clear_selection()
-	await _to_full()
-	await _frames(4)
+	_main.call("use_controls", &"full")
+	var back_at: int = Time.get_ticks_usec()
+	await _frames(1)
 	var turns_back: float = float(panel.get("turns"))
+	# Played on from turns_in for the time since Full came back, at most,
+	# where going on through Simple too would be away's turns more.
+	var since: float = (Time.get_ticks_usec() - back_at) / 1e6
+	var away: float = (back_at - in_simple_at) / 1e6
+	var gone_on: float = turns_back - turns_in
 	await _frames(20)
-	_check("[simulate] back in Full: open, playing and on from where it was (%.3f, then %.3f), drawn (%d) and tinted (%d) again" % [
-		turns_back, float(panel.get("turns")), _world.drawn_ids().size(), _world.tinted_ids().size()],
-		bool(panel.get("visible")) and bool(panel.get("playing")) and absf(turns_back - turns_in) < 0.05
-		and float(panel.get("turns")) > turns_back and _world.drawn_ids().size() > 0
-		and _world.tinted_ids().size() == tinted_full)
+	_check("[simulate] back in Full: open, playing and on from where it was (%.3f, %.3f on in %.2f s back, %.3f a second; Simple was %.2f s), then %.3f, drawn (%d) and tinted (%d) again" % [
+		turns_back, gone_on, since, rate, away, float(panel.get("turns")), _world.drawn_ids().size(),
+		_world.tinted_ids().size()],
+		bool(panel.get("visible")) and bool(panel.get("playing")) and gone_on >= -1e-6
+		and gone_on <= rate * since * 2.0 + 0.002 and float(panel.get("turns")) > turns_back
+		and _world.drawn_ids().size() > 0 and _world.tinted_ids().size() == tinted_full)
+	await _frames(5)
 	panel.call("close")
 	await _frames(3)
 
@@ -251,6 +264,8 @@ func _case_open() -> void:
 func _case_explode_open() -> void:
 	var other: String = _write(STEPS_MODEL, "ssib_other2.ldr")
 	var main: Variant = _main
+	# From the top, whatever the open case left entered (on pre261, the wing).
+	_shell().assemblies.enter("")
 	await _open_saved(EXPLODE_MODEL, "ssib_explode_open.ldr")
 	var sections: Node = _shell().sections
 	sections.call("explode_now", true)
