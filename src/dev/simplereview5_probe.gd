@@ -70,7 +70,7 @@ var _scene: Dictionary = {}
 func _run() -> void:
 	if not await _start("faces,big,pick,save,dirty,middrag,modes,full"):
 		return
-	for one: String in ["faces", "big", "pick", "save", "dirty", "middrag", "modes", "full"]:
+	for one: String in ["faces", "big", "pick", "save", "dirty", "middrag", "modes", "full", "diag"]:
 		if not _cases.has(one):
 			continue
 		print("\n== %s" % one)
@@ -91,6 +91,8 @@ func _run() -> void:
 				await _case_modes()
 			"full":
 				await _case_full()
+			"diag":
+				await _case_diag()
 	print("\n%s: %s" % [_probe_name(), "all passed" if _failures == 0 else "%d failed" % _failures])
 	quit(1 if _failures else 0)
 
@@ -948,3 +950,69 @@ func _case_full() -> void:
 		str(side_again)], side_full == side_again and side_full.x < INF and side_full.y > blue.position.y - 1.0)
 	_builder.hide_preview()
 	_verbs.set_mode("select")
+
+
+# -- diag: big's two inverted slopes offered in the air ----------------------------------
+
+
+func _case_diag() -> void:
+	await _to_full()
+	if not _check("corner_shop opened", await _open("res://models/corner_shop.ldr")):
+		return
+	_builder.forget_history()
+	await _to_simple()
+	await _settle()
+	var text: String = _text()
+	for one: Array in [[Vector3(1.0, 0.15, 0.3), Vector2(400, 978), 1], [Vector3(-0.4, 0.7, -1.0), Vector2(971, 688), 0]]:
+		_camera.look_from(one[0] as Vector3)
+		await _settle()
+		var at: Vector2 = one[1]
+		var hit: BrickLattice.Hit = _builder.lattice.raycast(_camera.ray_origin(at), _camera.ray_normal(at))
+		var struck: BrickWorld.Brick = _world.get_brick(hit.brick_id) if hit.is_valid() else null
+		_note2("aim %s: hit %d (%s) normal %s cell %s; its transform %s" % [str(at), hit.brick_id,
+			struck.part_id if struck != null else "-", str(hit.normal), str(hit.cell),
+			str(struck.transform) if struck != null else "-"])
+		for stands: bool in [true, false]:
+			_builder.stands_only = stands
+			_simple.call("_take", "3665a")
+			_builder.held_rotation = int(one[2])
+			_main.call("_refresh_preview", at)
+			var shown: bool = _builder.has_preview()
+			var offered: bool = shown and bool(_simple.call("_offered"))
+			var t: Transform3D = _builder.ghost_transform()
+			var cover: PackedInt32Array = _builder.boxes_for(_library.mesh_for("3665a"), t)
+			var box: AABB = _simple.call("_ghost_box")
+			_note2("  stands_only %s: ghost %s, shown %s offered %s valid %s joint %s seated_on %d, box %s, gap %d, cover %s" % [
+				str(stands), str(t.origin), str(shown), str(offered), str(_builder.can_place()),
+				str(_builder.is_on_joint()), int(_builder.get("_seated_on")), str(box), _gap5(cover, {}), str(cover)])
+			# What stands under the ghost's footprint, each part met going down.
+			var under: Dictionary = {}
+			for k: int in range(1, 60):
+				var moved: PackedInt32Array = BrickLattice.moved_by(cover, Vector3i(0, -k, 0))
+				for id: int in _builder.lattice.blockers_boxes(moved, 0):
+					if not under.has(id):
+						under[id] = k
+			var lines: Array = []
+			for id: Variant in under:
+				var b: BrickWorld.Brick = _world.get_brick(int(id))
+				lines.append("%d %s %d cells down, box %s" % [int(id), b.part_id if b != null else "?", int(under[id]),
+					str(_box_of(int(id)))])
+			_note2("    under it: %s" % str(lines.slice(0, 6)))
+			_builder.hide_preview()
+		_builder.stands_only = true
+		# Let go there, as a drop does.
+		_simple.call("_take", "3665a")
+		_builder.held_rotation = int(one[2])
+		_simple.call("_aim", at)
+		if _builder.has_preview():
+			_simple.call("_drop_from_tray", at, at)
+			await _frames(3)
+			var put: Array = (_simple.get("last_drop") as Dictionary).get("put", [])
+			if not put.is_empty():
+				var id: int = int(put[0])
+				_note2("  let go: %d at %s, gap %d cells" % [id, str(_world.get_brick(id).transform.origin),
+					_gap5(_builder.lattice.boxes_of(id), {id: true})])
+				await _press_button("undo")
+				await _frames(2)
+		_simple.call("_put_hand_away")
+	_check("diag: the model as it was", _text() == text)
