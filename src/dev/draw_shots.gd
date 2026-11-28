@@ -53,7 +53,13 @@ func _run() -> void:
 		return
 	_drawer.library = _library
 	_drawer.parent = root
-	print("draw_shots: ready in %d ms" % Time.get_ticks_msec())
+	# Off the lease (software Vulkan on the CPU, as the bench's --software draws), a
+	# drawer holds nothing anybody else waits for, and stays for the app's whole
+	# session: started again for each look, every picture would wait out its start
+	# (the catalogue and lavapipe's first shaders), where a window draws at once.
+	var leased: bool = not OS.get_environment("BOX_GPU_LEASE").is_empty()
+	print("draw_shots: ready in %d ms%s" % [Time.get_ticks_msec(),
+		"" if leased else ", off the GPU's lease: staying while the app runs"])
 	var idle_since: float = Time.get_unix_time_from_system()
 	while true:
 		var asked: String = LeasedShots.Drawer.next(dir)
@@ -61,7 +67,7 @@ func _run() -> void:
 			# The whole linger while nobody else wants the GPU; a moment
 			# when somebody waits for it, who has it as soon as this ends.
 			var idle: float = Time.get_unix_time_from_system() - idle_since
-			if idle > linger or (idle > YIELD_S and _others_wait()):
+			if leased and (idle > linger or (idle > YIELD_S and _others_wait())):
 				break
 			if not _alive(app):
 				print("draw_shots: the app has gone")

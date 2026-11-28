@@ -42,6 +42,22 @@ var _evaluated_name: String = ""
 
 func _ready() -> void:
 	set_process(false)
+	if shell != null and shell.world != null:
+		shell.world.cleared.connect(_model_replaced)
+
+
+## Another model on the baseplate (BrickWorld.cleared): the exploded view
+## was of the one before, so it is over, and nothing of it is put back. Left
+## on, the view stayed "exploded" over the next model, and bringing it
+## together framed the last model's view and went back into its sub-assembly.
+func _model_replaced() -> void:
+	_goal = 0.0
+	_share = 0.0
+	_shifts.clear()
+	_drawn = {}
+	_entered_was = null
+	_view_was = []
+	set_process(false)
 
 
 # -- suggesting -----------------------------------------------------------------

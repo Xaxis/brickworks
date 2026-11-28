@@ -263,6 +263,33 @@ def test_a_design_runs_headless_and_leases_the_gpu_only_to_draw():
     assert run.DRAWER[0] == run.GPU and "xvfb-run" in run.DRAWER
 
 
+def test_a_software_drawer_draws_the_gpus_renderer_on_lavapipe_in_the_runs_heavy_slot():
+    # design47: five sessions shared the GPU's one slot, and 41 of 48 designs gave up on
+    # a picture at least once. With --software each tab's drawer is lavapipe under heavy.
+    from bench import run
+    assert run.drawer() == run.DRAWER and run.drawer(False)[0] == run.GPU
+    soft = run.drawer(True)
+    assert soft[0] == run.HEAVY and run.GPU not in soft
+    assert "GODOT_GPU=1" in soft and f"VK_ICD_FILENAMES={run.LAVAPIPE}" in soft
+    assert f"VK_DRIVER_FILES={run.LAVAPIPE}" in soft
+    assert soft[-1] == "godot" and "xvfb-run" in soft
+
+
+def test_pictures_waited_are_read_from_the_godot_log():
+    from bench import run
+    log = ("leased shots: 000001 in 41200 ms\n"
+           "draw_shots: 000001 drawn in 900 ms, 40 bricks\n"
+           "leased shots: 000002 in 1300 ms\n"
+           "leased shots: 000003 in 2100 ms\n")
+    with tempfile.TemporaryDirectory() as where:
+        path = Path(where) / "godot_design.log"
+        assert run.pictures_waited(path) == {}, "no log, nothing waited"
+        path.write_text("draw_shots: 000001 drawn in 900 ms, 40 bricks\n")
+        assert run.pictures_waited(path) == {}, "a drawer's own line is not a wait"
+        path.write_text(log)
+        assert run.pictures_waited(path) == {"pictures": 3, "median_s": 2.1, "most_s": 41.2}
+
+
 def test_an_app_from_before_the_drawer_runs_in_a_window_on_the_lease():
     from bench import run
     command = _design_command(with_drawer=False)

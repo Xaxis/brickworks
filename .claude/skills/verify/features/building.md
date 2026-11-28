@@ -4261,7 +4261,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`SectionsUi.set_aside`) and turns Stress and Stud directions off, all
   quietly; `_put_view_back` gives each back on the same model (the hidden
   parts still there hidden, the same cut, the same parts seen through, the
-  sections apart, or together where the model changed). A part put down in
+  sections apart, or together where the model changed). Simulate and
+  Motions, whose column Simple puts away while each panel stays open, are
+  set aside the same way (simplesib: `SimulatePanel.set_aside`,
+  `PosePanel.set_aside`): only what each drew itself (the world's own drawn
+  and tinted sets, by identity) is drawn where it stands, nothing turns on,
+  a part chosen in Simple drives nothing, and the hidden panel hears no
+  keys; back in Full Simulate plays on from where it was and the pose is
+  drawn as it was. A motion playing is stopped, as a grab stops it. Every
+  replaced model leaves no sub-assembly entered (`Shell` hears
+  `BrickWorld.cleared`, not the bar, which Main's `_open`, `_open_given`,
+  `clear_model`, a mosaic and a Brick Art picture never told) and ends the
+  last model's exploded view (`SectionsUi._model_replaced`)
+  (`simplesib_probe`: moving, open, lens). A part put down in
   Simple goes in the step Full's timeline was left on (`Main._place_step`,
   `StepsBar.place_where`/`step_for`), and `Main._timeline_back` steps on to
   any part made in Simple the step does not show. No part goes down in the
