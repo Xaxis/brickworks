@@ -684,3 +684,22 @@ def test_pair_sees_a_lever_that_wins_every_pair():
     # Given a spread, it is the one used.
     given = realset.pair_score(rows, 50.0, {"all": list(rows)}, dims=("overall",))
     assert given["overall"]["run_sd"] == 50.0
+
+
+def test_pair_counts_only_designs_drawn_faced(tmp_path, monkeypatch):
+    import json as _json
+    from bench import realset
+    monkeypatch.setattr(realset, "RESULTS", tmp_path)
+    for arm, is_faced in (("a1", True), ("a2", False)):
+        out = tmp_path / f"realset-2026-11-28-{arm}" / "70127-1"
+        out.mkdir(parents=True)
+        (out / "unjudged.json").write_text(_json.dumps({
+            "arm": arm, "date": "2026-11-28", "number": "70127-1",
+            "design": {"model": str(out / "design.ldr")}, "measures": {"parts": 12}}))
+        for v in realset.VIEWS:
+            (out / f"views_{v}.png").write_bytes(b"png")
+        if is_faced:
+            (out / "faced.json").write_text(_json.dumps({"quarter": 1}))
+    got = realset._pair_designs("a1+a2", "2026-11-28", "70127-1")
+    assert [k for k, _v, _p in got] == ["a1:2026-11-28:70127-1"], got
+    assert got[0][2] == 12

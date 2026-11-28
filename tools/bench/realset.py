@@ -2260,11 +2260,15 @@ PAIR_SCALE = "the brief's own size, the real set's"
 
 def _pair_designs(spec: str, date: str, number: str) -> list[tuple[str, tuple[Path, ...], int]]:
     """A label's designs of one subject: (key, its views, its parts), each arm pooled in the
-    label (ARM[@DATE] joined by '+') that has a model and its views drawn."""
+    label (ARM[@DATE] joined by '+') that has a model and its views drawn faced (faced.json:
+    a design drawn as made beside one drawn faced is the bias facing takes out)."""
     out = []
     for folder, _into in _designs(spec, date):
         record = _record_of(folder / number)
         if record is None or not record.get("design", {}).get("model"):
+            continue
+        if not (folder / number / "faced.json").exists():
+            bench.say(f"{folder.name}/{number}: not faced yet (realset face); left out")
             continue
         views = tuple(folder / number / f"views_{v}.png" for v in VIEWS)
         if not all(p.exists() for p in views):
