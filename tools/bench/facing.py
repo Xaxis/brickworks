@@ -10,21 +10,18 @@ a tractor shown side-on against one shown nose-first, a telehandler's two ends),
 sets themselves nearly all face the front camera nose-first. Facing is the bench's, not
 the designer's: a person turns a model to look at it.
 
-So before the views are drawn the design is given the quarter turn about the vertical
-that makes it look most like its set from those cameras, from the geometry alone, never
-by hand:
+So before the views are drawn the design is given a quarter turn about the vertical, never
+by hand (tools/bench/realset.py `faced`):
 
-- Both models are read as boxes (tools/style.py: every building part's box, sub-models
-  flattened), figures and their gear left out as style's measures leave them out.
-- Each is seen as the cameras see it, in its own box: the height of its top over the plan,
-  and what it covers seen from the front and from the side, each on a GRID x GRID raster
-  over the model's own extent, so a design half the set's size compares cell for cell.
-- A turn's likeness is the mean correlation of the three with the set's, less ASPECT
-  times how far apart the two plan proportions are (log of length over depth): a
-  raster in the model's own extent cannot see which way the model is long, and a long
-  model laid across the set's length is the wolf's case.
-- The best of the four turns is taken when it beats the design as made by MARGIN;
-  otherwise the design keeps its own front (a building the same both ways round).
+- **By a look**: the set and the design are each drawn from their four sides (SIDES) and the
+  judge's model is asked which picture shows the subject's front (front_prompt). The design
+  is turned so its front faces the camera the set's front faces (quarter_for). The set's
+  answer is asked once and kept in its set.json.
+- **By the outline**, when the look gives no answer for either: both models read as boxes
+  (tools/style.py, figures and their gear left out), the design's long plan axis laid along
+  the set's (`facing`). Which end goes where is a guess from the outline seen along the
+  set's length; on design48's subjects it put two wolves' heads at opposite ends, which is
+  why the look comes first.
 
 `turned_text` writes the turn into the model file: the first model's own lines turned
 about the vertical through the origin, sub-models carried with their placing lines, so

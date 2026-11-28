@@ -2997,6 +2997,31 @@ labels on the same designs as twins: their difference must hold 0, and its
 half-width is the judge's own noise. Proves it when the twins hold 0 and each
 twin's mean sits inside the other's interval.
 
+**Faced views and k designs a label** (design49, 2026-11-28). A design's views are
+drawn after it is turned to face as its set does (tools/bench/facing.py): the set and
+the design are each drawn from their four sides (`sides_*.png`), the judge's model
+names each one's front, and the design is given the quarter turn that brings its front
+to the camera the set's faces (`faced.ldr`, `faced.json`: quarter, `by` look or
+outline). The set's front is asked once and kept in its set.json; with no answer the
+outline lays the design's long axis along the set's. `face` does this to an arm drawn
+before (its old views kept as `views_asmade_*.png`). `pair` judges every design of one
+label against every design of the other, both orders, with the set's views as
+references (`--within` also each label's own designs against each other), scores a
+subject as its lever designs' mean ELO minus its base designs', and takes the run
+spread from the labels' own designs (`pairwise.run_spread`) unless `--run-sd N`.
+
+```sh
+python3 tools/minitest.py $PWD/tests/test_bench.py    # a turned file is its boxes turned; the front comes to the set's side; the outline; pair's A/A holds 0, a lever that wins every pair is better
+heavy env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py face --arm A --date D --subjects S1,S2 --software --jobs 2
+python3 tools/bench/realset.py pair --label lev=A1+A2 --label base=B1+B2 --date D --subjects S1,S2 --into DIR --dry-run --per-order 1 --within   # canned verdicts: the tables, no judge
+env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py pair --label lev=A1+A2 --label base=B1+B2 --date D --subjects ... --into DIR --per-order 2 --within --jobs 6 --out FILE.txt
+```
+
+Proves it when `faced.json` says `by: look` and the faced corner view shows the
+design's front where the set's corner view shows the set's, and when the same code on
+both labels gives a with-runs interval containing 0 (pair's table: run spread
+measured, floor on 24).
+
 Proves it when: `calibrate` names the set on every dimension of every verdict;
 the dry run writes a record with two verdicts and a report; a real design's log
 says `real sets: holding out <set>` once it searched the index; every
