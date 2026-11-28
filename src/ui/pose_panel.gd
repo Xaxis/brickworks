@@ -211,6 +211,15 @@ const HELD_WORDS := "The view follows the motion's camera keys: Stop gives it ba
 ## null when it must be played again.
 var _look: MotionPlayer.Played = null
 var _drawn: bool = false
+## The world's set of parts drawn moved as the panel last drew it
+## (BrickWorld.drawn_ids, a new Dictionary each set): set aside for Simple
+## only while the world still draws exactly that.
+var _drew: Dictionary = {}
+## Set aside while Simple's controls are up ([method set_aside]): the pose
+## that is the panel's to draw meanwhile, kept for Full.
+var _aside: bool = false
+var _aside_frame: Dictionary = {}
+var _aside_model: Array = []
 ## A joint's slider held: the item its grab moves, and what it was asked.
 var _held: MotionPlayer.Item = null
 var _held_joint: Motions.Joint = null
@@ -303,6 +312,8 @@ func close() -> void:
 		renderer.cancel()
 	_let_go_slider()
 	_undraw()
+	_aside = false
+	_aside_frame = {}
 	visible = false
 	set_process(false)
 	if get_viewport().size_changed.is_connected(_fit_later):
@@ -801,14 +812,51 @@ func _button_for(name: String, reverse: bool) -> Button:
 
 
 func _draw_frame(frame: Dictionary) -> void:
-	world.set_drawn(frame)
 	_drawn = true
+	if _aside:
+		_aside_frame = frame.duplicate()
+		return
+	world.set_drawn(frame)
+	_drew = world.drawn_ids()
 
 
 func _undraw() -> void:
 	if _drawn:
-		world.set_drawn({})
 		_drawn = false
+		if _aside:
+			_aside_frame = {}
+			return
+		world.set_drawn({})
+
+
+## Simple's controls are up (SimpleLayer): the pose the panel draws (a
+## motion's time in the editor, a joint's slider) set aside, every part drawn
+## where it stands as Simple shows the model, and kept for Full; a motion
+## playing stops, the view its camera held given back, as a grab stops it.
+## The column is put away with the studio's while the panel's own visible
+## stays true, so a pose held in Full stood in Simple where no part is. Back
+## in Full the pose is drawn as it was, unless the model changed meanwhile,
+## which takes the pose away as any change does (_process).
+func set_aside(on: bool) -> void:
+	if on == _aside or (on and not visible):
+		return
+	if on:
+		if _playing:
+			_stop_playing()
+		_let_go_slider()
+		var drawn: Dictionary = world.drawn_ids()
+		_aside_frame = drawn.duplicate() if _drawn and not drawn.is_empty() and is_same(drawn, _drew) else {}
+		_aside_model = [world.generation(), world.revision]
+		_aside = true
+		if not _aside_frame.is_empty():
+			world.set_drawn({})
+		return
+	_aside = false
+	set_process(true)
+	var frame: Dictionary = _aside_frame
+	_aside_frame = {}
+	if _drawn and not frame.is_empty() and _aside_model == [world.generation(), world.revision]:
+		_draw_frame(frame)
 
 
 # -- the editor -----------------------------------------------------------------------------
@@ -2440,7 +2488,7 @@ func _process(delta: float) -> void:
 				_look = null
 				_undraw()
 			_refresh()
-	if not _recording and not _working:
+	if not _recording and not _working and not _aside:
 		_weigh_hold()
 	_tell_page()
 	# Put away and idle, asleep once the page has been told (Wake).
@@ -2558,7 +2606,8 @@ func _same_history(seen: Array) -> bool:
 
 
 func _input(event: InputEvent) -> void:
-	if not visible:
+	# Simple's keys are Simple's: Delete there took a motion's key away.
+	if not visible or _aside:
 		return
 	# A press anywhere but the panel: Delete is the view's again.
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
