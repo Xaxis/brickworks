@@ -134,8 +134,17 @@ func _costs() -> void:
 			(Time.get_ticks_usec() - began) / 1000.0])
 	for title: String in ["File", "Edit", "View"]:
 		var began: int = Time.get_ticks_usec()
-		_popup_of(title).about_to_popup.emit()
+		var popup: PopupMenu = _popup_of(title)
+		popup.about_to_popup.emit()
 		print("SUBMENU cost %s: %.2f ms as it opens" % [title, (Time.get_ticks_usec() - began) / 1000.0])
+		# And shut, as a menu that opened says: its title heard "about to
+		# popup" (MenuButton._popup_visibility_changed), was left pressed and
+		# looking every frame for the pointer on another title, and opened the
+		# one under it, File, Edit or View, once a frame for each title left
+		# so: File, with two, opened and shut every frame (greenreds2).
+		_shutting = true
+		popup.popup_hide.emit()
+		_shutting = false
 
 
 func _button_of(title: String) -> MenuButton:

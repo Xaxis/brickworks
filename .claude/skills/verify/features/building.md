@@ -384,7 +384,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Edit and View from the pointer's rest (150 ms bar, no frame over 50 ms),
   drives a straight and a slanted way into it to its third row, a rest on
   Open recent then down to Import, and Import crossed, left by the side and
-  come back to; `submenus in a browser` (preview_checks
+  come back to; its `--paths` headless are the train's (headless.txt). A
+  probe that emits a bar menu's `about_to_popup` to read its rows emits its
+  `popup_hide` after (greenreds2): a MenuButton told only the first stays
+  pressed and, every frame, opens the title under the pointer, so File,
+  Edit and View opened and shut once a frame under this probe;
+  `submenus in a browser` (preview_checks
   `submenu`) does the same by pictures and a screencast, 50 models saved.
 - `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
   drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`

@@ -362,6 +362,9 @@ func _case_header() -> void:
 			var found: bool = false
 			for n: int in popup.item_count:
 				found = found or popup.get_item_text(n) == "Simple mode"
+			# Shut as it was "opened": "…" told only "about to popup" stayed
+			# drawn pressed in the picture below (submenu_probe).
+			popup.popup_hide.emit()
 			_check("...Simple | Full put away: Simple a row of \"…\"", bar.more.is_visible_in_tree() and found)
 		else:
 			_check("...Simple | Full on the row", bar.controls.is_visible_in_tree())

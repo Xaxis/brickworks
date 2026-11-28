@@ -223,6 +223,10 @@ func _menus(table: Dictionary) -> void:
 			var popup: PopupMenu = found[0]
 			popup.about_to_popup.emit()
 			var shown: int = popup.get_item_accelerator(found[1])
+			# Shut as it was "opened": a bar title told only "about to popup"
+			# stays pressed, opening the title under the pointer (submenu_probe).
+			if popup.get_parent() is MenuButton:
+				popup.popup_hide.emit()
 			if shown == 0 or shown != Shell.menu_accel(Keymap.key_of(name)):
 				wrong.append("%s shows %s" % [name, OS.get_keycode_string(shown)])
 		_check("%s: each row shows its key%s" % [preset, "" if wrong.is_empty() else ": " + ", ".join(wrong)],
