@@ -3530,13 +3530,14 @@ close-ups were not built.
 Best's time is unchanged: the car at 256 samples 5.39 s against pre261's 5.73 (medians of three
 runs each, interleaved).
 
-## 5ak. What "clean" and "background" mean, and round parts drawn round (photoreal36, not kept)
+## 5ak. What "clean" and "background" mean, round parts drawn round, and a backdrop lit by the key (photoreal36)
 
 5aj counted the judge's tells by kind; this round read the two big kinds, "clean" and "background",
 verdict by verdict (d33's 408 against the photographs' 108, photoreal35's pools), sorted each tell
-into the first cluster whose words it has, and built what was left once the clusters shared with the
-photographs were set aside. It is not kept. The lever is
-`bench/results/photoreal36-2026-11-28/round36.patch` (bb50d1d0b on pre261 d9fae31e0).
+into the first cluster whose words it has, and built two levers: round parts drawn round, which the
+lead kept as a general fix (on branch photoreal36; no pool better beyond its interval, so not a GO
+on the judge), and the top cluster's, a backdrop lit by the key, which is not kept
+(`bench/results/photoreal36-2026-11-28/backdrop36.patch`; the round parts alone are `round36.patch`).
 
 **The clusters** (verdicts naming it, d33 / photograph; `clusters_all.txt` in the results):
 
@@ -3556,8 +3557,9 @@ The backdrop clusters are the photographs' too: the judge calls the photographs'
 photographs' open backdrop does vary more (0.21 to 0.54 stops across it against d33's 0.03 to 0.36),
 but 6657's is the only coloured seamless one, and the table's own falloff (5n's table_light) laid
 on it darkens the far paper top to bottom (24 radii: 0.47 stops) where its photograph's 0.19 stops
-run across the frame. Not built. What is left is the clear round brick: 0.21 against its
-photograph's 0.90, named "faceted, polygonal cylinder silhouette" in 35 of 36 verdicts.
+run across the frame; a lever of its own was built after the round parts (below). The other aim
+is the clear round brick: 0.21 against its photograph's 0.90, named "faceted, polygonal cylinder
+silhouette" in 35 of 36 verdicts.
 
 **Why it showed its sides.** LDraw draws it from 16-sided primitives, and its normals leaned: the
 part meshes average a corner's normal by triangle area, and a cylinder's wall is quads each split
@@ -3593,12 +3595,48 @@ bright cyan where the photographed brick is a dark, aged teal. The black 2x4's s
 pool is better beyond its interval: NO-GO on the judge.
 
 Best's time is unchanged: the car 6.20 s against pre261's 6.31 (medians of three runs each,
-interleaved, the box loaded).
+interleaved, the box loaded), and again on the kept code 5.82 s against 6.36.
 
 For a later round: the normals' lean is a fault of the part meshes themselves
 (`tools/ldraw/geometry.py compute_normals`, by area), seen in every look; weighting by angle there
 fixes it for the raster too, and needs the meshes built again. The clear brick's remaining tells
 are its plastic, not its shape.
+
+**The top cluster's lever: a backdrop lit by the key (not kept).** The lead asked for a lever aimed
+at "background" before judging again. Where the judge can see it is the coloured paper: a white
+paper is exposed past white, so the photographs' and ours read 1.00 across. On a set's floor (the
+photo version) the key became a lamp some model radii from the model, towards the staged key:
+its light on the paper by the inverse square of the distance and the cosine at the paper, over
+what it gives the floor under the model; beyond the sweep, where a way meets nothing, the paper
+rising behind as far past it as the sweep reaches, facing the eye. A white paper hides what it
+loses, never what it gains. A first try that clamped the paper at its colour did nothing at all:
+the near floor gains (clamped) and on 6657, seen nearly level, most of the frame is beyond the
+sweep. Measured on 6657 (`backdrop36.py`, the open backdrop's spread in stops, its photograph
+0.25): 24 radii 0.16, 48 radii 0.20, 96 radii 0.24; at 48 the black 2x4, green plate and grey 1x3
+pictures were byte for byte the same (not the photo version) and the white shots all but so.
+
+Judged with the round parts (rl36, locked snapshot at c7cb4014b, same draws and judge):
+
+| pool | d33 | r36 (round parts) | rl36 (+ backdrop) | rl36 against d33 (95%) |
+| --- | --- | --- | --- | --- |
+| black 2x4 + green plate | 0.889 | 0.905 | the same pictures as r36 | (as r36) |
+| grey 1x3, red slope, three 2x2, trans round | 0.730 | 0.720 | 0.729 | -0.000 (-0.016 .. +0.013) |
+| the four sets | 0.633 | 0.634 | 0.578 | -0.055 (-0.173 .. +0.013) |
+
+(The second and third rows are new pools with all three arms, seeds 37 and 38 as before; r36 there
+-0.010 and +0.001.) set_6657 fell from 0.738 to 0.509, called a photograph 23 times in 48 where d33
+was 45 and r36 46, and the judge still named its backdrop even 48 times in 48: "very clean
+seamless gradient backdrop", "noise-free seamless gradient background", "seamless, noise-free
+gradient". A smooth fall across the paper is what a Studio or Mecabricks render's gradient
+background looks like. The photograph's backdrop is named for something else: "paper backdrop with
+uneven gradient and slight noise", "uneven, warm-to-cool ambient light", and it is darker at the
+top (the paper rising away from the light), where ours grew lighter (the rise faces the key more
+squarely than the floor). The close-ups did not move: three 2x2's paper is light enough to be
+partly past white (0.03 to 0.04 stops at any distance). Not kept.
+
+For a later round: what reads as a photograph's backdrop is uneven, not graded: light that falls
+away behind the model, irregular (paper that is not flat, a room's light on it), warm to cool, with
+the camera's noise on it. A smooth gradient alone is a render's tell.
 
 ## 6. Web and desktop
 
