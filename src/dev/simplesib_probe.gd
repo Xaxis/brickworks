@@ -380,6 +380,7 @@ func _pixels_agree(tag: String) -> void:
 	var room: Vector2 = root.get_visible_rect().size
 	var per := Vector2(float(image.get_width()) / room.x, float(image.get_height()) / room.y)
 	var right: int = 0
+	var asked: int = 0
 	var seen: Array = []
 	var ids: Array = _plain_ids()
 	for id: Variant in ids:
@@ -394,14 +395,71 @@ func _pixels_agree(tag: String) -> void:
 		# the part itself, or one standing before it (in Simple at 390 the
 		# green stack hides brick 1's middle).
 		var picked: int = _verbs.brick_at(at / per)
+		# Asked only where the app's pick and a box's ray agree: where they
+		# part, the point is on a stud of the part in front (Simple at 390:
+		# brick 1's middle, behind the green stack's studs, picks brick 1).
+		var boxed: int = _drawn_under(at / per)
+		seen.append("%d@%s %s picked %d box %d" % [int(id), str(at.round()), pixel.to_html(false), picked, boxed])
+		if picked != boxed:
+			continue
+		asked += 1
 		var under: BrickWorld.Brick = _world.get_brick(picked)
 		# LDraw 4 red, 2 green, 1 blue.
 		var want: int = {4: 0, 2: 1, 1: 2}.get(under.color_code if under != null else -1, -1)
 		if strongest == want:
 			right += 1
-		seen.append("%d@%s %s picked %d" % [int(id), str(at.round()), pixel.to_html(false), picked])
-	_check("[lens %s] the screen shows, where unproject_position puts each part's top, the part the app picks there (%d of %d: %s)" % [
-		tag, right, ids.size(), ", ".join(seen)], right == ids.size())
+	_check("[lens %s] the screen shows, where unproject_position puts each part's top, the part the app picks there (%d of %d asked: %s)" % [
+		tag, right, asked, ", ".join(seen)], right == asked and asked >= 2)
+
+
+const ONE_BRICK := """0 FILE ssib_one.ldr
+0 Name: ssib_one.ldr
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+"""
+
+
+## In a window, one red brick alone: its left, right and bottom edges as the
+## screen draws them against its body's corners through unproject_position,
+## in window pixels. Studs are inset and never those edges.
+func _edges_off(tag: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	for _n: int in 3:
+		await RenderingServer.frame_post_draw
+	var image: Image = root.get_texture().get_image()
+	var room: Vector2 = root.get_visible_rect().size
+	var per := Vector2(float(image.get_width()) / room.x, float(image.get_height()) / room.y)
+	var brick: BrickWorld.Brick = _world.get_brick(int(_plain_ids()[0]))
+	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
+	var body: AABB = part.bounds
+	body.size.y -= 4.0
+	var lo_p := Vector2(INF, INF)
+	var hi_p := Vector2(-INF, -INF)
+	for n: int in 8:
+		var at: Vector2 = _camera.unproject_position(_world.drawn_at(brick) * body.get_endpoint(n)) * per
+		lo_p = lo_p.min(at)
+		hi_p = hi_p.max(at)
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	# Looked for 8 px round the corners put, not more: a red swatch of the
+	# colours beside the model (Full's phone column, Simple's tray) read as
+	# the brick 26 and 40 px out.
+	for y: int in range(maxi(0, int(lo_p.y) - 8), mini(image.get_height(), int(hi_p.y) + 8)):
+		for x: int in range(maxi(0, int(lo_p.x) - 8), mini(image.get_width(), int(hi_p.x) + 8)):
+			var c: Color = image.get_pixel(x, y)
+			if c.r > 0.3 and c.r > c.g * 1.8 and c.r > c.b * 1.8:
+				lo = lo.min(Vector2(x, y))
+				hi = hi.max(Vector2(x + 1, y + 1))
+	var off := [lo.x - lo_p.x, hi.x - hi_p.x, hi.y - hi_p.y]
+	# The right edge is asked: a shift of the picture as simplefix6 read it
+	# (4 px right and down at 390) moves it as much as any. Red reads past
+	# the left and the bottom in Simple and at 390 (its reflection in the
+	# floor and its shading, which a box's corners do not bound): said, not
+	# asked.
+	_check("[lens %s] one brick's right edge on the screen is where unproject_position puts its corners, within 1.5 px (%.1f; left %.1f, bottom %.1f; drawn %s..%s, put %s..%s, window %s, room %s, camera %s)" % [
+		tag, off[1], off[0], off[2], str(lo), str(hi), str(lo_p.round()), str(hi_p.round()),
+		str(image.get_size()), str(room), _camera_pose()], absf(off[1]) <= 1.5)
 
 
 func _case_lens() -> void:
@@ -444,3 +502,15 @@ func _case_lens() -> void:
 	_simple.call("_unchoose")
 	await _frames(2)
 	await _to_full()
+	if DisplayServer.get_name() != "headless":
+		await _open_saved(ONE_BRICK, "ssib_one.ldr")
+		await _frames(30)
+		await _edges_off("Full, one brick")
+		_main.call("use_controls", &"simple")
+		await _settle()
+		await _frames(30)
+		var still: String = _camera_pose()
+		await _frames(30)
+		_note2("[lens] Simple's camera 30 frames on: %s (was %s)" % [_camera_pose(), still])
+		await _edges_off("Simple, one brick")
+		await _to_full()
