@@ -5564,7 +5564,144 @@ shows.
 - **Time.** The second lay is most of the extra time (the avocado took 1.87
   times `pre261`'s). Lay again only the region about the piece.
 
+### The twenty-third round: whole cubes decided before the lay (2026-11-28)
+
+The twenty-second round gave turned shells back after the lay, and the core
+showed where they had stood. Unit `snot23`, from that arm (`c0505f3d`) with
+`pre261` merged in, keeping the twenty-first round's colour rules. Scripts,
+logs and pictures are in `bench/results/snot23-2026-11-28`.
+
+**In short: NO-GO. The colour is fixed and the judge prefers the arm 0.723
+(0.558 to 0.871) against an A/A of 0.473, the round's best; but it prefers
+`pre261` on Smithsonian-2 16 times of 16, one joint is past its load there,
+three models take more than 1.5 times `pre261`'s time, and the sphere in
+`brickify_probe` bridges fewer seams than its bar.** No dark grey or tan is
+left on the armadillo, the bunny or Bob, and the truck keeps both mirrors
+and a windscreen all dark green.
+
+#### What was found
+
+- **The dark grey and the tan were edge parts in colours never made.** The
+  edge of a turned side is laid in edge parts (the 3 x 3 brick without a
+  corner and its kin). The lay chose them by fit alone; one in a colour no
+  element of it comes in was laid in the nearest colour that does after the
+  lay (`Brickify.made_colours`). The 3 x 3 brick without a corner is made in
+  neither light bluish grey nor yellow: it came out dark grey on the
+  armadillo's and the bunny's sides and tan on Bob's neck. It was not the
+  core: the shells given back only made more edges. Now an edge part is
+  laid only in a colour it is made in, its mirror twin too (`_wedged`), and
+  every surface cell keeps its surface colour on every model: no part is
+  recoloured after the lay on the armadillo, Bob or the bunny, where the
+  twenty-second round recoloured 10, 4 and 14.
+- **A piece cut off is answered before the lay that is kept.** After the
+  first lay, every piece of 2 to 16 parts apart from the rest, taller than a
+  brick and beside a turned side's plate, is found (`Plan.apart_beside`).
+  Its plates and every plate beside them are refused (`Shapes.lay`'s
+  `refused`), and the model is laid again: a cube with a plate refused is
+  not turned (`_cube_refused`), so the side there is laid upright with the
+  core, whole, in the same lay. That is done until no such piece is left,
+  at most twice (`RELAYS`); a lay again is kept unless it leaves more parts
+  apart. Nothing is given back after a lay.
+- **Only the region about what changed is laid anew.** Laid again, the core
+  parts of the lay before that stand away from every changed plate (a
+  shell's in one and not the other, taken in one and not the other, or a
+  piece's) are kept as they were (`Plan.keep_from`), and the lay lays only
+  the plates they leave.
+- **The fox's joints past load are answered in the lay.** Where a joint is
+  past its load beside a turned side, Brickify lays the model again with the
+  plates 2 studs and 5 plates about the joint refused, from the lay before
+  (`Brickify._refused_about`, `"refused"` and `"_prior"` in the shape),
+  checks it, and keeps it where fewer joints are past load and no more than
+  0.5% less is covered; twice at most. The upright patch after the lay
+  (`_upright_about`) is gone. The fox's two joints go in one lay again.
+  Smithsonian-2's four come to one, and the last, a 1 x 4 tile on a 1 x 2
+  plate by one stud, is beside no turned side, so it is not laid again.
+
+Tried before the arm, and dropped:
+
+- **Refusing only the shells beside a piece** (`d1`). The next cut's cube
+  took the same plates, the lay went again up to three times, and the
+  armadillo took 92 s where `pre261` takes 50.
+- **Refusing for a tile alone** (`d2`). Of the milk truck's 40 parts cut
+  off, 31 were tiles alone in a plate a shell gave back, which the lay takes
+  out after as `pre261`'s does. Refused for those, its flank came out studs
+  up along 12 studs where `pre261` turns it, and a row of its face showed.
+- **Refusing for a cap a brick tall or less** (`d3`, `d4`): a plate with a
+  tile on it, then a slope on a plate, between the fox's neck shells. Each
+  laid the fox again and turned 81, then 87, cubes where `pre261` turns 104.
+- **A lay again's first mend** counted the parts it left out twice (the fox
+  said the same 8 parts twice), which `outline.py` read as more left out.
+
+#### The numbers, `a6` against `pre261`
+
+The arm, `a6` (`0b3fc5a6`), is all of the above: pieces of 2 to 16 parts,
+taller than a brick, laid again for at most twice; the joint lay again
+twice at most; edge parts in colours they are made in.
+
+| Bar | Result |
+| --- | --- |
+| Judge preferred beyond A/A, no model less | **FAIL**: 0.723 (0.558 to 0.871) on 224, above the A/A's 0.567; Smithsonian-2 0.000 (0.000 to 0.000). Bob, the figure, the truck, Smithsonian-1 and the toy car 1.000; the fox 0.375 and the bunny 0.438, within their intervals |
+| Parts 1.06x or fewer | pass: 0.938 to 1.046 |
+| One piece, 97% or more in a part | pass: one piece each, 98.2% or more |
+| No joint past load | **FAIL**: Smithsonian-2's 1 x 4 tile on a 1 x 2 plate by one stud (1.0 times its load); none on the other thirteen, the fox's two gone |
+| No hole `pre261` lacks (`outline.py`) | **FAIL** on 8, the largest 7 cells (the armadillo's foot, x 26 to 27, plates 1 to 3; Spot's back). The truck's 20-cell row and the avocado's 27-cell column are gone; bare cells fall on 12 of the 14 (the truck 230 to 103) |
+| The truck's both mirrors | pass: both, and the windscreen all dark green |
+| Time 1.5x or less, same-moment pair | **FAIL**: the fox 1.71x, the avocado 1.60x, Smithsonian-2 1.52x; the armadillo 1.42x, the truck 1.26x, the bunny 1.19x, the toy car 0.94x |
+| Probes, from the locked snapshot | **FAIL** 1: `brickify_probe`'s sphere bridges 51.5% of its seams, the bar 51.9% (`pre261` 52.7%). `cutshapes_probe` fails one picture check the same on `pre261`. The other 15 pass |
+| Python suite | pass once `api/_insights_names.js` was written again for `src/dev/judge_views.gd` (the twenty-first round's): the snapshot's 3 FAILED were its two name checks and `test_loop`'s answer within a second under load (1.4 to 2.6 s); both files 51 passed again, the rest 2,418 passed |
+
+Off-colour where the face shows falls from `pre261`'s 2.53% to 1.13%
+(mean over the fourteen, `colour.txt`). The arm turns 3,455 cubes over the
+fourteen where `pre261` turns 4,124; the twenty-first round's `a4` turned
+3,520 and the twenty-second's `a5` 3,523.
+
+The judge's reasons on Smithsonian-2 all say the two are almost the same
+(confidence 55 to 57) and name the fuselage's roundel: `pre261`'s has its
+red stripe, the arm's is a white block. `pre261` lays 7 red parts there,
+every arm since the twenty-first round 4, but the twenty-first round's
+judge put Smithsonian-2 at 0.562; the twenty-second 0.188. Not traced:
+most likely the joint lay again, which refuses every cube 2 studs and 5
+plates about Smithsonian-2's four joints, lays the fuselage side about the
+roundel upright.
+
+#### What is left
+
+- **Smithsonian-2.** Trace the roundel to the step that loses its red, and
+  the first lay's four joints past load to the cubes that make them;
+  `a4` had none.
+- **Time.** Laid again, a model's shells and stitch are done over whole:
+  the avocado's stitch took 55.7 s where `pre261`'s takes 22.3, over three
+  lays. Keep the shells of cubes that did not change, and stitch only the
+  pieces about what did. The fox's joint lay again is 12.8 s of its
+  33.6: laid, stood, mended and propped whole.
+- **The sphere's seams.** 1.2 points fewer bridged than `pre261`'s; not
+  traced (edge parts kept to their colours change which cubes turn).
+- **The outline's small holes** (4 to 7 cells on 8 models) are the
+  twenty-first round's, as in `a4`.
+
 ### Proof
+
+The twenty-third round's runs (`snot23`, 2026-11-28; NO-GO), all in
+`bench/results/snot23-2026-11-28`, from locked snapshots: `snot23a6`
+(`0b3fc5a6`, `a6`, which drew and judged its own pictures), `snot23d1`
+to `snot23d4` (`ced4d46f`, `ba85e9a7`, `1ec584f3`, `3e14f262`, the tries
+above) and `snot23b` (`pre261`, `7333f35b`, for the same-moment pairs and
+the reds read against `pre261`). `quick/base` is the twentieth round's,
+linked.
+
+- **The fourteen at 48 studs** (`scripts/quick.sh`, `scripts/round.sh`),
+  measured by `scripts/measure.sh` into `judge/a6/` (`hold.txt`,
+  `outline.txt`, `colour.txt`); `scripts/peek.py base a4 a6` puts the
+  arms side by side.
+- **The same-moment pairs** (`scripts/pair.sh`, `quick/pa_a6` and
+  `quick/pb_a6`).
+- **The renders and the judge** (`views/a6`, `judge/a6_both.txt`, every
+  verdict in `judge/a6/judge_a6.json` and `judge/a62/judge_a62.json`),
+  against the twenty-first round's pictures of `pre261`.
+- **Probes** (`probes_a6/`, `probes2_a6/`: the thirteen of
+  `scripts/probes.sh` and the four one hop from `Shapes.lay`), and the two
+  reds again beside `pre261`'s (`again_bp/`, `again_cut/`).
+- **The Python suite** (`minitest_a6.log`).
 
 The twenty-second round's runs (`snot22`, 2026-11-28; NO-GO), all in
 `bench/results/snot22-2026-11-28`, from locked snapshots: `snot22s`
