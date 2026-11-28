@@ -16,7 +16,7 @@ description: Build with big bricks and your fingers: a tray of 30 parts and 12 c
 
 Simple is Brickworks with fewer, bigger controls: a tray of common parts along the foot, one finger to build and two to look round. It is the same studio and the same model, so you can start in Simple and finish in Full, or the other way round.
 
-![Brickworks on a phone in Simple: the header with Simple pressed beside Full, an empty 16 by 16 green plate filling the view, and the tray along the foot: twelve colours in two rows, the tabs Bricks, Plates, Slopes, Tiles and Specials, and six bricks with their pictures, Undo and Redo in the corner.](/docs/img/simple-phone.webp "Simple on a phone: a new model starts on a plate that fills the view.")
+![Brickworks on a phone in Simple: the header with Simple pressed beside Full, Save and Share dimmed at the top left over an empty 16 by 16 green plate filling the view, and the tray along the foot: twelve colours in two rows, the tabs Bricks, Plates, Slopes, Tiles and Specials, and six bricks with their pictures, Undo and Redo in the corner.](/docs/img/simple-phone.webp "Simple on a phone: a new model starts on a plate that fills the view.")
 
 ## Switch between Simple and Full {#switch}
 
@@ -24,7 +24,7 @@ Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Yo
 
 Switching changes only the controls. Every part, your undo steps and your saved file stay as they are, and the view comes back where you left it in Full. Simple starts with nothing selected: what you selected in Full waits for you there, and Simple's buttons only ever change what you pick in Simple.
 
-![Brickworks on a computer in Simple: the header with the Brickworks mark and Simple pressed beside Full, the empty plate in the middle of the view, and the tray along the foot with its twelve colours in one row, the five group tabs and six bricks.](/docs/img/simple-desktop.webp "The same Simple on a computer: the mouse is a finger, and Full is one click away.")
+![Brickworks on a computer in Simple: the header with the Brickworks mark and Simple pressed beside Full, Save and Share dimmed at the top left, the empty plate in the middle of the view, and the tray along the foot with its twelve colours in one row, the five group tabs and six bricks.](/docs/img/simple-desktop.webp "The same Simple on a computer: the mouse is a finger, and Full is one click away.")
 
 <!-- covers
 ui:simple's controls swapped in live
@@ -53,7 +53,7 @@ Tap a part on the model to select it. **Turn**, **Copy** and **Delete** come up 
 
 Holding a finger still on a part does nothing, so a resting thumb never deletes anything.
 
-![A little red, yellow and blue house with a white roof in Simple on a phone, one roof slope selected, and the round Turn, Copy and Delete buttons up on the right over the tray.](/docs/img/simple-selected.webp "A tap on a part selects it: Turn, Copy and Delete come up beside it.")
+![A little red, yellow and blue house with a white roof on a 16 by 16 baseplate in Simple on a phone, one roof slope selected, Save and Share at the top left, and the round Turn, Copy and Delete buttons up on the right over the tray.](/docs/img/simple-selected.webp "A tap on a part selects it: Turn, Copy and Delete come up beside it.")
 
 ## Undo, redo and the view {#view}
 
