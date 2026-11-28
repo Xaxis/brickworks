@@ -8,8 +8,8 @@
 ## corner's faces by area, and every normal round a ring leaned 3.75 degrees
 ## towards the side cut through it: a stud's and
 ## a round brick's shading banded in every look, and Best put the normals right
-## itself (PathTracer.true_normals, photoreal36). tools/ldraw/geometry.py now
-## weighs each face by its angle at the corner.
+## itself (photoreal36's PathTracer.true_normals, gone since). tools/ldraw/geometry.py
+## now weighs each face by its angle at the corner.
 ##
 ## Here, on the meshes as the app loads them: every corner of a round wall
 ## (exactly two flat sides meet there, the same corner angle on each, one cut

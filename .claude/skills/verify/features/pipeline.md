@@ -13,6 +13,9 @@ The Python side: LDraw in, mesh cache and catalogue out.
   (`geometry._corner_weights`; slivers under 1/64 LDU across count with the square
   of their width), so a 16-sided ring's normals point straight out whichever way
   LDraw cut its quads (by area they leaned 3.75 degrees, meshnormals 2026-11-28).
+  The app's builder of made parts (`PartForge._normals`) does the same arithmetic;
+  a change to either is a change to both, then `tools/element_pipeline.sh` (numpy)
+  and `element_files_probe`, which holds the two byte for byte.
   `--joints-from DIR` redraws every part and keeps DIR's joints byte for byte
   (`meshfile.with_joints`) and its exact shapes under the new hashes: 15 minutes on
   8 workers, for a change to how parts are drawn and nothing else.

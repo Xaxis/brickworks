@@ -72,7 +72,7 @@
    ],
    "cells": 830,
    "connectors": [],
-   "lbm_sha256": "7eec51f29455776821a405dd18cb31628d9c90f6eca5b9d303e77e618f782771",
+   "lbm_sha256": "478d65442ed850cdba23902903a7602c0507b4aab9b5268c21a6ef55579f71a1",
    "sockets": [
     [
      0.0,
@@ -181,7 +181,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "3199540e48f745beee702c5e78f8e40342a91ca8e016ae44e390c40dae888aa4",
+   "lbm_sha256": "185aff71f9088905f9064131e9b65f8f3c5a3da4b3155998a076a5b3c5d9bbd1",
    "sockets": [
     [
      -10.0,
@@ -302,7 +302,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "38079efb0db5bb858ca102b861403c7e22e91b76cbe4841c25bd851176b7220d",
+   "lbm_sha256": "bb0ceae0e26a3cf082a12c4d2645f02cae5fd0cb1ebf683114c09de059e9a946",
    "sockets": [
     [
      -10.0,
@@ -417,7 +417,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "841574985622236bd014eb331be34117e451e856b1a660e3462b888412e9f406",
+   "lbm_sha256": "edf0263d9d777a81a3791ff1cba0916fd2482756db6c083d2f3ef89fc762b01b",
    "sockets": [
     [
      0.0,
@@ -612,7 +612,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "c021a35d7cbd63fcf0396ff3c48d8e721080da3e211ab674e4e0ae13a1a512f2",
+   "lbm_sha256": "41bc653d6419ce8fd5d31257e82abfa15b6e23d218d7fd7d75088976d16029fd",
    "sockets": [
     [
      -30.0,
@@ -687,7 +687,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "0ca24ef0347f5c9fd8ae745e3ed7c28cbe31ced5987699881bc94312dd888222",
+   "lbm_sha256": "2792f3a3a21d33b1ea9373f27fe25dbd16835faccc2d64b72b7b2c1185e798a6",
    "sockets": [
     [
      0.0,
@@ -762,7 +762,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "dd126ecd5839d3bc6c5fc78037ed01aa5dc4e415ae57f072efd567db1ca44a92",
+   "lbm_sha256": "d804c73f221bf10941b0b9380a1944f8ddec1a84dea253afd459244886b1f109",
    "sockets": [
     [
      -10.0,
@@ -813,7 +813,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "0fff33f97d0510267d028c2c36f86a4a7d2a5d9223e5bc1868fe04e69d29feff",
+   "lbm_sha256": "a1db3f6894f9a06892535942883c653add2962f0bd8c2d81056c634557c87c09",
    "sockets": [
     [
      0.0,
@@ -1064,7 +1064,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "3e1851a056c78bb1d10ce92722f3762625201118f04949e03e6c505de3122867",
+   "lbm_sha256": "15ce215dd7cda08fd0628330b7e95616f82b85f5fcf24f0086f2e26c1155212a",
    "sockets": [
     [
      -10.0,
@@ -1281,7 +1281,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "810cf2160e317c641891fb0ee710a1d18f87c197c279ba71c2c527689835c7c2",
+   "lbm_sha256": "cd78684717834c8a6ca007d71726ae0279c5198aad6d360b4e8c4a9ed0bcff68",
    "sockets": [
     [
      0.0,
@@ -1736,7 +1736,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "d5de3165b50d1f80d2e6a42815f87002368392bf274284105482fa341ecf9703",
+   "lbm_sha256": "036ddea06cdec4a343cb9e2a3729f0cd1aa9736c8fd8e80ce053f94f40be14fe",
    "sockets": [
     [
      -30.0,
@@ -2209,7 +2209,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "252710e6d501c7089a5fa4836b0051a2b2bb11ddad80707074aa740503485cae",
+   "lbm_sha256": "e6e13b4763fd5cff506df74c22209f3c16add74d55af90c3a975ba826be097e8",
    "sockets": [
     [
      0.0,
@@ -2386,7 +2386,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "2e5e3618f0f42520a60ba2b97aaa667d1380aebf21d318c68ad32b3e08937f7b",
+   "lbm_sha256": "668ddfbd22fd8cbd2fa06111c589e139f8b7c53ad946df1c7985c37e7621e939",
    "sockets": [
     [
      0.0,
@@ -3443,7 +3443,7 @@
      21.0
     ]
    ],
-   "lbm_sha256": "c9d6490281fd886be3448d5dd4ab80cb476c5e6177e758e595ee4859b5b8bd36",
+   "lbm_sha256": "a25d59eddbe8b86782d8b93c525d22af4ebe26d4871b371c507fcd7c043c4cbc",
    "sockets": [
     [
      -10.0,
@@ -3502,7 +3502,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "fa2de0b7837709efc7463eba9d043d2c96613fbc486baee0d3acd9cce09f5435",
+   "lbm_sha256": "ffc92243aafe31823dd482e89ff9fb694c5248df2b7b131ae9dd04168ebebc7d",
    "sockets": [
     [
      -10.0,
@@ -3761,7 +3761,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "747bd4dfadb3a1c7bda5b46491cf0c7c184843b4f850693860d51b06a193d65a",
+   "lbm_sha256": "d0762a35c8cb6fb1f758f426eb026e82797ccf885ea464c67bff2bb21ecdecf6",
    "sockets": [
     [
      -10.0,
@@ -5230,7 +5230,7 @@
      18.996
     ]
    ],
-   "lbm_sha256": "93b4dc406dd40d53f8533b223abb727c9e6628982f672e39152743d084927ce8",
+   "lbm_sha256": "01f78dbb9ded0e219a9ef545b7b3ab7c0a749a6bfe2006d2efb7a6011470167a",
    "sockets": [
     [
      -10.0,
@@ -5585,7 +5585,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "025da8818ae7d46a2c80354a4e55c933e91c0f5e49660ab604dab5b28750fe5f",
+   "lbm_sha256": "610f09ae432c455c461b3ff644b67ecfec6345fb3ffcced01f3c289a18f14d8f",
    "sockets": [
     [
      -10.0,
@@ -5894,7 +5894,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "0aacb069066eb8ff5fe603549d8bfa6b128fb7329e84d933a0680050fdd5b363",
+   "lbm_sha256": "e301cbda119bdbda3e00740588a5840536853dc7790cfc6a01f8c69541cb6d15",
    "sockets": [
     [
      -10.0,
@@ -6543,7 +6543,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "898e5963637d859ab4161061a641a3a569b744d4f26a9e39181267c3a521e279",
+   "lbm_sha256": "517301c8a42e801b911540240150c1a2442730c1382a524c5c71331ce0540947",
    "sockets": [
     [
      -30.0,
@@ -10076,7 +10076,7 @@
      53.888
     ]
    ],
-   "lbm_sha256": "2d3845d9846c31ff63394504cae726236b513d776c84ced2ca5dbdabfd1e169e",
+   "lbm_sha256": "4d97dbf99e803b91ee1f9bd88d8e1912d03adb2c3a1cb7b077ec0e1858df9b7a",
    "sockets": [
     [
      -28.0,
@@ -10495,7 +10495,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "0627a2595290276fc580572fb7761aed0b21dac5e9819c4f0c737858991d55e7",
+   "lbm_sha256": "2d6a3ec774006ae55a1bc827cb7377476702bc2de12fb351e31457c26fed844d",
    "sockets": [
     [
      -10.0,
@@ -10866,7 +10866,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "780280c39eb1d5e361a7cac6cf150b2fd668e2d04319ba3a34d184a710874a4f",
+   "lbm_sha256": "56ef9414622c34044a4a0e2cc6c5e60a2efde136360c2503bdacb6756f99811e",
    "sockets": [
     [
      -10.0,
@@ -11043,7 +11043,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "12cc2361b5916f87e0b1be9e6d4f0ed274ca78ed14062606b2b2c5f9bd3897e9",
+   "lbm_sha256": "579f337b46a468e07737840a26b45a356214ef2af30fe15354f7580733e3df59",
    "sockets": [
     [
      0.0,
@@ -11198,7 +11198,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "3f8d607d2220eb031933799781505c60573a991245db1333036f3f2adef38037",
+   "lbm_sha256": "7a8c72c03b64cb8ee11db81596f0d51848d8deb9b12c0a34259638efc0e28c32",
    "sockets": [],
    "triangles": 622
   },
@@ -11592,7 +11592,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "3f49cdb9a20a9d217b01e0417d1c4b520e242ae268c9aa7bbe51615df122647a",
+   "lbm_sha256": "725e7305d508571e8aa6f0e5cbb1a323a829f1637a3af13521316d54e5caf6b7",
    "sockets": [
     [
      0.0,
@@ -12569,7 +12569,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "620528cc50ab4c79e965bff21c1de6c9d95765787924bf9d5657de1045da08be",
+   "lbm_sha256": "f8da17d911a4a6dff8df6a25b32d0683a6c588bc9a16dfd96c6db84bfaa3c54e",
    "sockets": [
     [
      -10.0,
@@ -12958,7 +12958,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e0c5ba60b77cc38ecf229508a31784c46a93a7f0f5679a569c3a275a2fdac072",
+   "lbm_sha256": "d868c9dc157e7a927d8e2ba6b224545bc4d8655536acec4bf835f5b509a10de1",
    "sockets": [
     [
      -30.0,
@@ -13371,7 +13371,7 @@
      19.0
     ]
    ],
-   "lbm_sha256": "bf2e872f95aa5cc2a18c812cffdfaaf0a26ad70afff29244f6cc987ccd538343",
+   "lbm_sha256": "44518e7de62cbf0416552dd0f37e797c54736bbcd320509cb27037beee4f8c0b",
    "sockets": [
     [
      -6.0,
@@ -18756,7 +18756,7 @@
      28.0
     ]
    ],
-   "lbm_sha256": "d5e578db52c66f89ed4c468f8aad6a503799107fd09e12aaa97c874bec3dbe2f",
+   "lbm_sha256": "bbadba0bc9ef916aaeb2b4e8e2078b94fd61a8bed4c467708ba969620c307020",
    "sockets": [
     [
      -14.0,
@@ -18901,7 +18901,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "abae56514cfe71516eb66b27e6713c53cbf33e9e45fd51cd65685322c3c8e68b",
+   "lbm_sha256": "843c0f3698d34a6497edf1a79b9226e93ca83757e67182acb5dc9386dd092d3e",
    "sockets": [
     [
      0.0,
@@ -19034,7 +19034,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "86e39b8850bb95f830219fad2596501f694f0198665fe61ede8120909957f7f0",
+   "lbm_sha256": "453efb700da1cf4ca6912bdf3977ef56cc10ba356f75cf66f0b9e7b51691e09c",
    "sockets": [
     [
      0.0,
@@ -19151,7 +19151,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "d7764f66c4b2bf40d9b0e6d543dd0f21b3d7f8d8cb72ba5481f44efac7068c72",
+   "lbm_sha256": "3005833696bc5fcb9f544079247235bb6f75e1a4bc39a520ebe543b851d685d4",
    "sockets": [
     [
      0.0,
@@ -19412,7 +19412,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "9bc5c0adbd3b7ad011089245d6acbe936ceb143758bb2a869f1e75df4809f4d3",
+   "lbm_sha256": "1f66f60a2e34dcdc13b730b389d254b3fa7dadfa0b4fbd013ce1c162d25334f3",
    "sockets": [
     [
      0.0,
@@ -19569,7 +19569,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e22abddf1e2fd3fc5fe57546ec369a9f80825dedf230c3ad7d0ee2ff77aae214",
+   "lbm_sha256": "affe5908296c546175b291b5e5fcca9f64ed826a86add8725a09b52ebb78c3c4",
    "sockets": [
     [
      0.0,
@@ -19626,7 +19626,7 @@
      4.0
     ]
    ],
-   "lbm_sha256": "60690dec6dcb1809b7177be7d5cdf933e962bb7083e4f89d2901b44c8bd27187",
+   "lbm_sha256": "86984460ac6660d050875ee950e2067aa9c47ffb8612055c6d6f71cfc50b6289",
    "sockets": [],
    "triangles": 64
   },
@@ -19824,7 +19824,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "8589c3041087725f8f4ff7a4d6de5fd678f88fa606a271d663faa0c37e108f3a",
+   "lbm_sha256": "3479d307773607166d2ddc4e54a71d6ebfe7908be4cd326b0191a225dfcf7d10",
    "sockets": [
     [
      -10.0,
@@ -19947,7 +19947,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "fa6b5db431c03bf2d19db80438e8be84e32eeb61d000a41fb7a249bbed00cd8b",
+   "lbm_sha256": "c0e8cff43f064cd3dc175d1fbe9750b4db9a57cfed4dc949f1dbfab11500bc6d",
    "sockets": [
     [
      -10.0,
@@ -20062,7 +20062,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "b1c3b8ff317faea2108cb793aeb0928fe99566325d346f9e5545ca85122172b9",
+   "lbm_sha256": "2e78d09fcca97614604efa2e8d231f9730fe7e3417002e2026f4c671cc112ab2",
    "sockets": [],
    "triangles": 434
   },
@@ -20260,7 +20260,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "44445f70df8df0b8554384d49bc0d4eacb58f9441b760554ae3e3e42acc3b1cd",
+   "lbm_sha256": "af0dc918bf5fb509e4a7c6be77b710725aac533ac4e4ae2c548fd474902d0bd1",
    "sockets": [
     [
      -30.0,
@@ -20369,7 +20369,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e965c6d417dc0cd8422abe398bc11b85883061b178463c1889acebcf069845c3",
+   "lbm_sha256": "4871bf8b9835b45c411902bc82a0aed88caaec365b16efd6502ac5d089293d1d",
    "sockets": [
     [
      -10.0,
@@ -21024,7 +21024,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "d7c6f3e3a5db59c227bdcb4c6666ec16dbd710178260c6b18d7cdfee2cbe225b",
+   "lbm_sha256": "01daea7ce1a4886a0e120dcd275d3065740773f8a4d983c5b8a23770fca50394",
    "sockets": [
     [
      -50.0,
@@ -21179,7 +21179,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "bc479e744a0f98007e49c79b280234ef3fabdad69542c6609e89ecfa1a1cdd62",
+   "lbm_sha256": "942c092012149a6b31f893ac8fe3b359106c04fc438d2922e66e72c832dc8824",
    "sockets": [
     [
      0.0,
@@ -21282,7 +21282,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "4bdf2cfe8e4b8135928c9d18cae82ac4ff8114407817a63c784e0e6b2cc2b76e",
+   "lbm_sha256": "3410193642fa9d69059d682bda1c2f2699843c367be056f338027300ace0353e",
    "sockets": [
     [
      -10.0,
@@ -22279,7 +22279,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "963335a003b91bb6ee60102bc47409984c5b788ff0eb2ca89dca7d4552b955e7",
+   "lbm_sha256": "74858c14dcc5c7e1883d2effd84a8667fce3573d2999c5dd856755fb403c6a32",
    "sockets": [
     [
      -50.0,
@@ -22680,7 +22680,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "7c0f284e6db8640a1e7b385016f1dda746bb0b789f4f70001a1c56ba0164c2aa",
+   "lbm_sha256": "9621586b5ee9f07906fa2f50dc2ad64cd78012fa7640a44dbbe6f0085a0b2d42",
    "sockets": [
     [
      -10.0,
@@ -22739,7 +22739,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "5e76dab26e445c212e7ff55db111ac3498ccd8a4df9d8af90f981e2fa2e0ff3e",
+   "lbm_sha256": "4fe5edb4634e66a2c0336a92cd22735de1e0667bfe6f83ef36ef1bd23bbe17d8",
    "sockets": [
     [
      0.0,
@@ -22800,7 +22800,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "55ad621da61104679e6324fd221fe79f7f6670624cf5f69a5cd70e0a071a80ac",
+   "lbm_sha256": "2469eef6e8c8bbecd2f3df23cae80ba2d1a36d14f4538fc1292071f64fa83376",
    "sockets": [
     [
      0.0,
@@ -22903,7 +22903,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "106ef4dcf9dd0531f75ea7b98efcb7dbce499c5cc7ef1c7442fb258741927763",
+   "lbm_sha256": "8f33b2d8c7b2b262533cf35843ab56307e0e9d790be12b58508cb7094907c5c1",
    "sockets": [
     [
      0.0,
@@ -22978,7 +22978,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "c93baca448bc605d4062d040b0ff0cba79eb6b4ceeff6cbdc5435cd960536a38",
+   "lbm_sha256": "05dd3c416d1d09a147f01354e7d8bd7601161bb06a2041b0bd9fb557ec60c499",
    "sockets": [
     [
      -10.0,
@@ -23113,7 +23113,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "4c9bd19a26988567854cdf0a2ef500cb3567640f535f06d576abe0c6b840cc99",
+   "lbm_sha256": "7fd6f6cd3f963c2c2edb97f448e02b291c37e6e1b8566dfb81395101588408a9",
    "sockets": [
     [
      -10.0,
@@ -23220,7 +23220,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "956b0c0a32d533632b305db61d3d99e1bb19bb6a7ef88673076d046583ad2f74",
+   "lbm_sha256": "ca4a77df7324b2cd4c433b163fa723438159e5ca8967ae064f46ed4a3a312f4b",
    "sockets": [
     [
      -20.0,
@@ -23415,7 +23415,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "a613a9a9bebf1e50d1df2dae29affc62a9d2603217ccf9380c74e4cb0647308f",
+   "lbm_sha256": "5bb1d41c6ef0e66b10b4c53b7c8c11d8bca512754a21db5a6c854a89986d5e2f",
    "sockets": [
     [
      -30.0,
@@ -23586,7 +23586,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "6b031f8eec64ed23c12b48601dc43b42e4e11ace4d792afd4a1e9c2c31ee4824",
+   "lbm_sha256": "1225ce0e5458af8c8ddc342f8ee6af90b691242fb1f08171ca13a20d5374c1a2",
    "sockets": [
     [
      -40.0,
@@ -23649,7 +23649,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e431d6b9f82c9542dd1459523cd2f2640a28a9b3f58ea430fd0a018623d0b6ad",
+   "lbm_sha256": "c1551478220d4b4473f816ce609aab509a3b89c8f4da12085ca351c358a8c493",
    "sockets": [
     [
      -10.0,
@@ -23834,7 +23834,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "fd1b2ec9b65427f891789616c25c16bba4eafca573ac0fd0e92a031fdc1dfee3",
+   "lbm_sha256": "5a2583cf8c19b60458cabcc87faad42122b0fb218f8fa629a52751a20a4c3b57",
    "sockets": [
     [
      -20.0,
@@ -24041,7 +24041,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "2a6c361b0b85b4c5ad4582786c7c9563d4271ad2d5a20c1dd1644b5f6b137a92",
+   "lbm_sha256": "21356ea24509855b479bf5509dc6d773612c031396c573a5ab84c41a61a8800d",
    "sockets": [
     [
      -30.0,
@@ -24382,7 +24382,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "6eee140dc66e294e38c75188edf10fd8eaff38b5c19243997b521cbfaf1ce345",
+   "lbm_sha256": "1362a1e935b55035e36ec59f26ded75404eb7d28d635d07e60c8aba10f62d607",
    "sockets": [
     [
      -60.0,
@@ -24607,7 +24607,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "be058d4bdb75d43deda10d4d5140b50b7687cf12024167abc44079f859dd2b9b",
+   "lbm_sha256": "de36c257d66e22b040762b669b8dc209836dbef3c3ca047053aa1db8a2fb1443",
    "sockets": [
     [
      -50.0,
@@ -24732,7 +24732,7 @@
      4.0
     ]
    ],
-   "lbm_sha256": "60690dec6dcb1809b7177be7d5cdf933e962bb7083e4f89d2901b44c8bd27187",
+   "lbm_sha256": "86984460ac6660d050875ee950e2067aa9c47ffb8612055c6d6f71cfc50b6289",
    "sockets": [],
    "triangles": 64
   },
@@ -24784,7 +24784,7 @@
      4.0
     ]
    ],
-   "lbm_sha256": "337a2e25b2c0a77d28053dd92168fcc9bdf87b288ab49b5af1b96e32c319a47a",
+   "lbm_sha256": "2fc56074994045124ce13eb1bedadc25e0306f47900dbd1261543acdead666b3",
    "sockets": [],
    "triangles": 64
   },
@@ -24874,7 +24874,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "fa9dafb5bd94ac883abac1ab61e5a255db18f23e7c5935e326e7c604c8f22ba4",
+   "lbm_sha256": "4e0e6e9077bfc072fcc7d171b81b01b5872f0bfbb18f2ab04be415e221a2835d",
    "sockets": [
     [
      0.0,
@@ -24973,7 +24973,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "174c5d12dd6839aadab974b59d2a4a680ab99c16a514065e9888dd6732f037a4",
+   "lbm_sha256": "ddf9968320fb221cad3ff036347ab0a0ac49f61f6104aa1084e40b1af3de3a40",
    "sockets": [
     [
      -10.0,
@@ -25140,7 +25140,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "aa46f77be997dfdbdcbb7c9718b63682405efe2f645c26c040df8e69ada41e06",
+   "lbm_sha256": "515896cc34221893331cde9523904650f19d6aa92471e3b065af60b0c21783e5",
    "sockets": [
     [
      -10.0,
@@ -25465,7 +25465,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "c96d5d5c5af51f0b0fede8601833e50db81bd469e568972218f84cdc5cfa3083",
+   "lbm_sha256": "56796fa1788b233dd984afd34ac8e5619466e3bb0e85c2bd41bc0469efc4df99",
    "sockets": [
     [
      -20.0,
@@ -25642,7 +25642,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "5f8d201132cecf5707da35dca41b75012c68f116bf292d3096010fdf79242aaf",
+   "lbm_sha256": "f64f55afbdd7549dc45d5e29960e0074e5d07349d47dea7674e34a64ca538ca4",
    "sockets": [
     [
      0.0,
@@ -25775,7 +25775,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "9c325f4ea4e13b49f8a0cca03ab58ae9ebc7d1bf247bba3edab364947640654c",
+   "lbm_sha256": "f4609180b048cd20e062038f9e797cadea5c213400350e86cde5296a8af3e065",
    "sockets": [
     [
      0.0,
@@ -25964,7 +25964,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "17432b886d9c3bec07f1fc494fc2e4121892e5d045a6516826d5df255de1afad",
+   "lbm_sha256": "c4747c178e95c2d8be5ba3548576bd945752a6eec81871dfdc1cd3c9921e68f5",
    "sockets": [
     [
      0.0,
@@ -26119,7 +26119,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "c2a8ffcaab229e9a303bd51a1cb781eb99e3a0c2430d91259cacbe9fa1bc80a5",
+   "lbm_sha256": "db9153cff4421cbbdfcd65b05e28627b8004492e33499a42de2f4df7a6c11e20",
    "sockets": [
     [
      -20.0,
@@ -26400,7 +26400,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "222bef6ed3690ae460cd0a150161784b44a1a0f93beb3bb513420e279fe01246",
+   "lbm_sha256": "34f1453daf103e671cf523f2357f926b0e8f367a35dc58282e9ab3880fc1e8b6",
    "sockets": [
     [
      0.0,
@@ -26689,7 +26689,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "2c41833e2a61655e681b20511ff9fc90ff7392be5054bdc38bdeaf44851ff027",
+   "lbm_sha256": "e11f0f2bcb4b7778110f0328a33e62b3d660d116087abed5384f0168bb94a38a",
    "sockets": [
     [
      -10.0,
@@ -27290,7 +27290,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "d743e6c2d1eb1286db5c5b946d086c51fbd23e883d3e5e81c7c056da4b3546f4",
+   "lbm_sha256": "dfea4137e320d2776b23e97543fbce28f4eaf36883546f3b1a1885bd89b75944",
    "sockets": [
     [
      -30.0,
@@ -28361,7 +28361,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "5b461ed8a20d86965a40df208ff47c20313dffcd80ff8d7419520559093ac8c4",
+   "lbm_sha256": "11e1b482c774879bc959d7078b84a5282a02b34ea46cb668a57732afc967af36",
    "sockets": [
     [
      -60.0,
@@ -28792,7 +28792,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e6c83ffe8e0c5086276e713c6595057366cca23a0e90220e068bc8dcb4cb6b5f",
+   "lbm_sha256": "fbb4f6ce63a388c46d6ecc39d73dd9863491d1b46efcd2931387cdab2b1eaf82",
    "sockets": [
     [
      -10.0,
@@ -29095,7 +29095,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "149bab1b4ac0eedeec710015d900cba367838bb89b39997443680142bff408eb",
+   "lbm_sha256": "016752f1c3f154adcf53ffb8f131a903678db76c8c37824df8ee599879a1bb3a",
    "sockets": [
     [
      -20.0,
@@ -29226,7 +29226,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e085f24148149e74ed2d9760a592a4a85a91584015df0b4cbd00656c9274afb8",
+   "lbm_sha256": "f85dc1ccf3786850610e0f452eb78a27f10a548b144cb719819b25a0ad765a14",
    "sockets": [],
    "triangles": 274
   },
@@ -29332,7 +29332,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "a7a9fb5faa5bb1e29d6e57ad811752a57a5331e70ce311251981ce84df1f721c",
+   "lbm_sha256": "ac22651438dea5831cbb3e4821d9d1e47bcb41abaf858ef77fb40c2c02fc3a01",
    "sockets": [
     [
      -10.0,
@@ -29475,7 +29475,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "a7b48ab4aae8a664c8dd7a069b2c66c36658732b0fe01293b008f33f59b65b45",
+   "lbm_sha256": "6cb9b2dae09fe12de7b18975f7a42b22b81a187c41c0f15a86c4fab5b782ee84",
    "sockets": [],
    "triangles": 370
   },
@@ -29749,7 +29749,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "5385e126fb83687e3d2fcf7b86b57cd00f9a3cc901c65f3e7aaa46f44f03b706",
+   "lbm_sha256": "a455947811d11c259b7d413993da533ad854ff2603d4454014f723f9d0015a89",
    "sockets": [
     [
      -20.0,
@@ -29850,7 +29850,7 @@
      10.0
     ]
    ],
-   "lbm_sha256": "4f9c47506fd2c7ff6aadbb0633ffaa3fd0509f603b5854c421f5b933e44803fa",
+   "lbm_sha256": "2f9cc7f7ebbb2fdfa9dcd0df0ed645d5aac9ba69a4ee9893f016bd33ed896dd3",
    "sockets": [
     [
      0.0,
@@ -30049,7 +30049,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "676a89b0664dc9a2958207c24c6d1cf3ebeff8e75d02bc330478b8c8d6dd7b02",
+   "lbm_sha256": "3a0be723a0fa23344a7312bdae948f64b23e101e049a55f40d96730b208c40c7",
    "sockets": [
     [
      -10.0,
@@ -30316,7 +30316,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "b044096d977a9975de62ca942475dca93ebdee271ed506927a8d585324cd23ec",
+   "lbm_sha256": "2884b856a26ae0fa7a3ed0e41d16fe17100a9d1d32207aad4fead2c248d1300c",
    "sockets": [
     [
      -20.0,
@@ -30755,7 +30755,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "1f9c8d9e9c9a573bf474640982a57c4e8c4e5f02d0dbc4a3b51e5d54571ab821",
+   "lbm_sha256": "a2305e814605ddf0b94391cd48226650cefa114bb82336a510a370c3e11359dc",
    "sockets": [
     [
      -30.0,
@@ -31140,7 +31140,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "118acfcc5a32170410e6f5149dc413e38b91a93daf6ae9c0c2badf584493f90a",
+   "lbm_sha256": "11970bf5a7100fb844c57a7dadd4a45f05f5647820fee794a045f24178c63737",
    "sockets": [
     [
      0.0,
@@ -31563,7 +31563,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "e45e62edbb6952f75826d7237b0343565923b7686bdb75878bac577012654c48",
+   "lbm_sha256": "ab8af7bdbde1e2d72aff5785aa6363494e8b65e89546abdbaafc0e7b464051e4",
    "sockets": [
     [
      -10.0,
@@ -31986,7 +31986,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "22f17fcb88e85b6db1f0ccf11f73d93b897dd7e74a0a5ae0d22906288784e790",
+   "lbm_sha256": "3683be5ea78c19e73bd2ae01833fb6b3cd9f694330c1ddf76547cf6bd5842c15",
    "sockets": [
     [
      -30.0,
@@ -32183,7 +32183,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "7a93d67eba9af39f3e6b3b9d6fd8e846146832d61e72dc609a9e51a13230f055",
+   "lbm_sha256": "389338e63000be935994a56999503789e9c09ae0557bdd8e75f5e21f202cbb5b",
    "sockets": [
     [
      -10.0,
@@ -32354,7 +32354,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "8d94118c37a51cb268465b206b8ba769c2516a60d58cd28b85c2449d07bfe66e",
+   "lbm_sha256": "c69e6d312ba4e30b798141d04b995b655f3348217ccd7abf685e5dd8e0bfb527",
    "sockets": [
     [
      -20.0,
@@ -32633,7 +32633,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "cf11574e867b0698a47b42c6e02679ad1cef48e04f24b922f0ef1d4abb12be0c",
+   "lbm_sha256": "6ec6b48194546ba0b98118f7195b1c7759a4f7f8217303b77efa18a7d87b0a9e",
    "sockets": [
     [
      -10.0,
@@ -32900,7 +32900,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "f0968ee461a8ed31193fa1f44be4c32567d458557ca4c255f757ef24fb813c92",
+   "lbm_sha256": "22e1203fe76825f838e5eea4717f2429484f9a127a59ee624f99da1c6d6f92aa",
    "sockets": [
     [
      -10.0,
@@ -33167,7 +33167,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "360227067c1aa55dee66ec6e5e9383f83d75a0d55d62a0233661003bb8d17a45",
+   "lbm_sha256": "fd2c8af8fb3d8d18b454dfd56246f6426e4037116717df7e7688a756eb998129",
    "sockets": [
     [
      -10.0,
@@ -33434,7 +33434,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "6927956759862e2444c87580c78b5f57a2209a35ea89fad439aaa999dad0dd4c",
+   "lbm_sha256": "7c8d18871e76376cc715a20c5a45dd0fa60475b92889bc833589ebf32bec8a4c",
    "sockets": [
     [
      -10.0,
@@ -33939,7 +33939,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "6f27a65104c552ad7245fee4c3c59988fd5d5aa9d9a03abf3c9a277bda55194a",
+   "lbm_sha256": "d5f1a880d2b45cc5bd04b0f916f85f96e5d7ea80af7723dac8c9af25eab71e3f",
    "sockets": [
     [
      -20.0,
@@ -34456,7 +34456,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "cd1e0be841abbada7e0565b6a289d2808e3bfc7a3de8d5f33e1cf3137806276b",
+   "lbm_sha256": "6a5b99f36c7088adf182d48b92942a94b5d3fb5e1359f72d3ac200fc703bf15c",
    "sockets": [
     [
      -20.0,
@@ -35347,7 +35347,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "821795ff6feda6f01d8d57c6f08f2538827c909413948412d1162f0610731c6b",
+   "lbm_sha256": "4302b4823cdb6491131cabc6d61cb14d63145caa81682e9da10a87e1c3a87c08",
    "sockets": [
     [
      -30.0,
@@ -36054,7 +36054,7 @@
      ]
     ]
    ],
-   "lbm_sha256": "1335c42c06c406a940a996becb59b68df5f7621ce750c8e1ea86c42acce5452a",
+   "lbm_sha256": "beb7bf0fe1c719fc40788e7b13ae4c224a05b5c54c40b5d7e84f4f16360a4e30",
    "sockets": [
     [
      -40.0,
