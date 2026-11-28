@@ -3409,6 +3409,60 @@ ours drew one flat white and black studs. The leather's cells are named in 34 of
 black_2x4 verdicts, though they called it a photograph. Then the dust film's tops (above) and the
 edges' line of light.
 
+## 5ai. The window a part mirrors, as a room, and the leather's grain (photoreal34, not kept)
+
+This round built 5ah's two "next" tells, the window room and the leather, and judged each against
+today's desktop Best (d33, pre261 with photoreal33) as 5ah did: Best's 256 samples, close-ups drawn
+21-23, the fixed solo judge at 3 trials x 4 rounds. Neither is kept: the room lost by far, the
+leather changed nothing the judge could see. Results, sheets and both levers as patches
+(`window_room34.patch`, `leather34.patch`) are in `bench/results/photoreal34-2026-11-28/`.
+
+Only the black 2x4 and the green plate stand on a table under Window light, and only the black 2x4
+on leather; red_slope_2x4 was drawn in every arm at every draw and came out byte for byte d33's, and
+no set stands on a table or in the window's light. So each lever was judged on the shots it changes.
+
+**The room** (`tools/photoreal/room_by_window.py`, kept as a bench tool). The loft hall is
+photographed from the middle of its room: its windows reach 23 degrees up, and a camera looking down
+at 40 degrees sees a level top mirror the plaster above them (0.27 times the panorama's mean). The
+tool draws the panorama again from a table by the window: the room taken as a box of the size its
+photograph shows, each way from the table met with the box's walls, the photograph read where that
+point of the wall is, and turned so the window stands behind the model, a little to its left, as
+StudioRender's turn puts it whatever the camera's heading. The sun through that window (800 against
+a sky of 50 to 100) is clipped to the sky's level, or it puts a hard glint on every satin stud top.
+How near the window is was set by the photographs: from 1.2 m the window lit the table less, the
+exposure rose to meet it, and every top mirrored the sky at white (the black 2x4's top 0.97, the
+green plate's 0.84; photographs 0.32 and 0.35); from 0.6 m the tops measure as the photographs do:
+
+| measure (draw 21) | photograph | d33 | the room at 0.6 m |
+| --- | --- | --- | --- |
+| black_2x4 top over its side | +7.42 stops | -1.22 | +5.41 |
+| black_2x4 top | 0.32 | 0.01 | 0.50, a gradient across it |
+| green_plate top over its side | +3.05 | -1.04 | +2.49 |
+| green_plate top | 0.35 | 0.14 | 0.36 |
+
+The judge (pool cu34, 72 verdicts an arm) called it a photograph far less: 0.203 against d33's 0.889,
+-0.686 (-0.824 .. -0.536). The black 2x4 was called a photograph in 0 of 36 verdicts (d33 36 of 36):
+its top and studs "chrome-like", "mirror-chrome", and its logos, now legible, "mirrored" in 33 (they
+read as the photograph's do: `sheets/logo_*`). The green plate fell from 36 to 12, its top grey under
+a sheen that covers the whole plate, where the photograph's sheen lies over part of a green top.
+Measured right and judged wrong: in the photograph the stud tops stay dark while the top around them
+shines, where ours mirror the window as brightly as the top does (why theirs stay dark is not
+measured here). A window mirrored at the photograph's strength is
+not, alone, what makes a black brick read as a photograph; d33's dark top already does.
+
+**The leather** (`table_height` and `table_paper`, kind 2). 5ah's cells had creases cut a cell's width
+in, thin dark lines round every cell (ridge p90/p50 25.7, the photograph's 5.5). Here the pebbles are
+1.6 mm across, fall softly into shallow creases, and the larger are parted again by finer creases at
+0.45 of the size; the colour darkens a little in the creases. Ridge 12.2. Judged alone (pool le34, the
+black 2x4 on the loft hall as before, 36 verdicts an arm): 0.880 against d33's 0.881, -0.001 (-0.016
+.. +0.016); both called a photograph 36 of 36, the floor named as a pattern in 17 verdicts against
+21. Free, and no gain the judge can show while d33's black 2x4 is called a photograph every time.
+
+**Not reached:** the edges' line of light and focus on the close-ups. The close-ups judged here are
+near their photographs already (d33 0.88 to 0.89 against the photographs' 0.96 to 0.97); the sets
+(0.63, 5ah) hold the room to grow, and in photoreal33's set verdicts the white seamless background,
+clean plastic and even light are named far more than edges (about one in five).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

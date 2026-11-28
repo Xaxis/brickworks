@@ -2405,7 +2405,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   section apart, lifted by its place in the stack and spread from the
   middle, over 0.6 s, and back; framed on what is drawn, and a click
   picks what is drawn under the pointer (`SectionsUi.pick_drawn` through
-  `EditVerbs.brick_at`), so a section is chosen where it is seen. A model of
+  `EditVerbs.brick_at`), so a section is chosen where it is seen: only while
+  the world draws what the view drew, so in Simple, which sets the view
+  aside and draws every part where it stands, a tap picks the part where it
+  stands, and back in Full the view and its picks are as they were
+  (`simplefix5_probe`: apart, then every other piece of Full's view a pick
+  reads). A model of
   600 parts or more is suggested on a worker, with Cancel, the window
   drawing meanwhile
   (`BrickWorld.set_drawn`: nothing of the model moves). On Orthanc 18.1 s
