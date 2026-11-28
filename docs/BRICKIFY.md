@@ -5318,7 +5318,173 @@ bench's colour measure does not count them. Not traced.
 - **The windscreen's white row,** the avocado's green parts on its stone,
   and the hang rule, each untried.
 
+### The twenty-first round: judged by the picture (2026-11-28)
+
+Rounds seventeen to twenty held a turned side to two proxies, off-colour
+and turned share, and on the milk truck, the toy car and Smithsonian-2 the
+two could not both hold. Both stand for what a person sees, so this round
+asks that: a blind judge shown the model beside two builds. Unit `snot21`,
+from the twentieth round's code and record (`a8b16668`). Scripts, logs and
+pictures are in `bench/results/snot21-2026-11-28`.
+
+**In short: NO-GO. The judge prefers the round's arm to `pre261`, 0.674
+(0.545 to 0.799) against the judge's own noise of 0.473 (0.384 to 0.567),
+and no model less beyond its interval; but the fox keeps two joints past
+their load, eight models show cells of their face `pre261` covers, and the
+milk truck still loses its right mirror.** Turned share falls from 49.8% to
+42.9% over the fourteen.
+
+#### The judge
+
+`src/dev/judge_views.gd` draws a build front and corner, and, given the
+model's own file and the build's frame, the model by the same camera in the
+same frame. `tools/bench/brickify_judge.py` shows Claude
+(Opus, on the subscription through Claude Code, the Read tool only) the
+model's two pictures and two builds', asking which is the better LEGO
+version of the model: its colours where they are, its shape, its
+smoothness. Each verdict is its own sample: fresh random names in a fresh
+folder, the builds' order drawn, four framings at 0.93 of the frame. Eight
+draws a model a run, two runs (seeds 1 and 2): 16 verdicts a model, 224
+over the fourteen. A label's score is the share of verdicts preferring it,
+with a bootstrap 95% interval over models and verdicts.
+
+`pre261` against itself (A/A, each side at its own framing) scores 0.473
+(0.384 to 0.567). By model the same pictures run from 0.188 (the toy car)
+to 0.688 (the milk truck and the objaverse scene): one model's share means
+little inside that. Where a model's two builds are byte for byte the same,
+the table says "one picture" and its share is the framing's noise.
+
+#### The arm
+
+On the twentieth round's change 1 (a side cut as one, `SNOT20_BUDGET` now
+off unless set to 1) with the hang rule on (`SNOT20_HANG` on unless 0):
+
+1. **A turned cube's slopes keep to one colour** (`one_colour_slopes`, off
+   with `SNOT21_SLOPES=any`). The windscreen's white row was a 3 x 2 curved
+   slope in a cube's shell laid white across dark green at plates 55 to
+   57: the slope was picked by the stud most of it covers. The truck's
+   dark green laid white goes from 19 cells (`pre261`, turned) and 48
+   (change 1) to 0. As `a1` (`c31d5a24`) the judge gave 0.612 (0.460 to
+   0.759) and the avocado 0 of 16: a green part on its stone in every
+   verdict.
+2. **A part across two colours takes the colour of its studs that show.**
+   The stitch joins a piece by laying two side-by-side parts again as one,
+   in the colour of most of its studs: on the avocado's stone a medium
+   nougat 1 x 1 tile and three green plates hidden behind it became one
+   green 1 x 4, its end on the stone. Refusing such a part where what shows
+   is two colours (`a2`) left the milk truck 31 parts nothing joined; laid
+   by the studs that show (`a3`, `265dfd8b`), the stone is brown and nougat
+   again and the avocado scores 12 of 16; over the fourteen 0.683 (0.540
+   to 0.808).
+3. **No turned cube a plate or two from another up its column**
+   (`_cube_seam`). With a cube refused for its colours, the next cut's cube
+   up the column stood a plate above the one below, and nothing holds a
+   plate between two turned cubes: left out, the green core showed through
+   the avocado's pale flesh as thin dark slivers, 50 cells in two-stud
+   pairs (x 6 to 7 at plate 39, x 10 to 11 at plates 79, 85 and 91), the
+   judge's second reason against it. A later cut's cube is refused there
+   and the side laid upright. `a4` (`a87f9c31`): those cells are covered,
+   the figure's two joints past load and Smithsonian-2's go, and the
+   judge's 0.674 is the round's score.
+
+#### Per model
+
+`a4` against `pre261` at 48 studs: parts, turned share, then off-colour
+under turned / upright parts in percent of the show face they cover, then
+the judge's share preferring `a4` (16 verdicts).
+
+| Model | `pre261` | `a4` | Judge |
+|---|---|---|---|
+| Armadillo | 53%, 0.00/0.00 | 0.994, 53%, 0.00/0.00 | 0.688 |
+| Avocado | 63%, 9.32/3.60 | 1.031, 46%, 0.23/3.30 | 0.875 |
+| Benchy | 39%, 0.00/0.00 | 0.998, 39%, 0.00/0.00 | 0.312 |
+| Bob | 66%, 4.88/3.95 | 1.015, 60%, 0.53/3.59 | 0.375 |
+| Character | 35%, 7.44/5.73 | 0.980, 29%, 0.00/5.56 | 1.000 |
+| Fox | 52%, 1.25/0.38 | 0.993, 51%, 0.21/0.37 | 0.750 |
+| Milk truck | 71%, 5.46/0.71 | 1.042, 55%, 0.56/0.50 | 0.625 |
+| Objaverse | 4%, 0.00/1.07 | 1.000, 4%, 0.00/1.07 | 0.500, one picture |
+| Smithsonian-1 | 45%, 10.13/3.03 | 1.010, 30%, 1.06/2.66 | 1.000 |
+| Smithsonian-2 | 38%, 4.38/0.78 | 0.956, 28%, 0.38/1.73 | 0.562 |
+| Spot | 68%, 4.15/3.69 | 1.017, 59%, 0.29/2.68 | 0.750 |
+| Stanford bunny | 64%, 0.00/0.00 | 0.997, 64%, 0.00/0.00 | 0.438 |
+| Toy car | 50%, 3.34/0.91 | 1.010, 36%, 0.17/0.43 | 1.000 |
+| Utah teapot | 49%, 0.00/1.87 | 1.002, 48%, 0.00/1.86 | 0.562 |
+| Fourteen | 49.8% | 42.9% | 0.674 (0.545 to 0.799) |
+
+Every model is laid in one piece, at least 98.2% in a part, at most 1.042
+times `pre261`'s parts. Turned parts are off-colour on at most 1.06% of
+what they cover (Smithsonian-1), from up to 10.13%. Where the judge
+prefers `pre261` it says the two are "almost the same", "close to a guess":
+the benchy's cabin arch, Bob's ring a little rougher. The rule against
+seams reaches the one-colour models too: the armadillo, the bunny and the
+teapot lay a few parts fewer.
+
+#### What is still wrong
+
+- **The fox's two joints past their load,** a 1 x 2 plate on a 1 x 4 and
+  a 1 x 4 brick on the plate, 114 g hung on two studs, 3.1 times (`pre261`
+  none). Beside them change 1 turns the column at x 2 to 3 from plate 28
+  where `pre261` turns it from 30; the twentieth round's change 2, over the
+  column plan (`c2b`), had none.
+- **The milk truck's right mirror.** No cube is refused there, so the hang
+  rule does not see it. The cab corner's cubes under the mirror (x 24 to
+  25, z 34 to 37), which `pre261` turns from plate 40 and the twentieth
+  round traced the mirror to, are turned from plates 44 and 46 by the
+  side's plan; the corner is laid upright below, a white cheese slope
+  takes x 24, z 39 at plate 41 where `pre261`'s black 1 x 4 reaches one
+  stud in, and the mirror's 5 parts are left out. The judge weighs the
+  missing mirror against the bright green `pre261` sets in the windscreen
+  and comes out 10 to 6 for the arm.
+- **Show face `pre261` covers,** on eight models (the outline bar), the
+  largest the avocado's skin edge, 27 cells at x 1, plates 29 to 53. Not
+  traced.
+
+#### As a builder
+
+`views/a4` beside `views/base`, front and corner of all fourteen, were
+looked at. **The milk truck's windscreen** is dark green throughout, no
+white row and no bright green patch; **its grille** keeps `pre261`'s white
+bars, dark openings, orange indicators and tan lamps; **its right mirror is
+gone**, the left one kept. **Bob's beak** is orange as `pre261`'s, its back
+edge a stud of yellow; the eye is kept. **The avocado's cut face**: the
+stone is brown and nougat with no green on it, the pale flesh whole, with
+no dark slivers across it. Where the judge prefers the arm 16 times of 16,
+it names in `pre261` dark patches on the figure's face, see-through holes
+in Smithsonian-1's chest and red stripes on the toy car's bonnet where the
+model has orange flames.
+
+#### What is left
+
+- **Joints a side's plan leaves.** A column turned at another cut than
+  `pre261`'s moves the core round it; where that hangs a part on two
+  studs, the column should keep `pre261`'s cut.
+- **A part that holds the model past a cube,** kept in its place whether
+  or not the cube is turned: the truck's mirror.
+- **Turned share.** Exact colour costs 6.9 points over the fourteen. The
+  judge prefers it anyway; turned share is now a fact to report, not a bar.
+
 ### Proof
+
+The twenty-first round's runs (`snot21`, 2026-11-28; NO-GO), all in
+`bench/results/snot21-2026-11-28`, from locked snapshots: `snot21v`
+(`a9f72e13`, the judge, which drew and judged every picture), `snot21a`
+(`c31d5a24`, `a1`), `snot21b` (`1cfd21f9`, `a2`), `snot21c` (`265dfd8b`,
+`a3`) and `snot21d` (`a87f9c31`, `a4`); `pre261` is the twentieth round's
+`quick/base` (`7333f35b`), linked:
+
+- **The fourteen at 48 studs** for each arm, each its own queued job
+  (`scripts/quick.sh`), measured by `scripts/measure.sh` into `judge/*/`
+  (`table4.txt`, `outline.txt`, `hold.txt`). Not laid at the same moment:
+  times are not judged.
+- **The renders,** `scripts/views_all.sh` and `scripts/view.sh`, one GPU
+  call each (`views/base` with the models' own pictures, `views/a1`,
+  `views/a3`, `views/a4`).
+- **The judge,** `scripts/judge_two.sh` (`judge/aa_both.txt`,
+  `judge/a1_both.txt`, `judge/a3_both.txt`, `judge/a4_both.txt`, every
+  verdict in `judge/*/judge_*.json`).
+- **The traces,** `quick/trace*` and `quick/watch*` (`SNOT20_TRACE`, and a
+  watch on one cell taken out before `a3`).
+- No probes or Python suite: a NO-GO round's code is not merged.
 
 The twentieth round's runs (`snot20`, 2026-11-28; NO-GO), all in
 `bench/results/snot20-2026-11-28`, from locked snapshots: `snot20a`
