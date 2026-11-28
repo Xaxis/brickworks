@@ -45,6 +45,9 @@ const HEAD_LINES := 400
 ## first time ([method open]'s first).
 const BACK_LEAD := "Pick up where you left off, or see what came back from other builders."
 const FIRST_LEAD := "Start a model of your own: New model, this week's quick build or one from the gallery. The example car is behind this."
+## The same, where Start in Simple is offered beside New model ([method open]'s
+## simple): what each of the two gives.
+const FIRST_LEAD_SIMPLE := "Start in Simple to drag big bricks from a tray with a finger, or New model for every part and tool. This week's quick build and the gallery are below; the example car is behind this."
 
 ## Who, and what everything is asked through (Main sets them).
 var shared: SharedModels
@@ -60,6 +63,11 @@ var open_saved: Callable = Callable()
 var copy: Callable = Callable()
 var came_wanted: Callable = Callable()
 var begin_new: Callable = Callable()
+## A new model in Simple's controls (Main: use_controls(&"simple"), then New),
+## offered where [method open] is told to (a touch screen in Full): a phone's
+## first visit had Simple only as a tile inside More (appwalk2, askaudit
+## 11-28 loading_in_390.png), where nobody new looks for it.
+var begin_simple: Callable = Callable()
 ## Shown to somebody with no model yet, welcomed (open's first).
 var welcoming: bool = false
 
@@ -96,6 +104,7 @@ var _title: Label
 var _lead: Label
 var _close: Button
 var _new: Button
+var _simple: Button
 var _continue: GridContainer
 var _continue_none: Label
 var _middle: GridContainer
@@ -205,6 +214,16 @@ func _ready() -> void:
 	_titles.add_child(_title)
 	_lead = _label(BACK_LEAD, 13, Look.GREYED, true)
 	_titles.add_child(_lead)
+	_simple = _button("Start in Simple", true)
+	_simple.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_simple.tooltip_text = "Big bricks and fingers: tray, colours, drag to build"
+	_simple.visible = false
+	_simple.pressed.connect(func() -> void:
+		_chose({"what": "simple"})
+		if begin_simple.is_valid():
+			begin_simple.call())
+	_head.add_child(_simple)
+	_name("start_simple", _simple)
 	_new = _button("New model", false)
 	_new.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_new.tooltip_text = "An empty baseplate"
@@ -301,7 +320,9 @@ func _ready() -> void:
 ## set_models lists them when they are here. [param first]: somebody with
 ## no model yet, where Build your first model has no room (Main
 ## ._maybe_start): welcomed, and New model the screen's strong button.
-func open(saved: Array, bringing: bool = false, first: bool = false) -> void:
+## [param simple]: Start in Simple offered before New model (a touch screen
+## in Full), the strong button for somebody welcomed.
+func open(saved: Array, bringing: bool = false, first: bool = false, simple: bool = false) -> void:
 	shown_ms = Time.get_ticks_msec()
 	filled_ms = -1
 	visible = true
@@ -311,9 +332,12 @@ func open(saved: Array, bringing: bool = false, first: bool = false) -> void:
 	_lay()
 	set_models(saved)
 	welcoming = first
+	var offer_simple: bool = simple and begin_simple.is_valid()
+	_simple.visible = offer_simple
 	_title.text = "Welcome to Brickworks" if first else "Welcome back"
-	_lead.text = FIRST_LEAD if first else BACK_LEAD
-	_face(_new, first)
+	_lead.text = (FIRST_LEAD_SIMPLE if offer_simple else FIRST_LEAD) if first else BACK_LEAD
+	_face(_simple, first)
+	_face(_new, first and not offer_simple)
 	var now: int = Time.get_ticks_msec()
 	if asked == "ok" and now - _asked_ms < FRESH_MS:
 		_fill_prompt()

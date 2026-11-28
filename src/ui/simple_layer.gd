@@ -135,6 +135,8 @@ var _copy: Button
 var _delete: Button
 var _bin: Button
 var _fit: Button
+var _save: Button
+var _share: Button
 var _pill: PanelContainer
 var _pill_words: Label
 var _group: int = 0
@@ -424,6 +426,16 @@ func _build() -> void:
 	_delete = _round("delete", "Delete", "delete", ACT)
 	_bin = _round("bin", "Drop here to delete", "delete", BIG + 12.0, BIN)
 	_fit = _round("fit", "Fit", "fit", 48.0)
+	# Save and Share in the model's top left, across from Fit: Simple's
+	# header has no File, no name and no toolbar, so a brick house built in
+	# Simple could be neither kept under a name nor shown to anyone without
+	# going back to Full (appwalk2, 2026-11-28, at 390, 820 and 1280).
+	# Save asks a new model's name as File, Save does; Share is the studio's
+	# own panel, over this layer.
+	_save = _worded("save", "Save", "save")
+	_share = _worded("share", "Share", "share")
+	_save.pressed.connect(_run.bind("save"))
+	_share.pressed.connect(_run.bind("share"))
 	_undo.pressed.connect(_run.bind("undo"))
 	_redo.pressed.connect(_run.bind("redo"))
 	_turn.pressed.connect(turn_selected)
@@ -485,6 +497,28 @@ func _round(what: String, said: String, icon: String, size: float, ground: Color
 	return button
 
 
+## A button over the model with its picture and its word, a fingertip tall,
+## as round at its ends as Fit is: Save and Share, which a newcomer looks
+## for by name. Its name for the page simple_[param what].
+func _worded(what: String, said: String, icon: String) -> Button:
+	var button: Button = _round(what, said, icon, 48.0)
+	button.text = said
+	button.tooltip_text = ""
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.add_theme_font_size_override("font_size", ceili(p(15)))
+	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.94))
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		var face: StyleBoxFlat = button.get_theme_stylebox(state) as StyleBoxFlat
+		if face != null:
+			face.content_margin_left = p(12)
+			face.content_margin_right = p(16)
+	button.custom_minimum_size = Vector2(p(48.0), p(48.0))
+	button.size = button.get_combined_minimum_size()
+	return button
+
+
 ## The round buttons and the line placed over the model's foot, Fit under
 ## the header, the notices under the header.
 func _lay_out() -> void:
@@ -516,6 +550,10 @@ func _lay_out() -> void:
 		right -= p(MARGIN)
 	_bin.position = Vector2(room.x - p(MARGIN + 4.0) - p(BIG + 12.0), foot - p(MARGIN + 4.0) - p(BIG + 12.0))
 	_fit.position = Vector2(room.x - p(12.0) - p(48.0), top + notices_slot.size.y + p(12.0))
+	_save.size = _save.get_combined_minimum_size()
+	_share.size = _share.get_combined_minimum_size()
+	_save.position = Vector2(p(12.0), _fit.position.y)
+	_share.position = Vector2(_save.position.x + _save.size.x + p(MARGIN), _fit.position.y)
 
 
 ## Where the header ends, in the window's units: the phone's top bar, or the
@@ -540,7 +578,7 @@ func model_room(window: Rect2) -> Rect2:
 ## Whether a point is on this layer's own controls or the header, for Main
 ## to leave alone.
 func covers(point: Vector2) -> bool:
-	for control: Control in [_foot, _undo, _redo, _turn, _copy, _delete, _fit, notices_slot]:
+	for control: Control in [_foot, _undo, _redo, _turn, _copy, _delete, _fit, _save, _share, notices_slot]:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(point):
 			return true
 	var phone: Control = app.get("_phone")
@@ -558,7 +596,7 @@ func covers(point: Vector2) -> bool:
 func _over_ui(point: Vector2) -> bool:
 	if _foot != null and _foot.get_global_rect().has_point(point):
 		return true
-	for control: Control in [_undo, _redo, _turn, _copy, _delete, _fit, _bin]:
+	for control: Control in [_undo, _redo, _turn, _copy, _delete, _fit, _bin, _save, _share]:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(point):
 			return false
 	return bool(app.call("_over_panel_at", point))
@@ -2229,6 +2267,8 @@ func _process(_delta: float) -> void:
 	if shell != null and _undo != null:
 		_undo.disabled = not shell.can("undo")
 		_redo.disabled = not shell.can("redo")
+		_save.disabled = not shell.can("save")
+		_share.disabled = not shell.can("share")
 	var picked: bool = builder != null and not builder.is_carrying() and not acts_on().is_empty()
 	for button: Button in [_turn, _copy, _delete]:
 		if button.visible != (picked and not _moving):
@@ -2280,7 +2320,7 @@ func controls_by_name() -> Dictionary:
 	if not is_visible_in_tree():
 		return {}
 	var out: Dictionary = {"simple_foot": _foot}
-	for button: Button in [_undo, _redo, _turn, _copy, _delete, _fit, _bin]:
+	for button: Button in [_undo, _redo, _turn, _copy, _delete, _fit, _bin, _save, _share]:
 		if button.is_visible_in_tree():
 			out[button.name] = button
 	for tab: Button in _tabs:
@@ -2328,4 +2368,4 @@ func shown_group() -> int:
 ## The round button named [param what] ("undo", "turn", "bin"...), for a check.
 func button(what: String) -> Button:
 	return {"undo": _undo, "redo": _redo, "turn": _turn, "copy": _copy, "delete": _delete,
-		"bin": _bin, "fit": _fit}.get(what)
+		"bin": _bin, "fit": _fit, "save": _save, "share": _share}.get(what)
