@@ -42,8 +42,29 @@ static func into_view(scroll: ScrollContainer, control: Control) -> void:
 		scroll.ensure_control_visible(control)
 
 
+## The meta a holder laid by hand at a width of its own, not by its anchors
+## nor its content, keeps that width in: a tablet's panel down the left
+## (PhoneShell.Sheet) is 400 of a 768 window. Read from the window, the
+## parts bin counted four tiles and five chips across it and held it 452
+## wide, and the model beside it lost 52 (greenreds2, the tablet check).
+const ACROSS := &"laid_across"
+
+
+## Where the holder [param c] is laid in starts across, and its width: the
+## nearest holder round it that has [constant ACROSS], else the window
+## from its left edge.
+static func frame(c: Control) -> Vector2:
+	var at: Control = c
+	while at != null:
+		if at.has_meta(ACROSS):
+			return Vector2(at.get_global_rect().position.x, float(at.get_meta(ACROSS)))
+		at = at.get_parent() as Control
+	return Vector2(0.0, c.get_viewport().get_visible_rect().size.x)
+
+
 ## The width the window leaves [param c]: the window's (or the width of what
-## its outermost container is pinned in), less each panel's and margin's
+## its outermost container is pinned in, or the width that container is
+## given by hand, [constant ACROSS]), less each panel's and margin's
 ## sides, each scroller's bar, and what each row it sits in gives the rest of
 ## that row. Never read off c's own width, nor its holders', which a box wider
 ## than its room holds wide with it. Nothing (0) out of a window: a phone's
@@ -55,7 +76,9 @@ static func offered(c: Control) -> float:
 	while chain[-1].get_parent() is Container:
 		chain.append(chain[-1].get_parent() as Control)
 	var across: float = c.get_viewport().get_visible_rect().size.x
-	if chain[-1].get_parent() is Control:
+	if chain[-1].has_meta(ACROSS):
+		across = minf(across, float(chain[-1].get_meta(ACROSS)))
+	elif chain[-1].get_parent() is Control:
 		across = minf(across, (chain[-1].get_parent() as Control).size.x)
 	for n: int in range(chain.size() - 1, 0, -1):
 		var holder: Control = chain[n]

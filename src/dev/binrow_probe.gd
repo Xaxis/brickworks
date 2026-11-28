@@ -572,6 +572,16 @@ func _by_finger() -> void:
 	await _tap(button.get_global_rect().get_center())
 	await create_timer(1.0).timeout
 	await _settle()
+	if _finger() == "tablet":
+		# As the tablet flow (tools/web/tablet_flow.mjs) sees it: the panel down
+		# the left, the model beside it. Its bin counted tiles across the window
+		# and held the panel 452 wide in a 768 window (greenreds2).
+		var panel: Control = (phone.call("controls_by_name") as Dictionary).get("phone_panel_parts")
+		var edge: Rect2 = panel.get_global_rect() if panel != null else Rect2()
+		var across: float = root.get_visible_rect().size.x
+		_check("%s, the parts panel down the left, the model beside it (%d to %d of %d)" % [tag,
+			roundi(edge.position.x), roundi(edge.end.x), roundi(across)], panel != null
+			and panel.is_visible_in_tree() and edge.position.x <= 1.0 and edge.end.x <= across * 0.56)
 	var out: Array[String] = _shelves_out_of_sight()
 	_say_chips()
 	_check("%s, the parts sheet opened by its button: the eight shelves in sight, unscrolled (%s)" % [

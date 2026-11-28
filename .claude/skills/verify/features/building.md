@@ -860,7 +860,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   desktop's toolbar alone (21 buttons) is wider than any tablet at 44 points a
   button, so the phone layout is laid out wide instead, with all its gestures
   and touch words: the sheets are panels between the bars, 400 points wide, the
-  parts down the left (kept open while building: a pick does not close it) and
+  parts down the left (kept open while building: a pick does not close it;
+  its bin counts tiles and chips across the panel's 400, `LaidOut.ACROSS` and
+  `LaidOut.frame`, not the window's 768, which held it 452 wide: greenreds2,
+  `binrow_tablet_probe` checks it under 56% of the window) and
   Colour, More and a held part's actions down the right; where both would leave
   the model under 300 points one puts the other away until it goes
   (`PhoneShell._make_room`, `Sheet.set_aside`). The model is framed in the room
