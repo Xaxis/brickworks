@@ -719,7 +719,12 @@ vec4 mote_at(vec3 q, vec3 ng, uint which, float amount, float sides) {
 	if (amount <= 0.0) {
 		return vec4(0.0);
 	}
-	float settles = mix(sides, 1.0, smoothstep(0.2, 0.85, ng.y)) * (1.0 - smoothstep(0.2, 0.5, -ng.y));
+	// Level either way up: surface_of's normal is the triangle's as it was
+	// wound, which faces out of the part or into it as the part's file has
+	// it: read only as up, the 6660's hood and the red slope had none. An
+	// underside is seldom seen in a product photograph, and a speck there
+	// is unlit.
+	float settles = mix(sides, 1.0, smoothstep(0.2, 0.85, abs(ng.y)));
 	q += MOTE_OFFSET;
 	vec3 cell = floor(q / MOTE_CELL);
 	ivec3 c = ivec3(cell) + ivec3(4096);
