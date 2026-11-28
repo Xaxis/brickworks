@@ -4982,7 +4982,128 @@ is the model's: on the head's side of the root (x 5 and 6, plates 40 to
 44) the model is yellow. `pre261` laid those cells orange, a turned row of
 the beak reaching onto the head. Every arm of this round lays them yellow.
 
+### The eighteenth round: turned parts in the model's own colours, at the parts they cost (2026-11-27)
+
+This round tries to keep the seventeenth round's colour without its parts.
+Unit `snot18`, from `pre261` at `5e8a9353`, with the seventeenth round's
+lanes (`64d0d55c`) and its colour measure (`260286e1`) brought over.
+Scripts, logs and pictures are in `bench/results/snot18-2026-11-28`.
+
+**In short: NO-GO. The colour holds; turned, parts and time do not.** The
+final (`0807ba7f`) keeps a cube whose studs each show two colours in a row
+studs up as a whole, and lays it with the core. On all fourteen at 48 studs,
+turned parts are off on 0.31% of the show face they cover, against 1.81%
+for upright parts. But turned falls from 49.8% to 46.1%, short of the 47%
+bar. The milk truck lays 1.076 times `pre261`'s parts and the avocado
+1.062, past the bar of 1.06. Laid at the same moment as `pre261`, the milk
+truck takes 1.54 times as long, past 1.5. On the figure, two parts hang on
+two studs at 6.9 times what those studs hold (`hold.py`), where `pre261`
+has none. Nearer than studs up falls with turned: the milk truck +30.3% to
++25.1%, the mean +8.0% to +7.3%. And the milk truck loses its right mirror.
+
+`brickify_probe`'s forty-stud bunny cap is now 1.06 times the parts the
+base build lays on it (2,411 on `pre261`, so at most 2,555), the bench's
+guardrail, where it was 1.15 times m137's. A round that changes what the
+base lays moves `BUNNY_BASE` with it (`28860fb6`). The final lays 2,459.
+
+#### What the lanes cost
+
+The seventeenth round left each two-colour lane of a turned cube upright and
+turned the rest. On the milk truck those lanes were 86 alone and 18 in runs
+of two or more. The core laid them, and the core around them, in 404 parts,
+149 of them 1 x 1 plates. A cube left half turned was refused for cover
+more often too: 136 against 39. Each step this round tried, on the milk
+truck, the avocado, Smithsonian-1 and the toy car:
+
+| Arm | Milk truck parts | Avocado | Smithsonian-1 | Toy car | Milk truck turned | Toy car turned | Colour |
+|---|---:|---:|---:|---:|---:|---:|---|
+| The seventeenth round's lanes (`64d0d55c`) | 1.155 | 1.096 | 1.034 | 1.015 | 59% | 29% | holds |
+| A lane split only where one stud shows two colours (`e1`) | 1.150 | 1.095 | 1.030 | 1.012 | 59% | 44% | holds |
+| A lone split lane widened to its whole cube (`e2`) | 1.127 | 1.085 | 1.025 | 1.003 | 57% | 28% | holds |
+| Both (`e12`) | 1.124 | 1.073 | 1.022 | 1.011 | 57% | 43% | holds |
+| The cube studs up whole, by stud: **the final** (`0807ba7f`) | 1.076 | 1.062 | 1.003 | 1.010 | 56% | 44% | holds |
+| No colour rule (`d2n`, as `pre261` with each place's colour) | 1.010 | | | | 71% | | the milk truck 5.13% turned, 0.75% upright |
+| One off cell a cube let go (`b1`) | 1.038 | 1.028 | | 0.998 | 65% | 47% | fails on the truck, avocado, fox and toy car |
+| Two off cells a cube let go (`b2`) | 1.020 | 1.017 | | 1.000 | 71% | 51% | fails on all four tried |
+
+Judging each stud alone, rather than the lane, is what the toy car wanted.
+Its lanes run out from the face across studs of two colours, each stud one
+colour, and every place of a shell already takes its own stud's colour, so
+the change falls between two plates on their sides. The lane test split
+those; the stud test turns them.
+
+A cube studs up costs fewer parts than a lane a stud wide: the core lays
+two studs across where it had one. It is still about two parts a cube
+dearer than a cube turned, and the milk truck turns 100 fewer cubes than
+`pre261`. The extra parts are 1 x 2 and 1 x 1 plates
+studs up (161 and 141 more than `pre261`), against 98 fewer side-stud
+bricks. Refusing every cube of two colours, the seventeenth round's `r1`,
+costs less (1.049) because it refuses whole bands of cubes, which the core
+lays in long plates, but turns only 42.6%.
+
+#### Why turned stops near 46%
+
+A row on its side is two and a half plates tall, and a cube is two rows.
+Inside a cube, a change of colour from one plate to the next sits on a row's
+bound only between its third plate and the one under it; anywhere else one
+part covers both colours. Cuts a few plates up (`cube_phases`, all five
+offsets) find a bound for a straight band of colour. A change that wanders
+up and down the face from stud to stud, as on the avocado's skin and the
+milk truck's painted panels, finds none. There the face stays studs up, or
+turns in the wrong colour. Letting even one cell a cube go fails the colour
+bar on four models: on the milk truck, one cell a cube puts 101 cells
+under turned parts in another colour, 2.07% of them, against 0.75% under
+upright parts.
+
+#### As a builder
+
+`views/` holds the final's milk truck and Bob, front and corner, to set
+beside `pre261`'s from the seventeenth round (`base1-*`, the same builds
+part for part). **The milk truck loses its right mirror.** The cube it hung
+from is refused for its colours, and laid studs up nothing holds the
+mirror's five parts, so the build leaves them out ("nothing could hold it
+up"). A dark green part stands at the windscreen's right edge where
+`pre261` has white. Small orange plates show over the tan lamps in the
+grille, where `pre261`'s turned parts covered the model's orange. On Bob,
+the root of the beak is yellow, as the model is there; the rest is as
+`pre261`'s.
+
+#### What is left
+
+- **Parts at a colour change.** A two-colour cube costs two parts studs up.
+  What the core lays there could be bonded into the wall behind it, or the
+  cube's rows laid as one turned plate over the stud's main colour with an
+  upright tile where the second colour shows. Neither was tried.
+- **The milk truck's time.** Its check mends six joints over three passes,
+  where `pre261` needs one pass: `check.mend` 32.4 s against 13.0 s, and
+  the stitch 29.2 s against 20.5 s, laid at the same moment.
+- **The figure's two parts on two studs,** 3623 on 3023b and 3023b on
+  3023b, which the check does not mend.
+- **A part hung from a turned cube.** Before a cube is refused for its
+  colours, what it holds up (the milk truck's mirror) needs another hold,
+  or the cube keeps turning.
+
 ### Proof
+
+The eighteenth round's runs (`snot18`, 2026-11-27; NO-GO), all in
+`bench/results/snot18-2026-11-28`, from locked snapshots: `snot18f` (the
+final, `0807ba7f`) and `snot18mb` (`pre261` at `5e8a9353` with the bench's
+colour measure, `1fa79ca2`). `pre261`'s Brickify lays the same parts as at
+`1391d3a0`, so `snot14`'s base arms still give the faces:
+
+- **The fourteen at 48 studs,** both snapshots laid at the same moment in
+  one queued job each (`scripts/pair.sh`, `quick/fb` and `quick/ff`), judged
+  by `scripts/judge.sh` (`snot14`'s bar, hold and means, and `snot17`'s
+  colour and table) into `judge/final/`. `scripts/cmp.py` sets each arm
+  beside `pre261`.
+- **The arms,** `quick/e1`, `e2`, `e12`, `a1`, `a2`, `b1`, `b2`, `d2n`,
+  `d2s`: toggles over `28860fb6`, in `patches/`.
+- **The probes,** from `snot18f`: the thirteen the seventeenth round ran
+  and `brickify_ui_probe`, all with 0 FAIL (`probes/`). `bunny40.gd` laid
+  the probe's bunny alone (`bunny40/`).
+- **The renders,** `scripts/view.sh`, one GPU call each (`views/`).
+- **The static checks and the Python suite** on the final (`logs/`): 2,409
+  passed, 0 failed.
 
 The seventeenth round's runs (`snot17`, 2026-11-27; held), all in
 `bench/results/snot17-2026-11-27`, from a locked snapshot of each step.
