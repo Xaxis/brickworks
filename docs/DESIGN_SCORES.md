@@ -8602,6 +8602,106 @@ through a block). A tool that builds a named form would serve both, e.g. a
 column row with gaps, an arch, or a ring that widens. Results:
 `bench/results/design46-2026-11-27/` (FINDINGS.txt, pictures/).
 
+### A named form laid from a few numbers (2026-11-27, design47, `410d01e9c`, NO-GO)
+
+**Why.** design46's buildings said their forms and did not build them. The
+Lincoln Memorial's colonnade came out as a solid wall, and the Arc de Triomphe's
+arch as a flat block. Words that ask for a form do not build it, and counting a
+form out part by part is where it goes wrong.
+
+**The change** (on pre261 `65ad6b61a`, branch design47, not merged). Nothing in
+it names a subject or a set.
+- One tool, `lay_form` (src/ai/forms.gd), in the designer's tools and the MCP.
+  It lays a named form from a few numbers:
+  - `row`: N parts, `high` tall and `apart` studs apart along x or z, with a
+    `top` part on each.
+  - `arch`: a running-bond wall with a real arch part over each opening.
+  - `ring`: a drum from `radius` to `top_radius` over its courses, each course
+    over the one below.
+- It lays through `edit_model`'s own add, so every part is checked as any
+  placement is. A form laid into parts, or in the air, is refused whole.
+- Every number is checked before the first part goes down. A field sent as null
+  counts as absent.
+- The call is one undo step, and the answer lists the parts by number.
+- The method's step 3 and the guide say when to reach for it: for a form that
+  repeats or turns round, rather than packing it solid or counting it out by
+  hand.
+- `lay_form_probe` makes 41 checks with 0 FAIL. It covers:
+  - the three forms, one undo step each;
+  - the session's undo and the person's undo, each exact;
+  - the refusals;
+  - the tool served in tools/list and in mcp_tools.json.
+
+**The bench.** design46's 24 subjects (12 Technic, 12 System), each fresh to both
+arms. One design per subject per arm, via the relay, `--instructions none`, held
+out, 45 minutes. pair47.py put each pair to the pairwise judge with the set's
+views as references: both orders, 4 verdicts each way. All 24 were judged: 192
+verdicts.
+
+| lever minus base, all 24 | share (95%) | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall, all 24 | 43% (25-60) | -103 | (-276, +137) | no |
+| likeness, all 24 | 45% (26-64) | -61 | (-257, +165) | no |
+| overall, Technic 12 | 36% (15-59) | -181 | (-380, +84) | no |
+| overall, System 12 | 49% (23-75) | -25 | (-268, +217) | no |
+| overall, buildings 6 | 48% (12-83) | -50 | (-329, +259) | no |
+
+- **Per subject.** 9 subjects went to the lever (75% or more) and 12 to the
+  base (25% or less); 3 were split. No dimension of either half moved beyond its
+  interval.
+- **Reach.** Every lever session heard step 3 (24 of 24), and 8 read the guide's
+  paragraph. Only 2 called `lay_form`:
+  - The Arc de Triomphe (21036-1) laid 4 arched walls, 148 parts, each checked
+    and placed.
+  - The Guggenheim (21004-1) laid one ring into its own parts. It was refused
+    and not tried again.
+- **The Lincoln Memorial** (21022-1) spaced its 7 columns with `submit_design`'s
+  own patterns and lost 0 of 8 anyway.
+- **What the judge read.** The forms laid did not carry the subject.
+  - 21036-1 went 0 of 8. The judge's reasons named blank dark-tan squares and
+    stray pieces, not the arches.
+  - 21004-1 went 88% to the lever, but its one ring was refused, so the win
+    was not the tool's.
+  - None of the other 22 subjects called the tool, so their swings are which
+    session built the better model, as in design45 and design46.
+- **The judge.** 21022-1 was asked 4 times, 32 verdicts, on the same pictures
+  (see the next point): 0 of 8 to the lever every time.
+- **The box.**
+  - The GPU had one slot. With 15 sessions at once, their pictures starved each
+    other, so 5 ran at a time.
+  - Even then, 41 of 48 designs gave up waiting for pictures at least once
+    (lever 20, base 21), so the designer often worked from text outlines.
+  - From 23:25Z, a design's views were drawn on lavapipe once its session
+    ended, so the slot started its next session at once. Drawn both ways, the
+    two drawings are the same picture: a mean difference of 0.01-0.03 of 255,
+    and no pixel off by more than 16.
+- **Pictures looked at.**
+  - Best, 42107-1 (8 of 8): the lever's Panigale has a printed V4 R panel, dark
+    detail and a name plate; the base's is a red block on wheels.
+  - Worst, 7634-1 (0 of 8): the lever built the set's red tractor in lime.
+    Neither turns on `lay_form`.
+- **Leaks and limits.** Leaks 0 of 48 and limits 0 of 48. Two sessions searched
+  the library for their own set by its number and found nothing, because it
+  was held out.
+- **Models.** Every design ends with a model, 48 of 48.
+  - The lever's first 42107-1 timed out while its end save was still waiting on
+    pictures the GPU never drew. That was the box's fault, so it was run again
+    once.
+  - The lever's first 40195-1 got no throwaway account ("could not reach its
+    database") and was run again once.
+
+**Verdict.** NO-GO. Overall -103 over 24 subjects, inside its interval and
+leaning the wrong way. The tool does what it says, but 2 of 24 sessions reached
+for it, and the form one of them laid was not what lost or won its pair.
+
+**Next.** A tool a session does not call moves no verdict. Before another form
+tool or more wording, read why a session that names a colonnade, an arch or a
+drum lays it by hand: the 22 transcripts that never called the tool say what
+the session reached for instead. Then bench on a box whose GPU can draw the
+designer's pictures (one slot is not enough for 5 sessions). Results:
+`bench/results/design47-2026-11-27/` (FINDINGS.txt, pictures/,
+pair47_score.txt).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
