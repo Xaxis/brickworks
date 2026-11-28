@@ -4838,7 +4838,172 @@ was tried.
 
 ![The milk truck at 48 studs from the front: pre261 (left), the left mirror dark grey and black, the grille black under a white bar; snot16 (right), the left mirror dark green, a white slab and a light grey slope in the grille](brickify/unit6-sixteenth-truck-front.png)
 
+### The seventeenth round: turned parts in the model's own colours, held for parts (2026-11-27)
+
+This round counts, model by model, how much of the show face a build lays
+in another colour than the model's, and keeps a turned part off a face of
+two colours. Unit `snot17`, from `pre261` at `1391d3a0` with the
+sixteenth round's fringe (`snot16`, `468b20c7..d98d360e`) brought over.
+Scripts, logs and pictures are in `bench/results/snot17-2026-11-27`.
+
+**In short: NO-GO. The colour is right, but two bars are missed.** On
+`pre261`, turned parts lay another colour on 3.60% of the show face they
+cover, against 1.84% for upright parts; the milk truck is 5.5% against
+0.7%. The lead's bar was that turned parts be no worse than upright ones
+on any model, since a wrong colour shows at a glance and a stud facing up
+does not. The final (`64d0d55c`) meets that bar on all fourteen at 48
+studs: 0.24% under turned parts against 1.68% under upright ones. The milk
+truck, the figure, the toy car and Smithsonian-2 have none under turned
+parts. Turned falls from 49.8% to 44.8%. Every model is one piece, with
+no joint past its load and at least 97.4% of it in a part. But the final
+lays 1.155 times `pre261`'s parts on the milk truck and 1.096 times on the
+avocado, past the bar of 1.06. `brickify_probe`'s forty-stud bunny lays
+2,466 parts against its cap of 2,464. The probes and the renders of the
+final were not run inside the round's bound.
+
+#### The colour bar
+
+`brickify_bench.gd` now measures colour (`_colour_off`). A cell of the
+model's show face is one open to the air beside it, over it, or under it
+off the ground. Of the parts whose box holds the cell's middle, the one
+reaching nearest the face the cell opens on shows it. The cell is off
+where that part's colour is not the model's there. The first version took
+the nearest middle instead. A turned plate with a tile on its studs has
+both boxes holding the cell, and the plate's middle was often the nearer
+one along the row, so the bar counted the hidden plate's colour. That
+fix (`260286e1`) moved `pre261`'s turned share off from 3.80% to 3.60%.
+`table.py` sets the turned and upright shares beside `pre261`'s.
+
+| At 48 studs | `pre261` off, turned | Off, upright | Turned | Final off, turned | Off, upright | Turned |
+|---|---:|---:|---:|---:|---:|---:|
+| The milk truck | 5.46% | 0.71% | 71% | 0.00% | 0.78% | 59% |
+| Smithsonian-1 | 10.13% | 3.03% | 45% | 0.41% | 2.78% | 30% |
+| The avocado | 9.32% | 3.60% | 63% | 0.58% | 2.55% | 51% |
+| The figure | 7.44% | 5.73% | 35% | 0.00% | 5.47% | 30% |
+| Bob | 4.88% | 3.95% | 66% | 1.80% | 3.85% | 64% |
+| Smithsonian-2 | 4.38% | 0.78% | 38% | 0.00% | 1.60% | 34% |
+| Spot | 4.15% | 3.69% | 68% | 0.33% | 2.70% | 62% |
+| The toy car | 3.34% | 0.91% | 50% | 0.00% | 0.43% | 29% |
+| The fox | 1.25% | 0.38% | 52% | 0.21% | 0.38% | 52% |
+| The teapot | 0.00% | 1.87% | 49% | 0.00% | 1.88% | 51% |
+| Objaverse | (none turned) | 1.07% | 4% | (none turned) | 1.07% | 4% |
+| The armadillo, 3DBenchy, the bunny | 0.00% | 0.00% | 53, 39, 64% | 0.00% | 0.00% | 55, 40, 66% |
+| Mean of the fourteen | 3.60% | 1.84% | 49.8% | 0.24% | 1.68% | 44.8% |
+
+Over the whole show face the milk truck goes from 3.25% to 0.43%, the
+avocado from 6.97% to 1.61%, and Smithsonian-1 from 5.01% to 2.27%.
+Smithsonian-2 is the one model a cell worse, 26 to 27 (1.32% to 1.37%):
+its lanes stood back up lay orange plates over its black and white, as
+upright parts do there on `pre261`.
+
+Nearly all of what `pre261` lays off lies in the turned cubes' own
+shells, laid by the rounds before this one. A sliver past a turned cube
+(the twelfth round) adds two to five cells, on Bob, Spot and
+Smithsonian-1. Wings, faces and every other turned part add none.
+
+#### Where a turned part's colour came from
+
+There were three causes. The final fixes all three:
+
+- **A row laid over a change of colour.** A row on its side is a stud
+  along by two and a half plates, all one colour, so where the face has
+  two colours in that span, a part covers one with the other. This was
+  most of it. Each lane of a cube whose face shows a second colour in
+  either of its rows, even one cell, now stays studs up: both rows, so no
+  half plate is left between a turned row and stacked plates, and with no
+  side-stud brick behind it (`Plan._lane_mixed`, found in `_anchored`
+  before the side studs are placed). The cube's other lanes still turn.
+- **The middle of its row.** A shell's plan (`lay_shell`) took each
+  place's colour at the middle of its row: a point inside the model
+  where its face is ragged, so it got the colour of whichever face is
+  nearest that, often a top's for a side's. Each place now counts the
+  cells open to the air in the stud it stands in, on the plates its row
+  covers, and takes the colour most of them are (`Plan._open_colours`).
+- **A part nobody makes in that colour.** Brickify lays the largest part
+  a colour fills, then changes any part the LEGO Group makes in no such
+  colour to the nearest colour it is made in (`made_colours`). On Spot a
+  2 x 6 plate across a light nougat face came out tan. A turned side's own
+  plan now lays each colour only in the plates and bricks made in it
+  (`Plan.made_only`), as a layer in glass already did, with a 1 x 1
+  always among them.
+
+| The fourteen at 48 studs | Off, turned | Off, upright | Turned | Parts, most against `pre261` | Bunny's parts |
+|---|---:|---:|---:|---:|---:|
+| `pre261` | 3.60% | 1.84% | 49.8% | 1.000 | 2,411 |
+| Split, one cell let go (`5a80a8e8`) | 2.64% | 1.75% | 50.6% | 1.019 | 2,464 |
+| Split, none let go: the final (`64d0d55c`) | 0.24% | 1.68% | 44.8% | 1.155 (the milk truck) | 2,466 |
+| Each two-colour cube refused whole (`ef9c97ce`), measured the first way | 0.10% | 1.75% | 42.6% | 1.049 | 2,470 |
+
+Measured the first way, `pre261` reads 3.80% and 1.84%.
+
+#### Tried and dropped
+
+- **Each two-colour cube refused whole** (`ef9c97ce`, `quick/r1`). It
+  meets the colour bar on all fourteen, with parts at most 1.049 times
+  `pre261`'s. But turned falls to 42.6% (the milk truck 71% to 52%, the
+  toy car 50% to 27%), and the bunny lays 2,470 parts. The split wins
+  back 2.2 points of turned overall, and the milk truck's turned share
+  goes from 52% to 59%.
+- **The split, one cell let go** (`5a80a8e8`, `quick/s2b`). On the milk
+  truck, turned parts were still off on 4.42% of their face against 0.73%
+  upright. Across a side, most lanes with a cell of another colour have
+  only that one cell.
+- **The split, where a side stud holds** (`9fb316f8`, `quick/s1`). Every
+  lane of a cube's shell has a side-stud brick behind its first row, so
+  this split no lane, and the colour stayed where it was.
+- **A fringe only by its colours** (`36e32589`, `quick/c1a`, `quick/c1b`)
+  **and the fringe's rule with each place's colour** (`5f63d4de`,
+  `quick/c4`): 2.60% to 2.37% of the whole show face. Only the fringes
+  came right; the shells' rows took colours as before.
+- **A row over two colours in the colour most of its lane is**
+  (`8d2a8526`, `quick/c2`). Counted along the whole lane, out from its
+  inmost stud, the tops and inner faces it passed outvoted the face the
+  part stands on: Spot went to 4.24%.
+
+#### What holds it
+
+- **Parts.** A split lane is a column one stud wide, standing between
+  turned lanes, and the core lays it in narrow plates: the milk truck
+  lays 4,474 parts against `pre261`'s 3,875, and the avocado 4,709. Two
+  split lanes side by side across a cube, and the core can lay them as
+  one, as it does a refused cube.
+- **The forty-stud bunny's cap,** 1.15 times m137's parts, set when
+  m137's turned sides were the first. The bunny is white with a few cells
+  of black and pink, and the final lays 2,466 parts, two over. The lead
+  keeps the cap.
+
+#### As a builder: Bob's beak
+
+The final's renders were not drawn: the GPU's queue was longer than the
+round's bound. `views/` holds `pre261` (`base1-*`) and the fringe rule
+with each place's colour (`c4-*`), front and corner, for seven models. On
+Bob, the yellow at the root of the beak, which the sixteenth round named,
+is the model's: on the head's side of the root (x 5 and 6, plates 40 to
+44) the model is yellow. `pre261` laid those cells orange, a turned row of
+the beak reaching onto the head. Every arm of this round lays them yellow.
+
 ### Proof
+
+The seventeenth round's runs (`snot17`, 2026-11-27; held), all in
+`bench/results/snot17-2026-11-27`, from a locked snapshot of each step.
+`pre261` is `1391d3a0` with the bench's colour measure: `snot17mb`
+(`d0141816` with `260286e1`'s corrected measure) for the final's table, and
+`snot17base` (`d0141816`, the first measure) for the arms before it.
+`snot14`'s base arms give the faces, with the same Brickify code:
+
+- **The colour bar:** `table.py` (turned and upright shares, and turned)
+  and `colour.py` on `quick.sh`'s runs, in `judge/*/table.txt` and
+  `judge/*/colour.txt`; `who.py` names the parts over a cell.
+- **Each step:** `quick/mb` (`pre261`, the corrected measure), `s3` (the
+  final, snapshot `snot17s3`, the same tree as `64d0d55c` but for
+  comments), `s2b`, `s1`, `r1`, `c4`, `c2`, `c1a` and `c1b`, `alla` and
+  `allb`, and `f16`. Each is judged by `judge.sh`: `snot14`'s bar, hold
+  and means, and the colour bar (`judge/*/`).
+- **The probes the sixteenth round ran,** from `snot17c4` (the fringe rule
+  with each place's colour): twelve with 0 FAIL, and `brickify_probe`
+  with 1, the bunny's cap (`probes1/`). They were not run on the final.
+  `bunny40.gd` laid the probe's bunny alone in each snapshot (`bunny40/`).
+- **The static checks and the Python suite** on the final (`statics3/`).
 
 The sixteenth round's runs (`snot16`, 2026-11-27), all in
 `bench/results/snot16-2026-11-27`, from the locked snapshot `snot16f`
@@ -5127,6 +5292,25 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the seventeenth round (2026-11-27, held, so `pre261`'s figures stand):
+
+- **Turned parts in another colour: 3.60% of the face they cover, against
+  1.84% for upright parts** (the milk truck 5.5% against 0.7%). The held
+  `snot17` (`64d0d55c`) brings turned parts to 0.24%, below upright parts
+  on every model, by leaving each lane with a second colour at its face
+  studs up. Turned goes from 49.8% to 44.8%. It misses on parts: a split
+  lane is a column one stud wide, laid in narrow plates (the milk truck
+  1.155 times `pre261`'s parts, the forty-stud bunny two over its cap).
+  The next step is to lay the split lanes of a cube together with the
+  core around them: two split lanes side by side as one, as a refused
+  cube is laid, and a lone split lane bonded into the core behind it.
+  Then judge the truck front and Bob's beak on renders.
+- **The lead looked at `5f63d4de`'s truck front** (the round's first
+  candidate, 2.37% off by the old measure): its left mirror is still the
+  cab's dark green where `pre261` lays it grey and black. A colour share
+  that falls is not enough; the renders of every touched model are judged
+  before a GO.
 
 After the sixteenth round (2026-11-27, held, so `pre261`'s figures stand):
 
