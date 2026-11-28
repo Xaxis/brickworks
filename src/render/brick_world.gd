@@ -108,6 +108,38 @@ class Brick extends RefCounted:
 		transform = at
 
 
+## What one maker changed in the model with no step of its own, part by part,
+## while a run or a call of theirs is open (ClaudeStep.mark): each part it put
+## down, took off, moved or painted, by number, as it stood before the first
+## of those changes. Noted here, at the one door every change to the model
+## goes through, and only as the maker the code making the change names
+## (Builder.by): never anything else that changed while it was open. Measured
+## instead as the model's difference over the time a call worked, a chat's
+## review_model took 916 parts the person's own panel design laid meanwhile
+## into its steps, and the chat's undo took them (savereview5 F1).
+class Ledger extends RefCounted:
+	## Whose changes it holds (Builder.BY): "" the person's.
+	var by: String = ""
+	## The model's scenery (ModelStore.scenery): a floor's plate is no part.
+	var scenery: Dictionary = {}
+	## Part number -> [part, colour, transform, group, unit, step] as it stood
+	## before its first change here, or null for one put down here.
+	var was: Dictionary = {}
+	## The world was cleared since it opened ([method BrickWorld.clear]): what
+	## it held went with that model, and it holds what was changed since.
+	var begun_again: bool = false
+
+	## The parts put down here that still stand in [param world], in the order
+	## they were laid: a piece's own parts (FeaturePass.lay), never one laid by
+	## someone else while it went down.
+	func laid(world: BrickWorld) -> Array[int]:
+		var out: Array[int] = []
+		for brick_id: int in was:
+			if was[brick_id] == null and world.get_brick(brick_id) != null:
+				out.append(brick_id)
+		return out
+
+
 ## A MultiMesh and the bricks currently drawn by it.
 class Batch extends RefCounted:
 	var instance: MultiMeshInstance3D
@@ -500,6 +532,8 @@ func put_from_hand(brick_id: int, to: Transform3D) -> bool:
 	# with the part in its batch (StepsBar._on_reveal_ended).
 	if not _reveal_order.is_empty():
 		_stop_reveal()
+	if not (_ledgers.is_empty() and _at_work.is_empty()) and _bricks[brick_id].transform != to:
+		_ledger_note(brick_id)
 	_in_hand.erase(brick_id)
 	var brick: Brick = _bricks[brick_id]
 	brick.in_hand = false
@@ -619,6 +653,89 @@ func key_of(brick_id: int) -> String:
 	return "%d:%d" % [_generation, brick_id]
 
 
+## The ledgers open now ([class Ledger]): as a rule none, and then a change
+## costs nothing more than it did.
+var _ledgers: Array[Ledger] = []
+
+
+## A ledger of what [param by] changes from now with no step of its own,
+## until [method close_ledger] (ClaudeStep.mark).
+func open_ledger(by: String, scenery: Dictionary) -> Ledger:
+	var ledger := Ledger.new()
+	ledger.by = by
+	ledger.scenery = scenery
+	_ledgers.append(ledger)
+	return ledger
+
+
+func close_ledger(ledger: Ledger) -> void:
+	_ledgers.erase(ledger)
+
+
+func ledger_open(ledger: Ledger) -> bool:
+	return ledger != null and _ledgers.has(ledger)
+
+
+## The makers whose run or call is at work now (an assistant's run, a
+## session's call that keeps a step), each by how many: [method at_work].
+var _at_work: Dictionary = {}
+## Changes named as a maker at work with no ledger of theirs open: each in no
+## step, so no undo takes it back. Counted for the probes, which fail on any.
+var in_no_step: int = 0
+## Said out loud (push_error): off only for the probe that makes one on
+## purpose to see it counted.
+var say_in_no_step: bool = true
+var _said_in_no_step: Dictionary = {}
+
+
+## A run or a call whose code names its changes as [param by]'s at work
+## ([param working]) or done. It names them so from the ledger its mark opened,
+## the one source of whose it is, so a ledger of theirs is open all the while;
+## a change named as theirs with none is in no step ([method _ledger_note]).
+## An Assistant run read its maker after a wait, got "" with the ledger its
+## chat's, and laid a whole design in no step (savereview6 F1).
+func at_work(by: String, working: bool) -> void:
+	var count: int = int(_at_work.get(by, 0)) + (1 if working else -1)
+	if count > 0:
+		_at_work[by] = count
+	else:
+		_at_work.erase(by)
+	_said_in_no_step.erase(by)
+
+
+## [param brick_id] about to change, or [param laid] just now: noted as it
+## stands in each open ledger of the maker the code changing it names
+## (Builder.naming), the first time only. Code that names no maker changes
+## the model as nobody's run: the person by hand, keeping their steps as they
+## go, a model opened, a part of it whose shape came late. Named as a maker
+## whose run is at work with no ledger of theirs open, it is in no step: said
+## and counted ([member in_no_step]).
+func _ledger_note(brick_id: int, laid: bool = false) -> void:
+	if not Builder.naming():
+		return
+	var who: String = Builder.acting
+	var theirs: bool = false
+	for ledger: Ledger in _ledgers:
+		if ledger.by != who:
+			continue
+		theirs = true
+		if ledger.was.has(brick_id) or ledger.scenery.has(brick_id):
+			continue
+		if laid:
+			ledger.was[brick_id] = null
+			continue
+		var brick: Brick = _bricks[brick_id]
+		ledger.was[brick_id] = [brick.part_id, brick.color_code, brick.transform, brick.group,
+			brick.unit, brick.step]
+	if not theirs and _at_work.has(who):
+		in_no_step += 1
+		if say_in_no_step and not _said_in_no_step.has(who):
+			_said_in_no_step[who] = true
+			push_error(("IN NO STEP: part %d changed as %s's while their run or call is at work "
+				+ "with no ledger of theirs open (BrickWorld.at_work): no undo takes it back")
+				% [brick_id, "\"%s\"" % who if not who.is_empty() else "the person"])
+
+
 ## Place a brick. Returns its id, or 0 if the part has no geometry.
 ##
 ## [param as_id] puts a brick taken off back under the number it had
@@ -630,6 +747,8 @@ func key_of(brick_id: int) -> String:
 func add_brick(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -> int:
 	var brick_id: int = _place(part_id, color_code, at, as_id)
 	if brick_id != 0:
+		if not (_ledgers.is_empty() and _at_work.is_empty()):
+			_ledger_note(brick_id, true)
 		_note({"op": "add", "id": brick_id, "part": _bricks[brick_id].part_id,
 			"colour": color_code, "at": _bricks[brick_id].transform})
 	return brick_id
@@ -709,6 +828,8 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 func remove_brick(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "remove")
 	_unplace(brick_id)
 	_note({"op": "remove", "id": brick_id})
@@ -743,6 +864,8 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "move")
 	_touching_brick(brick_id)
 	brick.transform = to
@@ -769,6 +892,8 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
+	if not (_ledgers.is_empty() and _at_work.is_empty()):
+		_ledger_note(brick_id)
 	_hand_change(brick_id, "paint")
 	_touching_brick(brick_id)
 
@@ -860,6 +985,12 @@ func clear(keep_numbers: bool = false) -> void:
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
+	# What each open ledger held went with the model; it goes on with what
+	# its maker changes next (ClaudeStep.record): a design laid after a clear
+	# beside it is a step of its maker's, not parts in none (savereview5 F2).
+	for ledger: Ledger in _ledgers:
+		ledger.was = {}
+		ledger.begun_again = true
 	cleared.emit()
 
 
@@ -1052,7 +1183,8 @@ func _in_order() -> void:
 
 ## The model's bricks, copied into a world of their own that draws nothing
 ## and is in no tree, to be read on another thread while this one goes on
-## changing. The caller frees it.
+## changing. The caller frees it. [ReadingCopy] makes the same copy a slice
+## at a time.
 func copy_for_reading() -> BrickWorld:
 	_in_order()
 	var copy := BrickWorld.new()
@@ -1061,18 +1193,104 @@ func copy_for_reading() -> BrickWorld:
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue
-		var brick: Brick = _bricks[brick_id]
-		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
-			brick.transform)
-		# And its sub-model's path (Assemblies.path_of), by which a hose's
-		# pieces are one hose: read on a worker without it, 42080-1's
-		# pneumatic tubes were one thing in pieces with the parts round them,
-		# glued to them, and neither cylinder raised its crane (grabfloor,
-		# 2026-11-04).
-		_same_paths(twin, brick)
-		copy._bricks[brick_id] = twin
+		copy._bricks[brick_id] = _reading_twin(_bricks[brick_id])
 	copy._next_id = _next_id
 	return copy
+
+
+## [param brick] as a copy to be read holds it.
+static func _reading_twin(brick: Brick) -> Brick:
+	var twin := Brick.new(brick.id, brick.part_id, brick.color_code, brick.transform)
+	# And its sub-model's path (Assemblies.path_of), by which a hose's
+	# pieces are one hose: read on a worker without it, 42080-1's
+	# pneumatic tubes were one thing in pieces with the parts round them,
+	# glued to them, and neither cylinder raised its crane (grabfloor,
+	# 2026-11-04).
+	_same_paths(twin, brick)
+	return twin
+
+
+## [method copy_for_reading] and [method BrickLattice.copy_for_reading]
+## made a slice at a time while the person goes on, for a worker to read
+## once whole: copied at once, Orthanc's 10,119 parts held the frame after
+## it opened 97 ms (GrabDrag, simple3 2026-11-27). The same copies, the
+## parts in the same order. A change to the model or to its lattice
+## meanwhile lets it go ([member dropped]), as a reading of the model before
+## a change is not kept: the caller begins again.
+class ReadingCopy extends RefCounted:
+	## The copies, whole once [method step] says so; the caller's then, to
+	## let go of (WorkerTasks.let_go).
+	var world: BrickWorld = null
+	var lattice: BrickLattice = null
+	## The parts in the copy by part id, in the order it first has each.
+	var part_ids: Dictionary = {}
+	## Whether the model changed under it, and it was let go of.
+	var dropped: bool = false
+	var _from: BrickWorld
+	var _cells: BrickLattice
+	var _revision: int = 0
+	var _cells_revision: int = 0
+	var _ids: Array = []
+	var _at: int = 0
+	var _keys: Array = []
+	var _key_at: int = -1
+
+	func _init(from: BrickWorld, cells: BrickLattice) -> void:
+		_from = from
+		_cells = cells
+		_revision = from.revision
+		_cells_revision = cells.revision
+		from._in_order()
+		world = BrickWorld.new()
+		world.library = from.library
+		world.keeps_history = false
+		world._next_id = from._next_id
+		_ids = from._bricks.keys()
+
+	## Whether it copies [param from] and [param cells].
+	func copies(from: BrickWorld, cells: BrickLattice) -> bool:
+		return from == _from and cells == _cells
+
+	## Copied on until the clock (Time.get_ticks_usec) passes [param until],
+	## or to the end when it is 0: whether it is whole. False from the moment
+	## the model or its lattice has changed since it began, let go of then.
+	## The lattice's boxes are copied at the start of a slice of their own,
+	## each a whole Dictionary at once: 10,119 parts' are a few ms.
+	func step(until: int) -> bool:
+		if dropped:
+			return false
+		if _from.revision != _revision or _cells.revision != _cells_revision:
+			drop()
+			return false
+		# Whether this slice has copied nothing yet.
+		var fresh: bool = true
+		while _at < _ids.size():
+			fresh = false
+			var brick: Brick = _from._bricks.get(_ids[_at])
+			_at += 1
+			if brick != null and not _from._ghosts.has(brick.id):
+				world._bricks[brick.id] = BrickWorld._reading_twin(brick)
+				part_ids[brick.part_id] = true
+			if until > 0 and _at % 32 == 0 and Time.get_ticks_usec() > until:
+				return false
+		if _key_at < 0:
+			if not fresh and until > 0:
+				return false
+			lattice = _cells.copy_begun()
+			_keys = _cells.bucket_keys()
+			_key_at = 0
+			if until > 0:
+				return false
+		_key_at = _cells.copy_buckets(lattice, _keys, _key_at, until)
+		return _key_at >= _keys.size()
+
+	## Let go of, on a worker: the model changed under it, or its reader went.
+	func drop() -> void:
+		dropped = true
+		var copies: Array = [world, lattice]
+		world = null
+		lattice = null
+		WorkerTasks.let_go(copies)
 
 
 ## The model's bricks where they stand in the model as built ([method
@@ -2043,6 +2261,8 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 		at.origin = at.origin.snapped(Vector3.ONE * 0.0001)
 		moved.append({"id": brick_id, "part": brick.part_id,
 			"colour": brick.color_code, "at": at})
+		if not (_ledgers.is_empty() and _at_work.is_empty()):
+			_ledger_note(brick_id)
 		brick.transform = at
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)

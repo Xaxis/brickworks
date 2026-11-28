@@ -1166,7 +1166,8 @@ All of these are in `tools/check.sh`.
   look or file) and is not in `NOT_A_STEP` has its change made one
   step, "Claude's edit model (1 put down)": a call that keeps its own history
   (the window's commands, edit_selection) folded into one, any other as the
-  difference (`SelectionScope.steps_back`), which the other copies of each
+  changes its own code made, noted part by part (`ClaudeStep.steps_of`, never
+  the model's difference over the call's time: savereview5), which the other copies of each
   sub-model it changed then follow in the same step
   (`CommandSocket._copies_follow`, `Assemblies.after_edit`; before copyfaults2
   a session's edit was recorded after after_edit had run, so no twin

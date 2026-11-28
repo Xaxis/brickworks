@@ -94,6 +94,11 @@ var _redo: Array[Dictionary] = []
 ## app ran a frame late, a Delete of 320 said first, was written as the
 ## chat's (savereview3 F1). A session's undo and redo take back only steps
 ## that hold it (AppTools._undo); the person's Undo takes back any step.
+## What a run's or a call's step holds goes the same way: only the changes
+## its own code made inside [method by], noted part by part as they are made
+## (BrickWorld.Ledger, ClaudeStep), never the model's difference over the
+## time it was at work (savereview5 F1: a chat's review_model took 916 parts
+## of the person's panel design laid meanwhile).
 const BY := "by"
 
 ## The session keeping steps now ([constant BY]), "" for the person: of the
@@ -3075,14 +3080,33 @@ func _keep(step: Dictionary, at: int = -1) -> void:
 
 
 ## [param act] run, the steps it keeps kept as the session [param actor]'s
-## ([constant BY]), "" the person's; what it returns. [param act] runs to its
-## end without waiting: one that waits goes through [method by_wait].
+## ([constant BY]), "" the person's, and what it changes with no step noted
+## as theirs ([method naming]); what it returns. [param act] runs to its end
+## without waiting: one that waits goes through [method by_wait].
 static func by(actor: String, act: Callable) -> Variant:
 	var was: String = acting
 	acting = actor
+	_naming += 1
 	var out: Variant = act.call()
+	_naming -= 1
 	acting = was
 	return out
+
+
+## How deep the code running now is in acts that say whose they are ([method
+## by], the first stretch of [method by_wait]'s).
+static var _naming: int = 0
+
+
+## Whether the code running now says whose its changes are: only then is a
+## change to the model with no step noted as [member acting]'s, for the step
+## its run or call keeps as it ends (BrickWorld.Ledger, ClaudeStep). Code that
+## says nothing changes the model as nobody's run: the person by hand,
+## keeping their steps as they go, a model opened, a part whose shape came
+## late. So a call's step holds only what its own code changed, never what
+## changed while it was at work.
+static func naming() -> bool:
+	return _naming > 0
 
 
 ## [method by] for [param act] that may wait, awaited: `await
@@ -3096,8 +3120,10 @@ static func by_wait(actor: String, act: Callable) -> Variant:
 	var going := _Acting.new()
 	var was: String = acting
 	acting = actor
+	_naming += 1
 	# Not awaited: it hands back at the act's first wait, and goes on.
 	going.go(act)
+	_naming -= 1
 	acting = was
 	if not going.finished:
 		await going.ended

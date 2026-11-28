@@ -694,6 +694,68 @@ bool worn(vec3 q, float own, float age) {
 	return lines > 0.72 - 0.08 * age && patches > 0.1 - 0.45 * age;
 }
 
+// The dust a set gathers on a shelf (photoreal33): sharp specks a tenth of a
+// millimetre to half a millimetre across, dark grit and pale fluff, settled on
+// what faces up and clinging here and there to a side and to a clear part's
+// skin, each part's its own, the same in every picture. The bench's set
+// photographs show them on every top and windscreen at arm's length, where
+// photoreal4's soft film of dust (wear.y's motes, never a point) and the
+// scratches read to the judge as spotless plastic in 0.99 of its verdicts. A
+// speck is a cell's chance: one in a cube MOTE_CELL LDU across, kept whole
+// inside it, so a point reads one cell and no neighbour. It lies on the face:
+// measured across the face ([param ng]) from where the point is ([param q],
+// the world's LDU), never through it. A sphere in its cube never met a face
+// on the cube's side, and a part's faces lie on whole LDU, so the grid is
+// offset by MOTE_OFFSET, off every whole LDU, and a face never flickers
+// between two cells. [param amount] 0 is none and draws nothing; [param
+// sides] the share a side keeps of a top's.
+const float MOTE_CELL = 2.0;
+const float MOTE_SHARE = 0.3;
+const float MOTE_SMALL = 0.15;
+const float MOTE_LARGE = 0.7;
+const vec3 MOTE_OFFSET = vec3(0.71, 0.37, 0.53);
+
+vec4 mote_at(vec3 q, vec3 ng, uint which, float amount, float sides) {
+	if (amount <= 0.0) {
+		return vec4(0.0);
+	}
+	// Level either way up: surface_of's normal is the triangle's as it was
+	// wound, which faces out of the part or into it as the part's file has
+	// it: read only as up, the 6660's hood and the red slope had none. An
+	// underside is seldom seen in a product photograph, and a speck there
+	// is unlit.
+	float settles = mix(sides, 1.0, smoothstep(0.2, 0.85, abs(ng.y)));
+	q += MOTE_OFFSET;
+	vec3 cell = floor(q / MOTE_CELL);
+	ivec3 c = ivec3(cell) + ivec3(4096);
+	uint h = pcg(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ (which * 2654435761u + 40503u));
+	if (float(h & 0xffffu) / 65535.0 > MOTE_SHARE * amount * settles) {
+		return vec4(0.0);
+	}
+	uint h2 = pcg(h);
+	uint h3 = pcg(h2);
+	float size = float(h2 & 0xffffu) / 65535.0;
+	float radius = MOTE_SMALL + (MOTE_LARGE - MOTE_SMALL) * size * size * size;
+	vec3 jitter = vec3(float(h2 >> 16u), float(h3 & 0xffffu), float(h3 >> 16u)) / 65535.0;
+	vec3 centre = cell * MOTE_CELL + vec3(radius) + jitter * (MOTE_CELL - 2.0 * radius);
+	vec3 off = q - centre;
+	off -= ng * dot(off, ng);
+	float cover = 1.0 - smoothstep(0.55 * radius, radius, length(off));
+	if (cover <= 0.0) {
+		return vec4(0.0);
+	}
+	vec3 colour = (pcg(h3) & 1u) == 1u ? vec3(0.52, 0.5, 0.46) : vec3(0.07, 0.065, 0.06);
+	return vec4(colour, 0.9 * cover);
+}
+
+// How much of a set's dust a part carries: the dust asked for (wear.y) by
+// how played-with it is (wear.x) squared, so a set thirty years on a shelf
+// has it all, a new part none, and a part a little handled hardly any.
+float mote_amount() {
+	float age = clamp(scene.wear.x, 0.0, 1.0);
+	return scene.look.x > 0.5 ? scene.wear.y * age * age : 0.0;
+}
+
 vec2 cell_hash(vec2 c) {
 	return fract(sin(vec2(dot(c, vec2(127.1, 311.7)), dot(c, vec2(269.5, 183.3)))) * 43758.5453);
 }
@@ -1138,6 +1200,13 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			body = mix(body, vec3(0.5, 0.48, 0.45), cover);
 			s.coat *= 1.0 - cover;
 			s.roughness = mix(s.roughness, 0.9, cover);
+		}
+		// Specks of a shelf's dust (photoreal33), sharp where the film is soft.
+		vec4 mote = mote_at(at, ng, which, mote_amount(), 0.12);
+		if (mote.a > 0.0) {
+			body = mix(body, mote.rgb, mote.a);
+			s.coat *= 1.0 - mote.a;
+			s.roughness = mix(s.roughness, 0.95, mote.a);
 		}
 		// A handled part's scratches and scuffs are as an older part's
 		// (photoreal8): its own handling added to the set's age.
@@ -2190,6 +2259,10 @@ void main() {
 				// over everything seen through a windscreen.
 				float f = schlick(vec3(0.045), abs(dot(ng, v))).x;
 				vec3 mirrored = reflect(way, n);
+				// The hit in the part's own space, kept before the mirrored ray
+				// overwrites the payload with whatever it meets (photoreal33: the
+				// scratches below were read at that part's place, not the glass's).
+				vec3 glass_local = hit.local;
 				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, lit_mask(mirrored),
 						gl_RayFlagsOpaqueEXT)) {
 					radiance += carried * f * lit_from(mirrored);
@@ -2200,9 +2273,24 @@ void main() {
 					// running its own way, as a set's windscreen shows them.
 					float own_glass = float(pcg(thing.info.z * 747796405u + 2891336453u) & 0xffffu)
 						/ 65535.0;
-					if (worn(hit.local * 1.6, own_glass, 0.0)) {
+					if (worn(glass_local * 1.6, own_glass, 0.0)) {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
 					}
+				}
+				vec4 mote = inside ? vec4(0.0) : mote_at(at, ng, thing.info.z, mote_amount(), 0.6);
+				if (mote.a > 0.0) {
+					// A speck of dust on a clear part's skin (photoreal33): matte, lit
+					// where it sits, and hiding what is behind it.
+					Surface speck;
+					speck.albedo = mote.rgb;
+					speck.emission = vec3(0.0);
+					speck.metallic = 0.0;
+					speck.roughness = 0.95;
+					speck.specular = 0.04;
+					speck.coat = 0.0;
+					speck.coat_roughness = 0.3;
+					radiance += carried * mote.a * direct(speck, at + ng * 0.02, ng, v);
+					carried *= 1.0 - mote.a;
 				}
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
 				// A clear neon glowing in the Dark light: light of its own,
