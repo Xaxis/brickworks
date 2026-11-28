@@ -214,12 +214,21 @@ async function makeAda() {
   const shared = await api("/api/share", { method: "POST", token: ada.access_token,
     body: { name, author: "Ada First", model, image: picture, listed: true, kind: "castle" } });
   castle = shared.body.id || "";
-  // One build of it finished, so Top builds puts her among the first designers.
-  const built = castle ? await api(`/api/share?op=built&id=${castle}`, { method: "POST", body: { device: randomBytes(16).toString("hex") },
-    extra: { "user-agent": `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 flow/${rand}`,
-      "sec-fetch-site": "same-origin" } }) : { body: {} };
-  check(`Ada, a designer: her profile ${made.status}, her castle in the gallery ${shared.status} /m/${castle}, a build of it `
-    + `${built.body.counted}`, made.status === 200 && shared.status === 201 && Boolean(castle) && built.body.counted === true);
+  // Finished builds of it, each on its own device, enough that Top builds
+  // ranks it over a tested model (api/_directory.js SCORE: a build is 3, a
+  // test passed 5), so it is among the six castles a newcomer who chose
+  // castles is shown. One build ranked it under live's seven tested castles.
+  const score = (await api(`/api/share?op=list&sort=top${T ? "&tests=1" : ""}`)).body.score || {};
+  const builds = Math.floor((Number(score.tested) || 0) / Math.max(1, Number(score.builds) || 1)) + 1;
+  let counted = 0;
+  for (let n = 0; castle && n < builds; n++) {
+    const built = await api(`/api/share?op=built&id=${castle}`, { method: "POST", body: { device: randomBytes(16).toString("hex") },
+      extra: { "user-agent": `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 flow/${rand}`,
+        "sec-fetch-site": "same-origin" } });
+    if (built.body.counted === true) counted += 1;
+  }
+  check(`Ada, a designer: her profile ${made.status}, her castle in the gallery ${shared.status} /m/${castle}, built to the end `
+    + `${counted} of ${builds} times`, made.status === 200 && shared.status === 201 && Boolean(castle) && counted === builds);
 }
 
 try {
@@ -322,7 +331,15 @@ try {
       check(`...six models, the castles first: ${drawn.models.join(", ")}`, drawn.models.length === 6
         && ["kfpYMjke5U", "EzEXhtXE2C"].every((id) => drawn.models.slice(0, 2).includes(id)));
     } else {
-      check(`...her castle among them, castles first: ${castles[0]}`, drawn.models.includes(castle) && castles.length > 0);
+      // Castles first as a person sees them: the first cards are the
+      // castles Top builds ranks first among castles, as many as there are
+      // up to six, and only then anything else; hers among them.
+      const ranked = await api(`/api/share?op=list&sort=top&kind=castle${T ? "&tests=1" : ""}`);
+      const want = (Array.isArray(ranked.body.models) ? ranked.body.models : []).map((one) => one.id).slice(0, drawn.models.length);
+      const first = drawn.models.slice(0, want.length);
+      check(`...castles first, Top's first ${want.length} castles (${first.join(", ")}), her castle among them `
+        + `(${drawn.models.indexOf(castle) + 1} of ${drawn.models.length})`, ranked.status === 200 && want.length > 0
+        && [...first].sort().join() === [...want].sort().join() && drawn.models.includes(castle) && castles.length > 0);
     }
     await shots(page, `2_start-${width}`, theme);
     const follow = `dialog.first-steps .person-row[data-handle="${designer}"] button[data-follow]`;
