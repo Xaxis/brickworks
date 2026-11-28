@@ -214,6 +214,9 @@ func _case_open() -> void:
 	var other: String = _write(STEPS_MODEL, "ssib_other.ldr")
 	var main: Variant = _main
 	for way: String in ["Main._open", "Main._open_given", "Main.clear_model", "a session's clear_model"]:
+		# Each way on its own: where a way before left a sub-assembly entered
+		# (the fault on pre261), the next model is opened from the top.
+		_shell().assemblies.enter("")
 		await _open_saved(FROM_FULL, "ssib_open.mpd")
 		var shell: Shell = _shell()
 		var wing_part: int = _id_where(func(b: BrickWorld.Brick) -> bool: return not Assemblies.path_of(b).is_empty())
