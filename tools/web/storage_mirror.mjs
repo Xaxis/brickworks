@@ -29,6 +29,9 @@
 //                           (load_check times a real first visit). WebKit's
 //                           launch is mirrored too; its persistent contexts
 //                           never are (phonetruth times first visits there)
+//   { keepCache: true }     in launchPersistentContext's: its pages keep their
+//                           HTTP cache (page_routes.mjs), so a return reads
+//                           what the first visit kept (start_phases)
 //
 //   node tools/web/storage_mirror.mjs serve [PORT]
 //     the same copy over HTTP for a headless probe: prints its URL, which
@@ -226,8 +229,8 @@ async function routed({ url: asked, method }) {
 /// [context] reads the parts bucket from the mirror. Only the bucket's
 /// requests are stopped (page_routes.mjs): a Playwright route held every
 /// request of the page to the end of the task that asked for it.
-export async function mirrored(context) {
-  return pageRoute(context, [`https://*.supabase.co${PUBLIC}*`], routed);
+export async function mirrored(context, { keepCache = false } = {}) {
+  return pageRoute(context, [`https://*.supabase.co${PUBLIC}*`], routed, { keepCache });
 }
 
 // Every browser this process starts, whichever script starts it.
@@ -247,9 +250,9 @@ if (MIRROR && !chromium[DONE]) {
     };
   }
   const persistent = chromium.launchPersistentContext.bind(chromium);
-  chromium.launchPersistentContext = async (dir, { realStore = false, ...options } = {}) => {
+  chromium.launchPersistentContext = async (dir, { realStore = false, keepCache = false, ...options } = {}) => {
     const context = await persistent(dir, options);
-    return realStore ? context : mirrored(context);
+    return realStore ? context : mirrored(context, { keepCache });
   };
   process.on("exit", () => {
     const said = Object.entries(tally).filter(([, [n]]) => n)

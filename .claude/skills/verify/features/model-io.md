@@ -951,6 +951,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
   3 to 4 s later. The boot mark `model geometry: N of M, R read here` says how it went.
+  Not for a first visit's example car (webstart14 tried it, 3 same-moment
+  pairs against live): its parts asked for that early were read in the
+  open's `known` phase (0.9 s against live's 0.04) and the 3.5 s from the
+  first part to the car whole did not shrink, so its parts are not what
+  that time waits on.
   A shared model's link takes the same path (viewopen): Open in the
   studio (`/app?copy=`), Build it and the viewer (`/app?view=`, `&build`,
   `&v=`), the page's own fetch of the link's answer

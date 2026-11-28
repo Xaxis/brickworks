@@ -3768,6 +3768,14 @@
       "tests": []
     },
     {
+      "id": "cli:simple4 probe",
+      "kind": "cli",
+      "entry": "src/dev/simple4_probe.gd",
+      "reach": "tools/probe.sh simple4_probe -- --headless-ok [--desktop] [--case=cut,shape,xray,explode,tints,planned,steps,switch]   (headless; what Full shows set aside in Simple and back in Full: the cut kept in the file, x-ray, the exploded view, Stress and Stud directions; a brick put in Simple on show when Full's timeline comes back; Simple | Full chosen from the start)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:simple_switch probe",
       "kind": "cli",
       "entry": "src/dev/simple_switch_probe.gd",
@@ -3788,6 +3796,22 @@
       "kind": "cli",
       "entry": "src/dev/simplereview3_probe.gd",
       "reach": "PROBE_SIZE=390x844 tools/probe.sh simplereview3_probe -- [--desktop] [--case=subedit,snap,locked,undomid,wayback] --pictures=DIR   (windowed; a tray brick while Full edits inside a sub-assembly, Full's Half and Free snap, a locked part tapped, Undo with a finger's ghost waiting, the way in and back on 10030-1 and Orthanc frame by frame)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:simplereview4 probe",
+      "kind": "cli",
+      "entry": "src/dev/simplereview4_probe.gd",
+      "reach": "tools/probe.sh simplereview4_probe -- --headless-ok [--desktop|--tablet] [--case=ctx,undo,unsaved,same,steps,carry,peer,hidden,session]; tools/probe.sh simplereview4t_probe -- --headless-ok [--desktop]   (headless; the fourth review's attacks: Full's whole context round trip, Undo and Save byte for byte, the timeline's step, a carry with Full's tool on Place, a part hidden in Full)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:simplesides probe",
+      "kind": "cli",
+      "entry": "src/dev/simplesides_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplesides_probe; PROBE_SIZE=1280x800 tools/probe.sh simplesides_probe -- --desktop; tools/probe.sh simplesides_probe -- --headless-ok [--desktop]   (windowed, or headless; no part in the air in Simple whatever face a drop or drag is aimed at: a 7 x 7 grid over each of five parts' pictures from four views, ghosts, drops and drags counted, none in the air)",
       "area": "building",
       "tests": []
     },
@@ -4261,7 +4285,7 @@
       "id": "cli:the start by phase",
       "kind": "cli",
       "entry": "tools/web/start_phases.mjs",
-      "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] --out=DIR   (webstart11, local servers only: two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; DIR/phases.md and pairs.json)",
+      "reach": "heavy node --env-file=.env tools/web/start_phases.mjs --urls=A,B --labels=base,after --config=desktop|phone|cpu4|iphone13 --pairs=5 [--warm] [--hold=S] [--from=/ [--from-wait=MS]] --out=DIR   (webstart11; a URL may be a deployment, live timed beside a build (webstart13), a protected preview let in by BW_BYPASS; --from: the first visit comes from that page, as Start building's does (webstart14): two builds at the same moment, each in a browser and node process of its own, the launch order alternating per pair; Chromium on SwiftShader (cpu4: CPU/4 + Fast 4G by CDP), WebKit as an iPhone 13; each phase's end and length from the build's own marks (Resource Timing, compileStreaming and instantiate timed apart, the Build configuration line, brickworksBoot): files, compile, instantiate, engine, scripts, data, catalogue, window, first part, working; Wasm memory at each mark, the content process's Pss and per-thread CPU from /proc; webstart13: BrickworksLoop's layered compile as its own phase (layered/layers marks), each heap growth the page's thread asked for (emscripten's resize wrapped: when, asked, before, after), the memory held S s past working, the frames from the window to working, when the wasm and op=phone were asked, and which engine the page chose; DIR/phases.md and pairs.json)",
       "area": "web",
       "tests": []
     },

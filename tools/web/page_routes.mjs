@@ -56,7 +56,14 @@ const WATCH = Symbol.for("brickworks.pageRoutes.browser");
 // How long a request from a frame of no page joined yet waits for its page.
 const FIND_MS = 3000;
 
-export async function pageRoute(context, patterns, handler) {
+//
+// Each page it joins has its HTTP cache turned off, as Playwright's routes
+// do, so the flows measured before it measure the same. { keepCache: true }
+// leaves a context's pages their cache: a return then reads what the first
+// visit kept, as a visitor's does. Off, start_phases' every return fetched
+// the engine and its pack again (fromDiskCache false, 6.9 MB over the wire,
+// 5 s of a desktop return at 20 Mbps; webstart14, 2026-11-27).
+export async function pageRoute(context, patterns, handler, { keepCache = false } = {}) {
   const added = { patterns, test: patterns.map(asRegExp), handler };
   // A browser that speaks no CDP (Playwright's WebKit, phonetruth): its
   // routes are Playwright's, and its pages keep no HTTP cache, as above.
@@ -66,6 +73,7 @@ export async function pageRoute(context, patterns, handler) {
     return context;
   }
   const held = context[ROUTES] || hold(context);
+  if (keepCache) held.keepCache = true;
   held.routes.push(added);
   if (held.playwright.going) {
     await held.playwright.going;
@@ -193,7 +201,7 @@ function join(held, page) {
       page.once("close", () => held.pages.delete(page));
       // The cache is off only while the session's network events are on.
       await session.send("Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0 });
-      await session.send("Network.setCacheDisabled", { cacheDisabled: true });
+      if (!held.keepCache) await session.send("Network.setCacheDisabled", { cacheDisabled: true });
       const { targetInfo } = await session.send("Target.getTargetInfo");
       held.id = targetInfo.browserContextId;
       const one = await held.watching;

@@ -70,12 +70,27 @@ static func asked_for_a_picture() -> bool:
 ## The first screen's scripts loaded in FIRST_ORDER's order, before the
 ## engine loads the main scene: its compile, a cycle at a time. Main.gd,
 ## last, then finds them all made ("compiled", Main._boot_mark).
+##
+## Its begin and end are marked on the page as Main's own marks are
+## (window.brickworksBoot "layered" and "layers"), so a start timed by
+## tools/web/start_phases.mjs says what the cycles took apart from main.gd's
+## own compile and whether they ran at all (webstart13). Named here, not
+## through Main, which this script must not name: that would compile the
+## whole first screen in one load before this runs.
 static func compile_first_screen() -> void:
 	if not FileAccess.file_exists(FIRST_ORDER) or not _apple():
 		return
+	_mark("layered")
 	for path: String in FileAccess.get_file_as_string(FIRST_ORDER).split("\n", false):
 		if path.begins_with("res://") and ResourceLoader.exists(path):
 			load(path)
+	_mark("layers")
+
+
+## [param stage] reached, on the page's clock: Main._boot_mark's, for the web.
+static func _mark(stage: String) -> void:
+	JavaScriptBridge.eval("(window.brickworksBoot = window.brickworksBoot || {})[%s] = performance.now()"
+		% JSON.stringify(stage), true)
 
 
 ## An iPhone or iPad's browser, as the shell tells one: an iPad asking for

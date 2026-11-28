@@ -340,9 +340,8 @@ func _build() -> void:
 	# Simple | Full, the controls over the model (Main.use_controls), before
 	# Menu as the site's header has its mode switch before its menu.
 	_switch = AppHeader.controls_switch(p(1.0), true, func(layer: StringName) -> void:
-		app.call("use_controls", layer))
+		app.call("use_controls", layer), app.call("controls_layer") if app.has_method("controls_layer") else &"full")
 	top_row.add_child(_switch)
-	AppHeader.show_controls(_switch, app.call("controls_layer") if app.has_method("controls_layer") else &"full")
 	# Its words are measured only once it is drawn: the bar shared again
 	# then, or the name kept the room the switch needed, and a phone 390
 	# across that opened in Full had Full cut off at its edge.

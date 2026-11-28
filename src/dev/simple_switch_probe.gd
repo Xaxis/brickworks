@@ -34,7 +34,9 @@
 ##           with it; reopened, every part where it was.
 ##   steps   6685-1's timeline on its fifth step, a part selected: into Simple
 ##           the whole model shown, the selection kept, and the timeline key
-##           opens nothing there; a part put down; back in Full, the timeline
+##           opens nothing there; a part put down; back in Full, the part
+##           shown, the timeline on the part's own step when it went in a later
+##           one (simplereview4 F1), else
 ##           on the same step. Saved and reopened, the steps as they were.
 ##   hand    A part from the bin in hand, and a part lifted off the model (X),
 ##           each through a switch both ways: still in hand, the ghost's part
@@ -405,8 +407,20 @@ func _case_steps() -> void:
 		await process_frame
 	await _frames(3)
 	var back: Instructions.Step = _steps.current_step()
-	_ok(_steps.is_playing_back() and back != null and back.number == number,
-		"back in Full: the timeline on step %d again (%d)" % [number, back.number if back != null else -1])
+	# The part put in Simple is never out of sight back in Full (simplereview4
+	# F1): the timeline on its step again where that step shows the part, and
+	# where the part went in a later one (step 5 another model's steps), on
+	# that one, as Full's own put steps on to it.
+	var holding: int = -1
+	for step: Instructions.Step in _steps.steps():
+		if put != 0 and step.brick_ids.has(put):
+			holding = step.number
+	var want: int = holding if holding > number else number
+	_ok(_steps.is_playing_back() and back != null and back.number == want
+		and not (_builder.lattice.ahead as Dictionary).has(put),
+		"back in Full: the timeline on step %d (%d), step %d again or the part's own step %d; the part shown %s"
+		% [want, back.number if back != null else -1, number, holding,
+		not (_builder.lattice.ahead as Dictionary).has(put)])
 	await _picture("full-steps")
 	_steps.stop()
 	await _frames(2)

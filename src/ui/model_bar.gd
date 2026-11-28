@@ -273,7 +273,7 @@ func _build() -> void:
 	# Simple | Full, the controls over the model (Main.use_controls), before
 	# Menu and Account as a site's mode switch sits before its account.
 	controls = AppHeader.controls_switch(1.0, false, func(layer: StringName) -> void:
-		controls_picked.emit(layer))
+		controls_picked.emit(layer), &"simple" if simple else &"full")
 	row.add_child(controls)
 	# In a browser the app's menu, Menu, before Account: the site's phone
 	# header has its Menu there, and your account last at the far right.

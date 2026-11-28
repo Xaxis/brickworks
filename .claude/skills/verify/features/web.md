@@ -3414,7 +3414,31 @@ plan with Claude as the client.
   `canPlayType` says so), faded in on `playing` (`.hero-loop.live`); none
   under prefers-reduced-motion or `navigator.connection.saveData`.
   `<html data-hero>`: poster, still, loading, playing, paused,
-  kept-failed. `#loop-say` shows the caption of the moment from
+  kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
+  `studioAhead`), on intent only: for a member signed in, 3 s after the
+  load at idle; for anyone else once the mouse comes within 200 px of a
+  link into the studio (an `href` of `/app`, bare or with a query: Start
+  building, Open the app, a post's Open in the studio), one takes the
+  focus or is pressed, or the hero band (`#home`) is scrolled past. A home visit with no intent fetches none of it
+  (it was 9.7 MB at every visit). The page reads `/app`'s own
+  `GODOT_CONFIG` and fetches its engine's `.js` and `.wasm` (`/e/<hash>/`)
+  and its pack (`/b/<sha>/index.pck`) as `<link rel=prefetch>`, at the
+  lowest priority and on through the click, so Start building's studio
+  takes them from the browser's cache (both immutable; CDP says
+  `fromDiskCache` for both, the wasm compiled at 1.2 s, webstart14); not
+  on Save-Data, a 2g/3g or cellular connection, a window under 600 px, an
+  iPhone or iPad (its engine is the switch's), nor a build not placed.
+  `<html data-studio-ahead>`: waiting (for intent), fetching, fetched,
+  failed, `skipped <why>` (save-data, slow, cellular, phone, apple,
+  unplaced); `data-studio-ahead-by`: member, near, focus, press,
+  scrolled. Proven by
+  `the start by phase` with `--from=/` (the visit comes from the home page,
+  signed in as the checks' pool account, so a member's; the attribute at
+  the click is in its table), and the bytes of a home visit with and
+  without intent by webstart14's `homebytes.mjs` (bench results); `homefeed`'s check 6 counts
+  these apart from the post's studio (the addresses of the page's own
+  `link[rel=prefetch]`, read at the check, as Playwright gives a link
+  prefetch no type of its own; and its fetch of `/app`). `#loop-say` shows the caption of the moment from
   `data-cues-desktop` / `data-cues-phone` ("seconds;t:word,..."; words in
   `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
   Made by `python3 tools/site/hero_capture.py` (the probe
@@ -5002,8 +5026,16 @@ plan with Claude as the client.
   while `phone_nothreads` is true, the threaded one while false, unanswered
   or past 2.5 s; every other browser starts the threaded one at once with
   no question. `window.brickworksEngine` says which (`at`, `threads`,
-  `apple`, `on`). The first visit's `#eta` reuses that answer: one question.
-  Proven by `which engine each browser starts`.
+  `apple`, `on`, and `kept`). The first visit's `#eta` reuses that answer:
+  one question. Each answer is kept (localStorage `brickworks.phoneEngine`,
+  `threads` or `nothreads`, webstart13): a device that last heard off
+  starts the threaded engine at once and asks all the same, where a return
+  waited 1.6 s for the answer; one that last heard on waits for it. So the
+  switch turned on reaches a device a visit late. Proven by `which engine
+  each browser starts` (fresh profiles: the question waited for) and the
+  stand-in test in `bench/results/webstart13-2026-11-20/engine_kept_test.mjs`
+  (`node engine_kept_test.mjs src/boot/shell.html`: 9 cases, each engine's
+  file asked for when it should be, what is kept).
 - `which engine each browser starts` (`tools/web/engine_choice.mjs`): six
   browsers signed out (WebKit as an iPhone 13, an iPad, an iPad that says
   it is a Mac, a Mac's Safari; Chromium as a Pixel 7 and a computer) at
@@ -5108,6 +5140,26 @@ plan with Claude as the client.
   catalogue, ui, model) and the car's 61 parts drawn. The Wasm memory at
   each mark, the content process's Pss and each thread's CPU from /proc.
   DIR/phases.md is docs/PHONE.md's phase table; DIR/pairs.json every visit.
+  Since webstart13 also: on an iPhone or iPad the first screen's cycles
+  (BrickworksLoop's `layered` and `layers` marks) as a phase of their own;
+  every growth of the heap the page's thread asked for (emscripten's resize
+  wrapped: when, what it asked, the size before and after), as the memory's
+  size only says which fifth-step the need fell in; `--hold=S` keeps each
+  visit S s past working and reads its memory again; the frames from the
+  window built to working (how many, their own time, the longest); when the
+  engine's wasm was asked for and the shell's `op=phone` answered; and
+  which engine the page chose (`brickworksEngine`: threads, apple). A URL
+  may be a deployment, so live is timed beside a build at the same moments;
+  a protected preview is let in by `BW_BYPASS` (from `.env`'s
+  `VERCEL_BYPASS`: without it every visit timed Vercel's login page).
+  Its Chromium keeps its HTTP cache under the parts mirror's routes
+  (`launchPersistentContext(dir, { keepCache: true })`, page_routes.mjs
+  `pageRoute(..., { keepCache })`): before webstart14 every return fetched
+  the engine and its pack again (CDP `fromDiskCache` false), which a
+  visitor's never does, and 5 s of a desktop return was that.
+  Since webstart14, `--from=/` has the first visit come from the home page,
+  read `--from-wait` ms (10000) first, as Start building's does, its
+  `data-studio-ahead` at the click in the table.
 
   ```sh
   set -a; . ./.env; set +a
@@ -5115,6 +5167,9 @@ plan with Claude as the client.
   python3 tools/web/serve.py SNAP_B 10712 --parts assets/generated/parts --delay 0 --accounts --compressed --cached
   heavy node tools/web/start_phases.mjs --urls=http://127.0.0.1:10711/index.html,http://127.0.0.1:10712/index.html \
     --labels=base,after --config=cpu4 --pairs=5 --out=DIR
+  # live, a first visit and a return, held 30 s past working:
+  heavy node tools/web/start_phases.mjs --urls=https://brickworks.diy/app --labels=live \
+    --config=iphone13 --pairs=3 --warm --hold=30 --out=DIR
   ```
 - `announcements` (`api/_announce.js`, `/admin#announcements/…` drawn by
   `web/admin-announce.js`, asked only once the section opens;
@@ -5937,7 +5992,9 @@ plan with Claude as the client.
   uploaders' local folders. A run ends with `(storage mirror: N cache, N bucket,
   N local …; the bucket asked N time(s))`, and each answer carries
   `x-brickworks-mirror`. load_check alone reads the bucket (`realStore: true`):
-  it times a first visit. `tools/check.sh --network` gives its three probes the
+  it times a first visit. Its routes turn each page's HTTP cache off, as
+  Playwright's do; `launchPersistentContext(dir, { keepCache: true })`
+  leaves it on (start_phases, which times returns: webstart14). `tools/check.sh --network` gives its three probes the
   copy over HTTP (`node tools/web/storage_mirror.mjs serve`, PARTS_URL).
   `tests/test_storage_mirror.py` holds it.
 - `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the

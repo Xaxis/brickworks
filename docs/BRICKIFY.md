@@ -4722,7 +4722,427 @@ them, are laid part for part as on `pre261` (`quick/q8`). It bit with
 10,744 parts, 98.2%, none past (`bench2`). No run lays it alone on
 `pre261`. It is held with the round.
 
+### The sixteenth round: the band over a turned side turns with it, held for its colours (2026-11-27)
+
+This round splits the seam and the bands between phases on today's
+`pre261`, names what a builder sees in them, and turns the largest part.
+Unit `snot16`, from `pre261` at `dc345ed8`. Scripts, logs and pictures are
+in `bench/results/snot16-2026-11-27`.
+
+**In short: NO-GO, held.** Every bar the round set holds, but the renders
+show a builder what those bars do not: where the turned band reaches across
+a change of colour, its rows take the turned side's colour. A side steep for twelve plates fills two cubes of five
+and leaves two plates in the next cube up, where the side turns into the
+model's top. That cube is too level as a whole, so the turned side stopped
+a cube short and its last steep plates stayed stacked: a band of plates on
+their studs along the top of every turned side. Brickify now turns the
+cube over a turned one with it where that cube's lowest two plates face out
+the same way, and the cube beside a turned one along its side where its
+stud next to it does, each only on a core three studs deep. Over the
+fourteen at 48 studs, turned rises from 49.8% to 51.3%, nearer than studs
+up from +8.0% to +8.4%, and the bands fall from 7.2% to 5.6%. Bob goes from
+66% to 72%, the fox from 52% to 55%, the armadillo from 53% to 55%; ten
+models come nearer. Every model is one piece, with no joint past its load,
+at least 97.3% of it in a part, and at most 1.013 times `pre261`'s parts;
+no same-moment pair median is over 1.19 times as long. The milk truck
+turns 0.3 points less (and comes 0.8 nearer); the toy car comes 0.4 points
+less near (its steep faces 33.3 to 33.4 degrees off, turned +0.6), inside
+the 0.6 the fourteenth round's teapot and toy car moved. What holds it
+falls outside those bars, in colour: Bob's beak is yellow at its root,
+the milk truck's left mirror dark green where it was dark grey and black,
+and a white slab crosses its black grille (below). A gain of 1.5 points
+turned is not worth a mirror in the body's colour.
+
+#### What is left of the seam and the bands
+
+`seambands.py` and `bandwhy.py` split each on `pre261` at 48 studs (the
+thirteenth round's study of the same Brickify code; `diag/m2`, `diag/w1`):
+
+| A steep face left stacked, `pre261` at 48 studs | Mean of the fourteen | Bob |
+|---|---:|---:|
+| **A band: over a turned cube** (none under) | **2.9%** | 9.4% |
+| A band: under a turned cube (none over) | 2.7% | 6.5% |
+| A band with no turned cube within a cube | 1.3% | 1.1% |
+| A band between two turned cubes | 0.2% | 0.0% |
+| The seam: inside the turned cube | 2.1% | 2.2% |
+| The seam: no shell in that half (the judge cutting a cube across) | 2.0% | 2.1% |
+| The seam: past the cube beside it, along the side | 1.8% | 1.2% |
+| The seam: past the cube over it, not turned | 0.8% | 1.9% |
+| The seam: past the cube under it, not turned | 0.7% | 1.5% |
+
+**The band is a turned side stopping a cube short.** Of Bob's band over a
+turned cube, 7.9 of its 9.4 points lie in a cube its cut does not ask for
+because, as a whole, it is too level, though its lowest plates are as steep
+as the side under them: 3.8 points one plate over the turned cube, 3.3 two
+(`diag/w1/bob.txt`). Under a turned side, 5.9 of 6.5. Every other cut that
+would hold those plates overlaps the shell and is refused. The seam past
+the cube over or under is the same cube seen from the seam's side; the
+seam beside is a turned side's edge, the next cube along not asked.
+
+#### The change
+
+`Brickify._fringes` (`CUBE_FRINGE`, 2 plates): once a cut's cubes are
+asked, each cube over one that faces out, in the same cut, faces out with
+it where its lowest two plates face out the same way, steeper than `STEEP`
+and agreeing as a cube must; and each cube beside one, along its side,
+where its stud next to it does. They reach the plan as `Grid.cube_fringes`,
+and `Plan._cube_shell` turns a fringe only on a core `CUBE_HOLDS` deep
+behind it, not on one that only runs on (`_runs_on`): its side is the
+body's, not a limb's.
+
+![Bob at 48 studs, its steep faces coloured by why, from the front, the side and a corner, red a band between phases: on pre261 (top) 66% turned (green) and 17% in a band, red rows along the top and the bottom of the turned ring; snot16 (bottom) 72% and 10%, the upper row gone, the lower one left](brickify/unit6-sixteenth-bob-48.png)
+
+**Under, too: tried and dropped.** The cube under a turned side, by its
+highest two plates, turned too (`468b20c7`, `quick/q1`): the fourteen
+52.6% and +8.7%, the teapot 49% to 57%, Bob 73%. But the figure hung its
+head and shoulders, 181 g, on single studs past their load (a 1 x 2 plate
+on a 1 x 2 plate by one stud at 19.5 times its load), over a turned chest
+whose side now went a cube further down. On a core three studs deep
+(`b36a4ebc`, `quick/q3`) `_upright_about` laid those cubes upright again:
+no joint past its load, but 2.5 times `pre261`'s time (29 s relaying, 28 s
+mending, 12 parts mended), and the figure turned 32%, less than
+`pre261`'s 35%. Without the cube under (`quick/q4`, then the final) the
+figure stands as on `pre261`, in 55 s. The band under a turned side, 2.7%,
+is left. The step beside (`cd3865e9`, `quick/q2`) added 0.7 points on the
+armadillo and 0.8 on Spot.
+
+#### As a builder: the renders
+
+Each touched model's build was drawn from the front on `pre261` and
+after (`views/base-*_front.png`, `views/f1-*_front.png`, side by side in
+`views/cmp-*.png`). On Bob the ring reads the same and the head's cheek is
+smoother, and one thing is new and plain to see: **the beak's root is
+yellow.** A fringe of the head's turned side reaches onto the beak, and
+the shell's rows there take the head's colour over the beak's orange
+(cubes 3 and 4 along x at plates 40 and 45, facing out along z). **The milk
+truck's left mirror is dark green**, the cab's colour, where `pre261` laid
+it dark grey and black, and **a white slab of turned parts crosses the
+black grille** (a 2 x 4 brick on its side two studs down into it; the slope
+beside it reads light grey). A turned part is a stud wide up the side, two
+and a half plates, so a colour band thinner than that, or a detail on the
+fringe's edge, goes to the colour of most of its row; the toy car shows it
+smaller, a green square low on its side gone white. On the others
+(armadillo, avocado, 3DBenchy, the bunny, the figure, the fox, both
+Smithsonian pieces, Spot, the teapot) the change is in how the turned sides
+are cut, not in what they show: the figure's ears turn and stand a plate
+wider, 3DBenchy's deck
+behind the cabin shows two stacks of turned plates' studs. Nothing stands
+out past any model, and no hole or slot opens that `pre261` has not. A
+shell row that stops where the model's colour changes, or a fringe asked
+only where its face is its turned cube's colour, would keep them; neither
+was tried.
+
+![Bob at 48 studs from the front, rendered: pre261 (left) and snot16 (right), the ring the same, the head's cheek smoother, the root of the beak yellow on the right where it is orange on the left](brickify/unit6-sixteenth-bob-front.png)
+
+![Bob's head and beak close: pre261 (left), the beak orange down to the head; snot16 (right), a yellow slab of the head's turned side reaching into the root of the beak](brickify/unit6-sixteenth-bob-beak.png)
+
+![The milk truck at 48 studs from the front: pre261 (left), the left mirror dark grey and black, the grille black under a white bar; snot16 (right), the left mirror dark green, a white slab and a light grey slope in the grille](brickify/unit6-sixteenth-truck-front.png)
+
+### The seventeenth round: turned parts in the model's own colours, held for parts (2026-11-27)
+
+This round counts, model by model, how much of the show face a build lays
+in another colour than the model's, and keeps a turned part off a face of
+two colours. Unit `snot17`, from `pre261` at `1391d3a0` with the
+sixteenth round's fringe (`snot16`, `468b20c7..d98d360e`) brought over.
+Scripts, logs and pictures are in `bench/results/snot17-2026-11-27`.
+
+**In short: NO-GO. The colour is right, but two bars are missed.** On
+`pre261`, turned parts lay another colour on 3.60% of the show face they
+cover, against 1.84% for upright parts; the milk truck is 5.5% against
+0.7%. The lead's bar was that turned parts be no worse than upright ones
+on any model, since a wrong colour shows at a glance and a stud facing up
+does not. The final (`64d0d55c`) meets that bar on all fourteen at 48
+studs: 0.24% under turned parts against 1.68% under upright ones. The milk
+truck, the figure, the toy car and Smithsonian-2 have none under turned
+parts. Turned falls from 49.8% to 44.8%. Every model is one piece, with
+no joint past its load and at least 97.4% of it in a part. But the final
+lays 1.155 times `pre261`'s parts on the milk truck and 1.096 times on the
+avocado, past the bar of 1.06. `brickify_probe`'s forty-stud bunny lays
+2,466 parts against its cap of 2,464. The probes and the renders of the
+final were not run inside the round's bound.
+
+#### The colour bar
+
+`brickify_bench.gd` now measures colour (`_colour_off`). A cell of the
+model's show face is one open to the air beside it, over it, or under it
+off the ground. Of the parts whose box holds the cell's middle, the one
+reaching nearest the face the cell opens on shows it. The cell is off
+where that part's colour is not the model's there. The first version took
+the nearest middle instead. A turned plate with a tile on its studs has
+both boxes holding the cell, and the plate's middle was often the nearer
+one along the row, so the bar counted the hidden plate's colour. That
+fix (`260286e1`) moved `pre261`'s turned share off from 3.80% to 3.60%.
+`table.py` sets the turned and upright shares beside `pre261`'s.
+
+| At 48 studs | `pre261` off, turned | Off, upright | Turned | Final off, turned | Off, upright | Turned |
+|---|---:|---:|---:|---:|---:|---:|
+| The milk truck | 5.46% | 0.71% | 71% | 0.00% | 0.78% | 59% |
+| Smithsonian-1 | 10.13% | 3.03% | 45% | 0.41% | 2.78% | 30% |
+| The avocado | 9.32% | 3.60% | 63% | 0.58% | 2.55% | 51% |
+| The figure | 7.44% | 5.73% | 35% | 0.00% | 5.47% | 30% |
+| Bob | 4.88% | 3.95% | 66% | 1.80% | 3.85% | 64% |
+| Smithsonian-2 | 4.38% | 0.78% | 38% | 0.00% | 1.60% | 34% |
+| Spot | 4.15% | 3.69% | 68% | 0.33% | 2.70% | 62% |
+| The toy car | 3.34% | 0.91% | 50% | 0.00% | 0.43% | 29% |
+| The fox | 1.25% | 0.38% | 52% | 0.21% | 0.38% | 52% |
+| The teapot | 0.00% | 1.87% | 49% | 0.00% | 1.88% | 51% |
+| Objaverse | (none turned) | 1.07% | 4% | (none turned) | 1.07% | 4% |
+| The armadillo, 3DBenchy, the bunny | 0.00% | 0.00% | 53, 39, 64% | 0.00% | 0.00% | 55, 40, 66% |
+| Mean of the fourteen | 3.60% | 1.84% | 49.8% | 0.24% | 1.68% | 44.8% |
+
+Over the whole show face the milk truck goes from 3.25% to 0.43%, the
+avocado from 6.97% to 1.61%, and Smithsonian-1 from 5.01% to 2.27%.
+Smithsonian-2 is the one model a cell worse, 26 to 27 (1.32% to 1.37%):
+its lanes stood back up lay orange plates over its black and white, as
+upright parts do there on `pre261`.
+
+Nearly all of what `pre261` lays off lies in the turned cubes' own
+shells, laid by the rounds before this one. A sliver past a turned cube
+(the twelfth round) adds two to five cells, on Bob, Spot and
+Smithsonian-1. Wings, faces and every other turned part add none.
+
+#### Where a turned part's colour came from
+
+There were three causes. The final fixes all three:
+
+- **A row laid over a change of colour.** A row on its side is a stud
+  along by two and a half plates, all one colour, so where the face has
+  two colours in that span, a part covers one with the other. This was
+  most of it. Each lane of a cube whose face shows a second colour in
+  either of its rows, even one cell, now stays studs up: both rows, so no
+  half plate is left between a turned row and stacked plates, and with no
+  side-stud brick behind it (`Plan._lane_mixed`, found in `_anchored`
+  before the side studs are placed). The cube's other lanes still turn.
+- **The middle of its row.** A shell's plan (`lay_shell`) took each
+  place's colour at the middle of its row: a point inside the model
+  where its face is ragged, so it got the colour of whichever face is
+  nearest that, often a top's for a side's. Each place now counts the
+  cells open to the air in the stud it stands in, on the plates its row
+  covers, and takes the colour most of them are (`Plan._open_colours`).
+- **A part nobody makes in that colour.** Brickify lays the largest part
+  a colour fills, then changes any part the LEGO Group makes in no such
+  colour to the nearest colour it is made in (`made_colours`). On Spot a
+  2 x 6 plate across a light nougat face came out tan. A turned side's own
+  plan now lays each colour only in the plates and bricks made in it
+  (`Plan.made_only`), as a layer in glass already did, with a 1 x 1
+  always among them.
+
+| The fourteen at 48 studs | Off, turned | Off, upright | Turned | Parts, most against `pre261` | Bunny's parts |
+|---|---:|---:|---:|---:|---:|
+| `pre261` | 3.60% | 1.84% | 49.8% | 1.000 | 2,411 |
+| Split, one cell let go (`5a80a8e8`) | 2.64% | 1.75% | 50.6% | 1.019 | 2,464 |
+| Split, none let go: the final (`64d0d55c`) | 0.24% | 1.68% | 44.8% | 1.155 (the milk truck) | 2,466 |
+| Each two-colour cube refused whole (`ef9c97ce`), measured the first way | 0.10% | 1.75% | 42.6% | 1.049 | 2,470 |
+
+Measured the first way, `pre261` reads 3.80% and 1.84%.
+
+#### Tried and dropped
+
+- **Each two-colour cube refused whole** (`ef9c97ce`, `quick/r1`). It
+  meets the colour bar on all fourteen, with parts at most 1.049 times
+  `pre261`'s. But turned falls to 42.6% (the milk truck 71% to 52%, the
+  toy car 50% to 27%), and the bunny lays 2,470 parts. The split wins
+  back 2.2 points of turned overall, and the milk truck's turned share
+  goes from 52% to 59%.
+- **The split, one cell let go** (`5a80a8e8`, `quick/s2b`). On the milk
+  truck, turned parts were still off on 4.42% of their face against 0.73%
+  upright. Across a side, most lanes with a cell of another colour have
+  only that one cell.
+- **The split, where a side stud holds** (`9fb316f8`, `quick/s1`). Every
+  lane of a cube's shell has a side-stud brick behind its first row, so
+  this split no lane, and the colour stayed where it was.
+- **A fringe only by its colours** (`36e32589`, `quick/c1a`, `quick/c1b`)
+  **and the fringe's rule with each place's colour** (`5f63d4de`,
+  `quick/c4`): 2.60% to 2.37% of the whole show face. Only the fringes
+  came right; the shells' rows took colours as before.
+- **A row over two colours in the colour most of its lane is**
+  (`8d2a8526`, `quick/c2`). Counted along the whole lane, out from its
+  inmost stud, the tops and inner faces it passed outvoted the face the
+  part stands on: Spot went to 4.24%.
+
+#### What holds it
+
+- **Parts.** A split lane is a column one stud wide, standing between
+  turned lanes, and the core lays it in narrow plates: the milk truck
+  lays 4,474 parts against `pre261`'s 3,875, and the avocado 4,709. Two
+  split lanes side by side across a cube, and the core can lay them as
+  one, as it does a refused cube.
+- **The forty-stud bunny's cap,** 1.15 times m137's parts, set when
+  m137's turned sides were the first. The bunny is white with a few cells
+  of black and pink, and the final lays 2,466 parts, two over. The lead
+  keeps the cap.
+
+#### As a builder: Bob's beak
+
+The final's renders were not drawn: the GPU's queue was longer than the
+round's bound. `views/` holds `pre261` (`base1-*`) and the fringe rule
+with each place's colour (`c4-*`), front and corner, for seven models. On
+Bob, the yellow at the root of the beak, which the sixteenth round named,
+is the model's: on the head's side of the root (x 5 and 6, plates 40 to
+44) the model is yellow. `pre261` laid those cells orange, a turned row of
+the beak reaching onto the head. Every arm of this round lays them yellow.
+
+### The eighteenth round: turned parts in the model's own colours, at the parts they cost (2026-11-27)
+
+This round tries to keep the seventeenth round's colour without its parts.
+Unit `snot18`, from `pre261` at `5e8a9353`, with the seventeenth round's
+lanes (`64d0d55c`) and its colour measure (`260286e1`) brought over.
+Scripts, logs and pictures are in `bench/results/snot18-2026-11-28`.
+
+**In short: NO-GO. The colour holds; turned, parts and time do not.** The
+final (`0807ba7f`) keeps a cube whose studs each show two colours in a row
+studs up as a whole, and lays it with the core. On all fourteen at 48 studs,
+turned parts are off on 0.31% of the show face they cover, against 1.81%
+for upright parts. But turned falls from 49.8% to 46.1%, short of the 47%
+bar. The milk truck lays 1.076 times `pre261`'s parts and the avocado
+1.062, past the bar of 1.06. Laid at the same moment as `pre261`, the milk
+truck takes 1.54 times as long, past 1.5. On the figure, two parts hang on
+two studs at 6.9 times what those studs hold (`hold.py`), where `pre261`
+has none. Nearer than studs up falls with turned: the milk truck +30.3% to
++25.1%, the mean +8.0% to +7.3%. And the milk truck loses its right mirror.
+
+`brickify_probe`'s forty-stud bunny cap is now 1.06 times the parts the
+base build lays on it (2,411 on `pre261`, so at most 2,555), the bench's
+guardrail, where it was 1.15 times m137's. A round that changes what the
+base lays moves `BUNNY_BASE` with it (`28860fb6`). The final lays 2,459.
+
+#### What the lanes cost
+
+The seventeenth round left each two-colour lane of a turned cube upright and
+turned the rest. On the milk truck those lanes were 86 alone and 18 in runs
+of two or more. The core laid them, and the core around them, in 404 parts,
+149 of them 1 x 1 plates. A cube left half turned was refused for cover
+more often too: 136 against 39. Each step this round tried, on the milk
+truck, the avocado, Smithsonian-1 and the toy car:
+
+| Arm | Milk truck parts | Avocado | Smithsonian-1 | Toy car | Milk truck turned | Toy car turned | Colour |
+|---|---:|---:|---:|---:|---:|---:|---|
+| The seventeenth round's lanes (`64d0d55c`) | 1.155 | 1.096 | 1.034 | 1.015 | 59% | 29% | holds |
+| A lane split only where one stud shows two colours (`e1`) | 1.150 | 1.095 | 1.030 | 1.012 | 59% | 44% | holds |
+| A lone split lane widened to its whole cube (`e2`) | 1.127 | 1.085 | 1.025 | 1.003 | 57% | 28% | holds |
+| Both (`e12`) | 1.124 | 1.073 | 1.022 | 1.011 | 57% | 43% | holds |
+| The cube studs up whole, by stud: **the final** (`0807ba7f`) | 1.076 | 1.062 | 1.003 | 1.010 | 56% | 44% | holds |
+| No colour rule (`d2n`, as `pre261` with each place's colour) | 1.010 | | | | 71% | | the milk truck 5.13% turned, 0.75% upright |
+| One off cell a cube let go (`b1`) | 1.038 | 1.028 | | 0.998 | 65% | 47% | fails on the truck, avocado, fox and toy car |
+| Two off cells a cube let go (`b2`) | 1.020 | 1.017 | | 1.000 | 71% | 51% | fails on all four tried |
+
+Judging each stud alone, rather than the lane, is what the toy car wanted.
+Its lanes run out from the face across studs of two colours, each stud one
+colour, and every place of a shell already takes its own stud's colour, so
+the change falls between two plates on their sides. The lane test split
+those; the stud test turns them.
+
+A cube studs up costs fewer parts than a lane a stud wide: the core lays
+two studs across where it had one. It is still about two parts a cube
+dearer than a cube turned, and the milk truck turns 100 fewer cubes than
+`pre261`. The extra parts are 1 x 2 and 1 x 1 plates
+studs up (161 and 141 more than `pre261`), against 98 fewer side-stud
+bricks. Refusing every cube of two colours, the seventeenth round's `r1`,
+costs less (1.049) because it refuses whole bands of cubes, which the core
+lays in long plates, but turns only 42.6%.
+
+#### Why turned stops near 46%
+
+A row on its side is two and a half plates tall, and a cube is two rows.
+Inside a cube, a change of colour from one plate to the next sits on a row's
+bound only between its third plate and the one under it; anywhere else one
+part covers both colours. Cuts a few plates up (`cube_phases`, all five
+offsets) find a bound for a straight band of colour. A change that wanders
+up and down the face from stud to stud, as on the avocado's skin and the
+milk truck's painted panels, finds none. There the face stays studs up, or
+turns in the wrong colour. Letting even one cell a cube go fails the colour
+bar on four models: on the milk truck, one cell a cube puts 101 cells
+under turned parts in another colour, 2.07% of them, against 0.75% under
+upright parts.
+
+#### As a builder
+
+`views/` holds the final's milk truck and Bob, front and corner, to set
+beside `pre261`'s from the seventeenth round (`base1-*`, the same builds
+part for part). **The milk truck loses its right mirror.** The cube it hung
+from is refused for its colours, and laid studs up nothing holds the
+mirror's five parts, so the build leaves them out ("nothing could hold it
+up"). A dark green part stands at the windscreen's right edge where
+`pre261` has white. Small orange plates show over the tan lamps in the
+grille, where `pre261`'s turned parts covered the model's orange. On Bob,
+the root of the beak is yellow, as the model is there; the rest is as
+`pre261`'s.
+
+#### What is left
+
+- **Parts at a colour change.** A two-colour cube costs two parts studs up.
+  What the core lays there could be bonded into the wall behind it, or the
+  cube's rows laid as one turned plate over the stud's main colour with an
+  upright tile where the second colour shows. Neither was tried.
+- **The milk truck's time.** Its check mends six joints over three passes,
+  where `pre261` needs one pass: `check.mend` 32.4 s against 13.0 s, and
+  the stitch 29.2 s against 20.5 s, laid at the same moment.
+- **The figure's two parts on two studs,** 3623 on 3023b and 3023b on
+  3023b, which the check does not mend.
+- **A part hung from a turned cube.** Before a cube is refused for its
+  colours, what it holds up (the milk truck's mirror) needs another hold,
+  or the cube keeps turning.
+
 ### Proof
+
+The eighteenth round's runs (`snot18`, 2026-11-27; NO-GO), all in
+`bench/results/snot18-2026-11-28`, from locked snapshots: `snot18f` (the
+final, `0807ba7f`) and `snot18mb` (`pre261` at `5e8a9353` with the bench's
+colour measure, `1fa79ca2`). `pre261`'s Brickify lays the same parts as at
+`1391d3a0`, so `snot14`'s base arms still give the faces:
+
+- **The fourteen at 48 studs,** both snapshots laid at the same moment in
+  one queued job each (`scripts/pair.sh`, `quick/fb` and `quick/ff`), judged
+  by `scripts/judge.sh` (`snot14`'s bar, hold and means, and `snot17`'s
+  colour and table) into `judge/final/`. `scripts/cmp.py` sets each arm
+  beside `pre261`.
+- **The arms,** `quick/e1`, `e2`, `e12`, `a1`, `a2`, `b1`, `b2`, `d2n`,
+  `d2s`: toggles over `28860fb6`, in `patches/`.
+- **The probes,** from `snot18f`: the thirteen the seventeenth round ran
+  and `brickify_ui_probe`, all with 0 FAIL (`probes/`). `bunny40.gd` laid
+  the probe's bunny alone (`bunny40/`).
+- **The renders,** `scripts/view.sh`, one GPU call each (`views/`).
+- **The static checks and the Python suite** on the final (`logs/`): 2,409
+  passed, 0 failed.
+
+The seventeenth round's runs (`snot17`, 2026-11-27; held), all in
+`bench/results/snot17-2026-11-27`, from a locked snapshot of each step.
+`pre261` is `1391d3a0` with the bench's colour measure: `snot17mb`
+(`d0141816` with `260286e1`'s corrected measure) for the final's table, and
+`snot17base` (`d0141816`, the first measure) for the arms before it.
+`snot14`'s base arms give the faces, with the same Brickify code:
+
+- **The colour bar:** `table.py` (turned and upright shares, and turned)
+  and `colour.py` on `quick.sh`'s runs, in `judge/*/table.txt` and
+  `judge/*/colour.txt`; `who.py` names the parts over a cell.
+- **Each step:** `quick/mb` (`pre261`, the corrected measure), `s3` (the
+  final, snapshot `snot17s3`, the same tree as `64d0d55c` but for
+  comments), `s2b`, `s1`, `r1`, `c4`, `c2`, `c1a` and `c1b`, `alla` and
+  `allb`, and `f16`. Each is judged by `judge.sh`: `snot14`'s bar, hold
+  and means, and the colour bar (`judge/*/`).
+- **The probes the sixteenth round ran,** from `snot17c4` (the fringe rule
+  with each place's colour): twelve with 0 FAIL, and `brickify_probe`
+  with 1, the bunny's cap (`probes1/`). They were not run on the final.
+  `bunny40.gd` laid the probe's bunny alone in each snapshot (`bunny40/`).
+- **The static checks and the Python suite** on the final (`statics3/`).
+
+The sixteenth round's runs (`snot16`, 2026-11-27), all in
+`bench/results/snot16-2026-11-27`, from the locked snapshot `snot16f`
+(`d98d360e`) against `snot16base` (`pre261` at `dc345ed8`; `snot14`'s base
+arms for the faces, the same Brickify code):
+
+- **The count:** `seambands.sh` and `bandwhy.sh` on the thirteenth round's
+  study of `pre261` (`diag/m1`, `diag/m2`, `diag/w1`, `diag/b1`);
+  `maps.sh` drew the bands and seams red (`pics/base/`, `pics/f1/`).
+- **Each step:** `quick.sh` laid the fourteen from a snapshot of each
+  (`quick/q1` over and under, `q2` and beside, `q3` on a deep core, `q4`
+  without under), `cmp.py` and `nets.py` set them beside `pre261`.
+- **The fourteen:** `quick/f1` from `snot16f`; `judge.sh` ran snot8's bar,
+  hold and means (`judge/f1/`), `causes.sh` and `fine.py` the reasons
+  (`judge/f1/fine.txt`); `views.sh` and `fronts.sh` the renders
+  (`views/`); `pairs.sh` the same-moment pairs (`pairs1/`, `pairs2/`).
+- **The probes the fifteenth round ran,** from `snot16f`, 0 FAIL
+  (`probes1/`); the static checks and the Python suite (`statics/`).
 
 The fifteenth round's runs (`snot15`, 2026-11-27; held), all in
 `bench/results/snot15-2026-11-27`, from the locked snapshot `snot15snap`
@@ -4993,6 +5413,44 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the seventeenth round (2026-11-27, held, so `pre261`'s figures stand):
+
+- **Turned parts in another colour: 3.60% of the face they cover, against
+  1.84% for upright parts** (the milk truck 5.5% against 0.7%). The held
+  `snot17` (`64d0d55c`) brings turned parts to 0.24%, below upright parts
+  on every model, by leaving each lane with a second colour at its face
+  studs up. Turned goes from 49.8% to 44.8%. It misses on parts: a split
+  lane is a column one stud wide, laid in narrow plates (the milk truck
+  1.155 times `pre261`'s parts, the forty-stud bunny two over its cap).
+  The next step is to lay the split lanes of a cube together with the
+  core around them: two split lanes side by side as one, as a refused
+  cube is laid, and a lone split lane bonded into the core behind it.
+  Then judge the truck front and Bob's beak on renders.
+- **The lead looked at `5f63d4de`'s truck front** (the round's first
+  candidate, 2.37% off by the old measure): its left mirror is still the
+  cab's dark green where `pre261` lays it grey and black. A colour share
+  that falls is not enough; the renders of every touched model are judged
+  before a GO.
+
+After the sixteenth round (2026-11-27, held, so `pre261`'s figures stand):
+
+- **The band over a turned side, 2.9% (Bob 9.4%),** turned by the held
+  `snot16` (5.6% bands left over the fourteen) but in the turned side's
+  colour where the band crosses a change of colour. It needs the colour
+  kept: a fringe asked only where its outer face is its turned cube's
+  colour, or a shell row that stops where the model's colour changes and
+  leaves the rest stacked. Then judge it again on Bob's beak and the milk
+  truck's mirror and grille first.
+- **The band under a turned side, 2.7%.** The cube under, turned with the
+  side, takes the core out from under what stands over it: the figure's
+  head hung on single studs. Turned, it needs the plates over it held
+  across the turned cube's top (a plate bridging both sides of the chest),
+  or the side's lowest row hung from the core above rather than standing.
+- **The seam, 7.5%:** inside the turned cube 2.1 points, the judge cutting
+  a cube across 2.0, a turned side's edge past the cube beside it 1.8.
+- **Too thin, 8.7%.** With the held change 1.4 points of it move to the
+  fringe beside a turned cube, asked and refused, the walls still stacked.
 
 After the fifteenth round (2026-11-27, held):
 

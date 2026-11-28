@@ -197,6 +197,16 @@ def place(static: Path, sha: str, other: Path | None = None) -> str:
                 moved.add(each)
     page = point_page(page, build, f"/b/{sha}/", f"/e/{digest}/", moved, nothreads)
     page_path.write_text(page, encoding="utf-8")
+    # export.sh compressed the page as the export wrote it, unpointed. A
+    # server that sends a file's .br in its place (serve.py --compressed)
+    # then gave a browser taking brotli the page before this: its engine
+    # "index" beside it, where nothing is now, and "Engine is not defined".
+    # Chromium takes brotli from 127.0.0.1 and WebKit does not, so a placed
+    # build started on an iPhone and on no Chromium (webstart13's proofs,
+    # 2026-11-22; traced by webstart14). The deployment never sends the
+    # page's .br (deploy.sh's SENT_BR), so the stale copies just go.
+    for stale in (page_path.with_name(page_path.name + ".br"), page_path.with_name(page_path.name + ".gz")):
+        stale.unlink(missing_ok=True)
     return digest + (" " + nothreads["engine"].split("/")[2] if nothreads else "")
 
 
