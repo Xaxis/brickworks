@@ -2395,7 +2395,8 @@ def pair_arms(args: argparse.Namespace) -> int:
     bench.say(f"pair: {len(tasks)} verdicts to ask over {len(rows)} subjects")
     if not args.score_only:
         with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
-            got = list(workers.map(lambda t: _pair_ask(*t, args.judge_model, canned), tasks))
+            got = list(workers.map(lambda t: _pair_ask(t[0], t[1], t[2], t[3], t[4],
+                                                       args.judge_model, canned), tasks))
         bench.say(f"pair: asked {sum(v is not None for v in got)} of {len(tasks)}")
     for number, row in rows.items():
         keys = row["lev"] + row["base"]
