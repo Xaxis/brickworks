@@ -228,7 +228,9 @@ const MENUS: Array = [
 		">edges_studs",
 		"-", "cut", ">cut_away", "xray", "stress", "stud_map", "joint_marks", "-",
 		">panels", "split_view", "full_screen"]],
-	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
+	# The instructions are in File › Export alone (see SUBMENUS), and on the
+	# toolbar and the timeline.
+	["Build", ["timeline", "step_close", ">steps", "pose", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
 		"evaluate_section", "break_out", "put_back", "explode"]],
@@ -278,7 +280,9 @@ var early: Array[String] = []
 const SUBMENUS: Dictionary = {
 	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	# ux12: the instructions too, where a parent looking to print them looks
-	# first (File, Export); the same command as Build's row, one id in both.
+	# first (File, Export). Their one home: in Build as well, one command was
+	# in two menus, which keys3 and the palette refuse (greenreds2); Find a
+	# command and the keys already named this row (Keymap.menu_row).
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "instructions",
 		"export_bricklink",
 		"export_rebrickable",

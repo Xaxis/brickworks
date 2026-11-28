@@ -475,8 +475,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every command in `Shell._commands`: typed by its words, reached by Down,
   Return hands exactly it to the run (a stand-in, so no file dialog,
   browser or network) or, greyed, nothing; Render opens for real in five
-  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
-  Edit at most 25 rows and 63% of the window, and the menu on a part's
+  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus
+  (none excepted: Instructions… is in File › Export alone since greenreds2,
+  and Find a command names that row), Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
   Swing on its hinge (`swing`, J), each run from the menu; and the box's
   place on its first open and as rows change, rows of one height, its height

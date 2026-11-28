@@ -117,13 +117,13 @@ func _menus() -> void:
 					continue
 				var named: String = ids[id]
 				homes[named] = int(homes.get(named, 0)) + 1
-	# But the instructions, in Build and in File, Export, where a parent
-	# looking to print them looks first: one command in both (ux12,
-	# 1334c1de0).
-	var twice: Array = homes.keys().filter(func(named: String) -> bool:
-		return homes[named] > (2 if named == "instructions" else 1))
+	var twice: Array = homes.keys().filter(func(named: String) -> bool: return homes[named] > 1)
 	_check("no command is in two menus (%d commands in the menus%s)" % [homes.size(),
 		"" if twice.is_empty() else "; twice: " + ", ".join(twice)], twice.is_empty() and homes.size() > 150)
+	# Where Find a command says a command lives is the row a person opens.
+	_check("Instructions… in File › Export alone (%s)" % Keymap.menu_row("instructions"),
+		Keymap.menu_row("instructions") == "File › Export › Instructions…"
+		and homes.get("instructions", 0) == 1)
 	var edit: MenuButton = _shell.menu("Edit")
 	edit.show_popup()
 	await _frames(10)

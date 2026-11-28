@@ -1120,12 +1120,6 @@
 					"tip": "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
 				},
 				{
-					"name": "instructions",
-					"words": "Instructions…",
-					"key": "Alt+B",
-					"tip": "Building instructions for this model, step by step, to print or to save as a PDF"
-				},
-				{
 					"submenu": "booklet",
 					"words": "Booklet page",
 					"items": [
