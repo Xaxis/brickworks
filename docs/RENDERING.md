@@ -3463,6 +3463,73 @@ near their photographs already (d33 0.88 to 0.89 against the photographs' 0.96 t
 (0.63, 5ah) hold the room to grow, and in photoreal33's set verdicts the white seamless background,
 clean plastic and even light are named far more than edges (about one in five).
 
+## 5aj. ABS mirrors blurred: the photograph's width, and what it costs (photoreal35, not kept)
+
+5ai's room had the photographs' brightness and the wrong sharpness: the judge called the black 2x4
+"chrome". This round blurred what moulded ABS mirrors to the photograph's width and judged it as 5ai
+did (d33 the base, draws 21-23 for close-ups and 21-24 for sets, 3 trials x 4 rounds). It is not
+kept. The lever is `bench/results/photoreal35-2026-11-28/gloss_blur35.patch` (with 5ai's room and
+leather under it).
+
+**The lever.** A least roughness for moulded ABS's skin (`RenderSettings.gloss_blur`, in the scene's
+free `marks.y`), added to each face's own roughness as two blurs add (`(r^4 + b^4)^(1/4)` in GGX
+alpha), so a handled patch or a stud's satin top stays rougher. A slope's moulded grain kept its
+own: blurred, its glints went and the face read flat. At 0 the pictures are byte for byte 5ai's.
+
+**The width, measured** on the black 2x4 in 5ai's room (draw 21; `breakup_measure.py`'s mirrored
+stud: how many pixels the stud's mirror image takes to go from dark to the top's level):
+
+| gloss_blur | stud mirrored, side | stud mirrored, foot | top | green plate top edge |
+| --- | --- | --- | --- | --- |
+| photograph | 7.3 px | 14.0 px | 0.33 | 7.3 px |
+| 0 (5ai) | 1.6 | 9.4 | 0.50 | 3.6 |
+| 0.15 | 2.0 | 11.6 | 0.59 | 4.0 |
+| 0.20 | 2.8 | 12.4 | 0.64 | 4.8 |
+| 0.30 | 4.6 | 14.0 | 0.62 | 5.6 |
+| 0.40 | 7.5 | 14.6 | 0.49 | 6.4 |
+
+0.35 was judged. Two arms: s35, 5ai's room with the blur; u35, the blur on the loft hall as pre261
+draws Window light. No set stands by the window, so the sets were judged once (s35).
+
+**Judged** (pools cu35, oc35, st35):
+
+| pool | d33 | arm | against d33 (95%) |
+| --- | --- | --- | --- |
+| black 2x4 + green plate, s35 (room + blur) | 0.896 | 0.359 | -0.537 (-0.824 .. -0.225) |
+| black 2x4 + green plate, u35 (blur alone) | 0.896 | 0.899 | +0.004 (-0.005 .. +0.015) |
+| the other four close-ups (s35 = blur alone there) | 0.729 | 0.575 | -0.156 (-0.435 .. -0.002) |
+| the four sets | 0.635 | 0.653 | +0.018 (-0.005 .. +0.057) |
+
+The blur took "chrome" off the room: 0 of 36 verdicts on the black 2x4 (5ai: 30). But the room's
+black 2x4 was still called a photograph 0 of 36 times (5ai: 0): its top is a pale satin grey under a
+window that fills it, its logos are lit and "mirrored" in 31 (they face as the photograph's do:
+`sheets/black_2x4_logos_photo_s35.png`), and the leather, lit by the window too, is "procedural" in
+17. The green plate fell from 36 to 26 under a milky haze.
+
+Without the room the blur changed nothing the judge could see on the window close-ups, and cost the
+top-down studio shot its gloss: three_2x2_top 0.849 (36 of 36) to 0.277 (1 of 36), "plastic looks
+matte, without real gloss", "uniform flat lighting". Its photograph shows small crisp glints of the
+softbox on the stud rims; blurred to the black 2x4's width they spread to nothing. grey_1x3 went
+0.926 to 0.879. One set gained: 6657, daylight, 0.741 to 0.816 (its d33 verdicts name "fairly
+uniform gloss on the red bricks"); the other three held.
+
+What this says. The photographs disagree with a single roughness: the black 2x4 mirrors a stud
+softly, the three 2x2s mirror a softbox crisply. One haze for all ABS can match one of them. And
+sharpness is not what makes today's renders read as renders: of d33's 408 verdicts here, 5 name
+gloss, a sheen or a reflection at all. They name the background (318, which the photographs share),
+clean plastic (327) and even light (165).
+
+Where the gap is, for a later round (d33 against its photograph, this round's pools):
+trans_round_1x1 0.21 against 0.90, its tells a faceted, polygonal cylinder silhouette (11 of 36),
+idealised refraction, no contact shadow, and a bright cyan where the photographed part is a dark,
+aged teal; set_6657 0.74 against 0.95; the black 2x4 0.88 against 0.97. set_6512 is at its ceiling:
+its reference is itself a render (0.04, ours 0.04). Edges were named on close-ups only for the
+transparent round's facets, and focus only on it and 6512, so 5ah's line of light and focus on
+close-ups were not built.
+
+Best's time is unchanged: the car at 256 samples 5.39 s against pre261's 5.73 (medians of three
+runs each, interleaved).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
