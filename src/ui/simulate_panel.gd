@@ -195,6 +195,19 @@ var _typing_step: Dictionary = {}
 var _program_posed: bool = false
 ## How long a frame gives working out a run (HubProgram.run_step).
 const RUN_SLICE_MS := 6.0
+## What the panel last drew and tinted: the world's own sets as it left them
+## (BrickWorld.drawn_ids and tinted_ids, a new Dictionary each set), so
+## [method set_aside] takes off only what is Simulate's, not a drag's, the
+## exploded view's or a red the verbs tint.
+var _drew: Dictionary = {}
+var _tinted_with: Dictionary = {}
+## Set aside while Simple's controls are up ([method set_aside]): what it
+## drew and tinted then, the model it was of, and when.
+var _aside: bool = false
+var _aside_drawn: Dictionary = {}
+var _aside_tints: Dictionary = {}
+var _aside_model: Array = []
+var _aside_at: int = 0
 
 
 func _ready() -> void:
@@ -226,9 +239,14 @@ func close() -> void:
 	_stop_program()
 	_port_sims.clear()
 	visible = false
+	# Set aside, it draws nothing of its own to take off: what the world
+	# draws is Simple's (a part seating).
 	if world != null:
-		world.set_drawn({})
-		world.set_tinted({})
+		_draw_turned({})
+		_tint_turned({})
+	_aside = false
+	_aside_drawn = {}
+	_aside_tints = {}
 	if shell != null and shell._balance_mark != null:
 		shell._balance_mark.clear()
 	sim = null
@@ -243,7 +261,7 @@ func read() -> void:
 	_stop_program()
 	_port_sims.clear()
 	_program_posed = false
-	world.set_drawn({})
+	_draw_turned({})
 	_status.text = ""
 	_stops.text = ""
 	_where.disabled = true
@@ -416,7 +434,7 @@ func drive(body: int, how: String = "picked") -> void:
 		sim.named_with_parts(body, 2), how]
 	_scrub_range()
 	_show_readout()
-	world.set_drawn({})
+	_draw_turned({})
 	await weigh()
 	# A part clicked meanwhile is the driver now: where this one stops is
 	# not asked.
@@ -431,7 +449,7 @@ func drive(body: int, how: String = "picked") -> void:
 	if next >= 0 and next != sim.driver:
 		await drive(next, "clicked")
 		return
-	world.set_tinted(sim.tints())
+	_tint_turned(sim.tints())
 	_show_pose()
 
 
@@ -620,7 +638,7 @@ func _by_hand_said() -> String:
 ## path it is in, and the click selects nothing. False for any other part,
 ## whose click selects as ever (EditVerbs.part_click).
 func take_click(brick: int, origin: Vector3, way: Vector3) -> bool:
-	if not visible or wiring == null or _reading or not wiring.sources.has(brick):
+	if not visible or _aside or wiring == null or _reading or not wiring.sources.has(brick):
 		return false
 	work_switch(brick, wiring.output_at(brick, origin, way))
 	return true
@@ -631,6 +649,62 @@ func _stop() -> void:
 	_power_rate = 0.0
 	if _play != null:
 		_play.text = "Play"
+
+
+## The turned parts drawn, or kept for Full while set aside: a driver
+## weighed or a reading finished after Simple came up draws nothing there.
+func _draw_turned(placed: Dictionary) -> void:
+	if _aside:
+		_aside_drawn = placed.duplicate()
+		return
+	world.set_drawn(placed)
+	_drew = world.drawn_ids()
+
+
+func _tint_turned(tints: Dictionary) -> void:
+	if _aside:
+		_aside_tints = tints.duplicate()
+		return
+	world.set_tinted(tints)
+	_tinted_with = world.tinted_ids()
+
+
+## Simple's controls are up (SimpleLayer): Simulate's turned parts drawn
+## where they stand and in their own colours, as Simple shows the model, and
+## nothing turns on (Play, a program's run), nor does a part chosen in Simple
+## drive it. Its column is put away with the studio's while its own visible
+## stays true, so it went on turning and tinting parts under Simple's
+## fingers. Back in Full, drawn and tinted exactly as it was and going on
+## from there, a run from where it was; the model changed meanwhile, it is
+## read again as any change has it read ([method _process]).
+func set_aside(on: bool) -> void:
+	if on == _aside or (on and (not visible or world == null)):
+		return
+	if on:
+		_aside_at = Time.get_ticks_usec()
+		_aside_model = [world.generation(), world.revision]
+		var drawn: Dictionary = world.drawn_ids()
+		var mine_drawn: bool = not drawn.is_empty() and is_same(drawn, _drew)
+		var tints: Dictionary = world.tinted_ids()
+		var mine_tints: bool = not tints.is_empty() and is_same(tints, _tinted_with)
+		if mine_drawn:
+			_draw_turned({})
+		if mine_tints:
+			_tint_turned({})
+		_aside_drawn = drawn.duplicate() if mine_drawn else {}
+		_aside_tints = tints.duplicate() if mine_tints else {}
+		_aside = true
+		return
+	_aside = false
+	_program_began += Time.get_ticks_usec() - _aside_at
+	set_process(true)
+	if _aside_model == [world.generation(), world.revision]:
+		if not _aside_tints.is_empty():
+			_tint_turned(_aside_tints)
+		if not _aside_drawn.is_empty():
+			_draw_turned(_aside_drawn)
+	_aside_drawn = {}
+	_aside_tints = {}
 
 
 ## Turn the driver to [param at] turns from where it was built, and show it.
@@ -673,7 +747,7 @@ func _show_pose() -> void:
 		if playing:
 			_stop()
 			_status.text = "Stopped at %s going back." % Simulation.angle(turns)
-	world.set_drawn(sim.placed(turns))
+	_draw_turned(sim.placed(turns))
 	var span: float = sim.cycle()
 	_quiet = true
 	_scrub.set_value_no_signal(fmod(turns, span) if span > 0.0 else 0.0)
@@ -686,7 +760,7 @@ func _process(delta: float) -> void:
 	# was made while it played, and nothing told the page after, so
 	# window.brickworksSimulate said open and playing for as long as the app
 	# slept, and a check waiting on it to shut waited it out.
-	if not visible:
+	if not visible or _aside:
 		_tell_page()
 		if not _page_behind:
 			Wake.rest(self)
@@ -722,6 +796,9 @@ func _process(delta: float) -> void:
 
 ## A click on a part while the panel is open: drive its body, when it turns.
 func _on_selection(_count: int) -> void:
+	# A part chosen in Simple is Simple's choice, no driver for Simulate.
+	if _aside:
+		return
 	if builder != null and held_by_hand.call():
 		_grab_selection = builder.selection.duplicate()
 		return
@@ -744,7 +821,8 @@ func _on_selection(_count: int) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not visible or not (event is InputEventKey):
+	# Escape in Simple is Simple's: it shut the panel Full had open.
+	if not visible or _aside or not (event is InputEventKey):
 		return
 	var key: InputEventKey = event
 	if key.pressed and not key.echo and key.keycode == KEY_ESCAPE:
@@ -891,7 +969,7 @@ func _show_program_pose() -> void:
 		return
 	var seconds: float = float(_ran.get("seconds", 0.0))
 	var t: float = minf(program_time, seconds)
-	world.set_drawn(SimulatePanel.program_pose(_ran, _port_sims, t))
+	_draw_turned(SimulatePanel.program_pose(_ran, _port_sims, t))
 	var angles: Dictionary = HubProgram.angles_at(_ran, t)
 	for port: String in _port_sims:
 		if _port_sims[port] == sim and angles.has(port):

@@ -760,6 +760,9 @@ func _put_full_back(where_it_was: bool) -> void:
 ##   the cut and x-ray   lifted (SeeInside.set_aside); the cut the model's
 ##                       file keeps is kept, so a save writes it.
 ##   the exploded view   every section drawn where it stands (SectionsUi).
+##   Simulate, Motions   their turned parts and poses drawn where they stand,
+##                       nothing turning on, a motion playing stopped
+##                       (SimulatePanel, PosePanel.set_aside).
 ##   Stress, Stud        off: each tints every part, so Simple's colours and
 ##   directions          the bricks put down were not what was drawn.
 ## Full's timeline step is put away by Main as Simple comes up, and a brick
@@ -779,6 +782,8 @@ func _set_view_aside() -> void:
 	var sections: Node = shell.get("_sections")
 	if sections != null:
 		sections.call("set_aside", true)
+	for panel: Node in _moving_panels():
+		panel.call("set_aside", true)
 	for which: String in ["stress", "stud_map"]:
 		var view: Node = shell.get("_stud_map" if which == "stud_map" else "stress")
 		_full_view[which] = view != null and bool(view.get("on"))
@@ -808,9 +813,24 @@ func _put_view_back() -> void:
 	var sections: Node = shell.get("_sections")
 	if sections != null:
 		sections.call("set_aside", false)
+	for panel: Node in _moving_panels():
+		panel.call("set_aside", false)
 	for which: String in ["stress", "stud_map"]:
 		if bool(view.get(which, false)):
 			_quietly(shell.stress if which == "stress" else shell.stud_map, true)
+
+
+## Full's tool panels that draw parts somewhere other than where they stand
+## (BrickWorld.set_drawn), made so far: Simulate turning a mechanism, Motions
+## drawing a pose or playing one. Their column is put away with the studio's
+## while each one's own visible stays true, so each went on drawing in Simple.
+func _moving_panels() -> Array[Node]:
+	var panels: Array[Node] = []
+	for made: String in ["_simulate_made", "_pose_made"]:
+		var panel: Node = app.get(made)
+		if panel != null:
+			panels.append(panel)
+	return panels
 
 
 ## [param view] (Stress, Stud directions) turned on or off with nothing said.
