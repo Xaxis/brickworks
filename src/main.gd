@@ -7617,7 +7617,7 @@ func _build_ui() -> void:
 	# it used to be.
 	# Made the first time it is asked for (_make_inventory).
 	_bar.parts_wanted.connect(_toggle_parts)
-	# The booklet is Build, Instructions and the toolbar's Instructions
+	# The booklet is File, Export, Instructions and the toolbar's Instructions
 	# button (Shell._instructions, which calls _booklet_wanted).
 
 	# Over the model rather than beside it, like the parts list: making

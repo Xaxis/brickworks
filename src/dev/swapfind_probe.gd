@@ -176,6 +176,9 @@ func _case_key() -> void:
 		var row: int = popup.get_item_index(_shell.menu_id("find_replace"))
 		_check("key %s: ...Edit's row shows it" % preset,
 			row >= 0 and popup.get_item_accelerator(row) == Shell.menu_accel(want))
+		# Shut as it was "opened": Edit told only "about to popup" stays
+		# pressed, opening the title under the pointer (submenu_probe).
+		popup.popup_hide.emit()
 		for picked: Array in [[], [some]]:
 			_select(picked)
 			await _frames(2)

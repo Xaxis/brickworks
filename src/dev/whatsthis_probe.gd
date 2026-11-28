@@ -144,6 +144,10 @@ func _the_row() -> void:
 		if popup != null and at >= 0:
 			popup.about_to_popup.emit()
 		var shown: int = popup.get_item_accelerator(at) if at >= 0 else 0
+		# Shut as it was "opened": Help told only "about to popup" stays
+		# pressed, opening the title under the pointer (submenu_probe).
+		if popup != null and at >= 0:
+			popup.popup_hide.emit()
 		_check("%s: its key %s, shown on the row (%s), no other action's%s" % [preset,
 			Keymap.listed("whats_this"), Shell.key_text(shown),
 			"" if others.is_empty() else ": also " + ", ".join(others)],

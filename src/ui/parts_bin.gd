@@ -3253,9 +3253,13 @@ func _tiles_across() -> int:
 	var room: float = _scroll.size.x - _scroll.get_v_scroll_bar().get_combined_minimum_size().x
 	if by_finger:
 		# A phone's sheet: four across, or as many as its width holds. Its
-		# grid sets the scroller's least, so the width is the window's less
-		# the margins either side, which are the margins to its left.
-		room = get_viewport().get_visible_rect().size.x - 2.0 * _scroll.get_global_rect().position.x \
+		# grid sets the scroller's least, so the width is the sheet's as the
+		# shell lays it (LaidOut.frame: the window on a phone, a tablet's
+		# panel down the left), less the margins either side, which are the
+		# margins to its left. Counted from the window, a tablet's 400 panel
+		# held four tiles a finger wide and grew to 452 (greenreds2).
+		var frame: Vector2 = LaidOut.frame(_scroll)
+		room = frame.y - 2.0 * (_scroll.get_global_rect().position.x - frame.x) \
 			- _scroll.get_v_scroll_bar().get_combined_minimum_size().x
 		return clampi(floori((room + gap) / (_tile_wide() + gap)), 1, COLUMNS)
 	# A tile is _z(74) across (_make_cell): as many as the column holds, four

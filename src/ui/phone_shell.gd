@@ -1682,11 +1682,16 @@ class Sheet extends PanelContainer:
 		if state == "side":
 			var top: float = phone.p(PhoneShell.TOP)
 			var tall: float = room.y - top - phone.p(PhoneShell.ROW)
+			# The width what it holds is fitted to (LaidOut.ACROSS): the
+			# parts bin's tiles and chips, read from the window, held it 452
+			# of a 768 tablet's width (greenreds2).
+			set_meta(LaidOut.ACROSS, phone.p(PhoneShell.SIDE))
 			custom_minimum_size = Vector2(phone.p(PhoneShell.SIDE), tall)
 			size = Vector2(get_combined_minimum_size().x, tall)
 			position = Vector2(0.0 if edge == "left" else room.x - size.x, top)
 			return
 		var wide: float = minf(room.x, phone.p(560))
+		set_meta(LaidOut.ACROSS, wide)
 		# Its foot on the screen's: taller than asked where what it holds
 		# needs more, up to the whole screen.
 		custom_minimum_size = Vector2(wide, 0.0)

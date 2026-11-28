@@ -593,6 +593,9 @@ func _simple_from_more() -> void:
 	for n: int in popup.item_count:
 		if popup.get_item_text(n) == "Simple mode":
 			at = n
+	# Shut as it was "opened": "…" told only "about to popup" stays pressed
+	# (submenu_probe).
+	popup.popup_hide.emit()
 	_check("...Simple a row of \"…\"", at != -1)
 	if at != -1:
 		popup.id_pressed.emit(popup.get_item_id(at))

@@ -40,7 +40,7 @@
 ## each way N times, closing the draft a few frames later each time.
 ##
 ## And the app quit with work of its own still going, on the sample car:
-##   booklet-asking   Build, Instructions…, its Save dialog up 2 s, and File,
+##   booklet-asking   File, Export, Instructions…, its Save dialog up 2 s, and File,
 ##                    Quit;
 ##   save-asking      File, Save as…, the same;
 ##   booklet-drawing  Instructions answered, and the window closed while the
