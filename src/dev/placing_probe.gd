@@ -264,17 +264,18 @@ func _awkward() -> void:
 	await _hold("4488")
 	var nacelle: Transform3D = _ldr([80, -24, -40, 0, 0, 1, 0, 1, 0, -1, 0, 0])
 	await _turn_to(nacelle.basis)
-	# Aimed under the middle of its plate, on the wing, and moved across by
-	# where its ghost stands, as the build flow aims.
-	var on_wing: Vector2 = _screen(nacelle * Vector3(-10, -8, 0))
-	for _n: int in 4:
+	# Aimed on the wing under its plate, near the edge: a 2 x 2 goes where
+	# the stud corner nearest the pointer is, and the middle of the plate's
+	# half on the wing is as near the corner a stud back. Over the edge the
+	# pointer is on nothing.
+	var on_wing: Vector2 = Vector2.ZERO
+	for across: float in [-4.0, -6.0, -2.0, -8.0]:
+		on_wing = _screen(nacelle * Vector3(across, -8, 0))
 		await _move(on_wing)
-		if _builder.ghost_place() == null:
+		if _builder.ghost_place() != null and Vector2(_builder.ghost_transform().origin.x,
+				_builder.ghost_transform().origin.z).distance_to(Vector2(nacelle.origin.x,
+				nacelle.origin.z)) < 0.5:
 			break
-		var ghost: Vector3 = _builder.ghost_transform().origin
-		if Vector2(ghost.x, ghost.z).distance_to(Vector2(nacelle.origin.x, nacelle.origin.z)) < 0.5:
-			break
-		on_wing += _screen(Vector3(nacelle.origin.x, ghost.y, nacelle.origin.z)) - _screen(ghost)
 	var put: int = await _one("4488 on the wing by its plate, its pin block past the edge, never a plate over it",
 		on_wing, nacelle)
 	if put != 0:
